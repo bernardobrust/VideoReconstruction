@@ -93,7 +93,19 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-.PHONY: clean test
+# System headers to pre-compile as modules
+SYS_HEADERS := cstdint cstdio cassert cstdlib cstring
+
+.PHONY: clean test setup
+
+setup:
+	@echo "Pre-compiling system headers..."
+	@mkdir -p gcm.cache
+	@for hdr in $(SYS_HEADERS); do \
+		$(CXX) $(CXXFLAGS) -xc++-system-header $$hdr; \
+	done
+
+$(OBJS): | setup
 
 test: $(BIN)
 	./$(BIN)

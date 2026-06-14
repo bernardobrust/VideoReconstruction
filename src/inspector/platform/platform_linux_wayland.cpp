@@ -1,9 +1,7 @@
-module;
-#include <stdio.h>
-
 module platform;
 
 import types;
+import <cstdio>;
 
 #ifdef PLATFORM_LINUX_WAYLAND
 

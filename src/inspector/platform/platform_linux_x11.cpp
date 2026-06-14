@@ -1,12 +1,12 @@
 module;
 #include <X11/Xlib.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 module platform;
 
 import types;
+import <cstdio>;
+import <cstdlib>;
+import <cstring>;
 
 #ifdef PLATFORM_LINUX_X11
 

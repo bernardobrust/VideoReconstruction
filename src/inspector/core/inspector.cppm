@@ -1,12 +1,10 @@
-module;
-#include <assert.h>
-#include <stdlib.h>
-#include <stdio.h>
-
 export module inspector;
 
 import types;
 import platform;
+import <cassert>;
+import <cstdlib>;
+import <cstdio>;
 
 export {
     // Just window data for now
