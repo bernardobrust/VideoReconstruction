@@ -80,7 +80,7 @@ While motion vectors are not unique to AV1, the codec provides a rich source of 
 * Potential benefits for otherwise difficult reconstruction scenarios
 
 ### 5. Implementation
-* Performance oriented C
+* Performance oriented C-style C++ with use of modules
 * Use of already existend efficient encoders and decoders (FFmpeg)
 * Data analysis using Python
 

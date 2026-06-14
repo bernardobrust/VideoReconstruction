@@ -8,6 +8,7 @@
 
 ### Code
 - [x] Setup the project (build system)
+- [ ] Clean up module system
 - [ ] Get testing data
 - [ ] Setup a data analysis pipeline
 
