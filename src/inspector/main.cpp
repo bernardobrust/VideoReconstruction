@@ -1,4 +1,4 @@
-#include "inspector.h"
+import inspector;
 
 int main() {
     inspector_config config = {0, 0, 200, 300};

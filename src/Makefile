@@ -1,6 +1,7 @@
-# We could use c2y for the most modern, but c11 has everything we need and is standard
-CC 	  := gcc
-C_STD := --std=c11
+# C++23 with Modules
+CXX      := g++
+CXX_STD  := --std=c++23
+MOD_FLAG := -fmodules-ts
 
 MODE      ?= debug
 TARGET    ?=
@@ -26,26 +27,35 @@ LIB_DIR   := lib
 
 INC_DIRS := $(shell find $(TARGET) -type d) $(LIB_DIR)
 
+# Exclude .test.cpp and main.cpp for SRCS
 ifeq ($(MODE),test)
-    SRCS := $(shell find $(TARGET) -name '*.c' ! -name 'main.c')
+    SRCS_CPPM := $(shell find $(TARGET) $(LIB_DIR) -name '*.cppm')
+    SRCS_CPP  := $(shell find $(TARGET) $(LIB_DIR) -name '*.cpp' ! -name 'main.cpp')
 else
-    SRCS := $(shell find $(TARGET) -name '*.c' ! -name '*.test.c')
+    SRCS_CPPM := $(shell find $(TARGET) $(LIB_DIR) -name '*.cppm')
+    SRCS_CPP  := $(shell find $(TARGET) $(LIB_DIR) -name '*.cpp' ! -name '*.test.cpp' ! -name 'main.cpp')
 endif
 
-OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
+MAIN_SRC := $(TARGET)/main.cpp
+
+OBJS_CPPM := $(SRCS_CPPM:%=$(BUILD_DIR)/%.o)
+OBJS_CPP  := $(SRCS_CPP:%=$(BUILD_DIR)/%.o)
+OBJS_MAIN := $(BUILD_DIR)/$(MAIN_SRC).o
+
+OBJS := $(OBJS_CPPM) $(OBJS_CPP) $(OBJS_MAIN)
 DEPS := $(OBJS:.o=.d)
 
-CFLAGS := $(C_STD)
-CFLAGS += $(addprefix -I,$(INC_DIRS))
-CFLAGS += -MMD -MP
+CXXFLAGS := $(CXX_STD) $(MOD_FLAG)
+CXXFLAGS += $(addprefix -I,$(INC_DIRS))
+# CXXFLAGS += -MMD -MP
 
 LIBS :=
 
 ifeq ($(WINDOWING), x11)
-    CFLAGS += -DPLATFORM_LINUX_X11
-    LIBS   += -lX11
+    CXXFLAGS += -DPLATFORM_LINUX_X11
+    LIBS     += -lX11
 else ifeq ($(WINDOWING), wayland)
-    CFLAGS += -DPLATFORM_LINUX_WAYLAND
+    CXXFLAGS += -DPLATFORM_LINUX_WAYLAND
 else
     $(error Unknown WINDOWING option: $(WINDOWING). Choose 'x11' or 'wayland')
 endif
@@ -57,21 +67,31 @@ RELEASE_FLAGS := -Ofast -flto -march=native -DNDEBUG
 LDFLAGS :=
 
 ifeq ($(filter $(MODE),debug test),$(MODE))
-    CFLAGS  += $(WARN_FLAGS) $(DBG_FLAGS)
-    LDFLAGS += -fsanitize=address
+    CXXFLAGS += $(WARN_FLAGS) $(DBG_FLAGS)
+    LDFLAGS  += -fsanitize=address
 else
-    CFLAGS += $(RELEASE_FLAGS)
+    CXXFLAGS += $(RELEASE_FLAGS)
 endif
 
 BIN := $(BUILD_DIR)/$(TARGET)/$(TARGET)
 
 $(BIN): $(OBJS)
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(LIBS) $(OBJS) -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(OBJS) -o $@ $(LIBS) $(LDFLAGS)
 
-$(BUILD_DIR)/%.o: %
+# Modules need to be built in a specific order to work
+$(BUILD_DIR)/inspector/core/inspector.cppm.o: $(BUILD_DIR)/inspector/platform/platform.cppm.o $(BUILD_DIR)/lib/types.cppm.o
+$(BUILD_DIR)/inspector/platform/platform.cppm.o: $(BUILD_DIR)/lib/types.cppm.o
+
+$(OBJS_CPP) $(OBJS_MAIN): $(OBJS_CPPM)
+
+$(BUILD_DIR)/%.cppm.o: %.cppm
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.cpp.o: %.cpp
+	mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 .PHONY: clean test
 
@@ -79,6 +99,6 @@ test: $(BIN)
 	./$(BIN)
 
 clean:
-	rm -rf build
+	rm -rf build gcm.cache
 
 -include $(DEPS)

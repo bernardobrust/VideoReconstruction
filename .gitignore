@@ -1,5 +1,6 @@
 # Build objects
 build/
+gcm.cache/
 
 # Debug information
 gdb.txt

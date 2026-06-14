@@ -1,18 +1,29 @@
-#include "inspector.h"
-
+module;
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <btr_types.h>
+export module inspector;
 
-#include "platform.h"
+import types;
+import platform;
 
-typedef struct inspector_state {
+export {
+    // Just window data for now
+    struct inspector_config {
+        i16 initial_x, initial_y, initial_w, initial_h;
+    };
+
+    bool inspector_create(inspector_config* config);
+    bool inspector_run();
+    bool inspector_shutdown();
+}
+
+struct inspector_state {
     bool is_running;
     platform_state platform;
     i16 x, y, w, h;
-} inspector_state;
+};
 
 static bool initialized = false;
 static inspector_state state;

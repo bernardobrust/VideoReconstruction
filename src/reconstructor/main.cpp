@@ -1,4 +1,4 @@
-#include "stdio.h"
+import <cstdio>;
 
 int main() {
     printf("Hello from reconstructor!\n");

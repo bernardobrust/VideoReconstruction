@@ -1,20 +1,21 @@
-#include "platform.h"
-
-#ifdef PLATFORM_LINUX_X11
-
+module;
 #include <X11/Xlib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <btr_types.h>
+module platform;
 
-typedef struct internal_state {
+import types;
+
+#ifdef PLATFORM_LINUX_X11
+
+struct internal_state {
     Display* display;
     i32 screen;
     Window window;
     GC graphics_context;
-} internal_state;
+};
 
 // Rutic X11 window
 bool platform_init(
@@ -67,7 +68,7 @@ bool platform_update(platform_state* plat_state) {
         // Placeholder tick event
         // For now we quit if anything is pressed
         if(e.type == KeyPress) return false;
-    } while (XPending(state->display) > 0); // Does this have to do with the 4 print?
+    } while (XPending(state->display) > 0);
 
     return true;
 }
