@@ -2,7 +2,7 @@ export module platform;
 
 import types;
 
-export {
+export namespace vr::platform {
     /*
         Internal state contains data about the window, depends on OS so it's a
         void*.
