@@ -6,23 +6,39 @@
 - [ ] Update [ideas](ideas.md) as the project advances
 - [ ] Add the paper (after it gets approved)
 
-### Code
-- [x] Setup the project (build system)
-- [ ] Clean up module system
-- [ ] Get testing data
-- [ ] Setup a data analysis pipeline
-
-### Inspector (Needed)
-- [x] Simple X11 window
-- [ ] Validate platform layer
-- [ ] Vulkan integration
-- [ ] Vulkan renderer
-- [ ] Simple UI
+### Build System
+- [ ] Setup the build system (nob + flag)
+- [ ] Setup debug build
+- [ ] Setup release build
+- [ ] Setup test build
 - [ ] Libaom integration
-- [ ] UI
+- [ ] Get testing data
 
-### Inspector (Optional)
-- [ ] Native Wayaland support
-- [ ] Platform Layer via conditional compilation (Partial)
-- [ ] Windows Build System (Untested for now)
+### Platform Layer (shared)
+- [ ] Raw X11 platform Layer
+- [ ] Raw Wayland platform Layer
 - [ ] Windows platform layer
+- [ ] Mac platform layer (?)
+
+### Math Library
+- [ ] Basic utilities (clamp, 2d lerp, etc.)
+- [ ] ...
+
+### Data Structures
+- [ ] Dynamic array
+- [ ] ...
+
+### Renderer (CPU / software renderer)
+- [ ] Open window + set defaults
+- [ ] Draw triangle
+- [ ] Draw rectangle
+- [ ] Draw circle
+- [ ] Draw arrow
+- [ ] Draw text
+- [ ] Draw frame of a video
+
+---
+
+### TODO:
+
+- [ ] ...
