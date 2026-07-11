@@ -1,9 +1,11 @@
 # Build objects
 build/
-gcm.cache/
+nob
+nob.old
 
 # Debug information
 gdb.txt
+compile_commands.json
 
 # Tex build
 *.aux
