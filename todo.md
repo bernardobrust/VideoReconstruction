@@ -3,6 +3,7 @@
 
 ### Research
 - [X] Write a draft for the paper
+- [ ] Update/Improve the paper
 - [ ] Update [ideas](ideas.md) as the project advances
 - [ ] Add the paper (after it gets approved)
 

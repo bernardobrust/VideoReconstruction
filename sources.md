@@ -1,6 +1,6 @@
 ### Video Processing
-- [Leveraging AV1 motion vectors for Fast and Dense Feature Matching](https://arxiv.org/html/2510.17434v2)
-- [AV1 Bitstream & Decoding Process Specification](https://aomediacodec.github.io/av1-spec/av1-spec.pdf)
+- [Leveraging AV1 motion vectors for Fast and Dense Feature Matching](https://arxiv.org/html/2510.17434v2), inspiered
+- [AV1 Bitstream & Decoding Process Specification](https://aomediacodec.github.io/av1-spec/av1-spec.pdf), inspiered
 - [FFmpeg documentation](https://ffmpeg.org/documentation.html), inspiered
 - [FFmpeg source code](https://ffmpeg.org/download.html#get-sources), inspiered
 
