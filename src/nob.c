@@ -101,6 +101,14 @@ int main(int argc, char **argv) {
   strcat(self_dir, *target);
   nob_cmd_append(&cmd, self_dir);
 
+  // Macros for platform layer
+  if (strcmp(*platform, "gnu_linux_wayland") == 0)
+      nob_cmd_append(&cmd, "-DPLATFORM_GNU_LINUX_WAYLAND");
+  else if (strcmp(*platform, "gnu_linux_x11") == 0)
+      nob_cmd_append(&cmd, "-DPLATFORM_GNU_LINUX_X11");
+  else
+      nob_cmd_append(&cmd, "-DPLATFORM_WINDOWS");
+
   if (!nob_cmd_run(&cmd))
     return EXIT_FAILURE;
 }
