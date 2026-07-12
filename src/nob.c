@@ -92,22 +92,26 @@ int main(int argc, char **argv) {
   strcat(entry_point, "/");
   strcmp(*build_type, "test") == 0 ? strcat(entry_point, "main.test.c")
                                    : strcat(entry_point, "main.c");
-
   nob_cmd_append(&cmd, entry_point);
+
+
+  // Platform utility (buf_read and buf_write)
+  if (strcmp(*platform, "gnu_linux_x11") == 0 ||
+      strcmp(*platform, "gnu_linux_wayland") == 0) {
+      nob_cmd_append(&cmd, "platform/utility.c");
+  }
+
+  // Platform layer implementation
+  char platform_layer[64] = "platform/platform_";
+  strcat(platform_layer, *platform);
+  strcat(platform_layer, ".c");
+  nob_cmd_append(&cmd, platform_layer);
 
   nob_cmd_append(&cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath");
   // Include the own directory
   char self_dir[64] = "-I";
   strcat(self_dir, *target);
   nob_cmd_append(&cmd, self_dir);
-
-  // Macros for platform layer
-  if (strcmp(*platform, "gnu_linux_wayland") == 0)
-      nob_cmd_append(&cmd, "-DPLATFORM_GNU_LINUX_WAYLAND");
-  else if (strcmp(*platform, "gnu_linux_x11") == 0)
-      nob_cmd_append(&cmd, "-DPLATFORM_GNU_LINUX_X11");
-  else
-      nob_cmd_append(&cmd, "-DPLATFORM_WINDOWS");
 
   if (!nob_cmd_run(&cmd))
     return EXIT_FAILURE;
