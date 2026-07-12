@@ -2,22 +2,23 @@
 - [ ] Update this TODO list with a more concrete plan
 
 ### Research
-- [X] Write a draft for the paper
+- [x] Write a draft for the paper
 - [ ] Update/Improve the paper
 - [ ] Update [ideas](ideas.md) as the project advances
 - [ ] Add the paper (after it gets approved)
 
 ### Build System
-- [ ] Setup the build system (nob + flag)
-- [ ] Setup debug build
-- [ ] Setup release build
-- [ ] Setup test build
+- [x] Setup the build system (nob + flag)
+- [x] Setup debug build
+- [x] Setup release build
+- [x] Setup test build
 - [ ] Libaom integration
 - [ ] Get testing data
 
 ### Platform Layer (shared)
 - [ ] Raw X11 platform Layer
-- [ ] Raw Wayland platform Layer
+- [x] Raw Wayland platform Layer
+- [ ] Input system
 - [ ] Windows platform layer
 - [ ] Mac platform layer (?)
 
