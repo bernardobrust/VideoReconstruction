@@ -2,7 +2,7 @@
 This project is built entirelly using C, with the external dependencies being inluded by the build system itself in header libraries.
 
 **Requirements**:
-- A C23 compatible compiler, that's it.
+- A C11 compatible compiler, that's it.
 
 **Building**:
 The first time you compile you will have to generate the build tool, simply run:

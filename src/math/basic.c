@@ -1,6 +1,8 @@
 #include "basic.h"
 
-int clamp_int(int v, int min, int max) {
+int
+clamp_int (int v, int min, int max)
+{
   if (v < min)
     return min;
 
