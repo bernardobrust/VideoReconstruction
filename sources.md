@@ -5,6 +5,9 @@
 - [FFmpeg documentation](https://ffmpeg.org/documentation.html), inspiered
 - [FFmpeg source code](https://ffmpeg.org/download.html#get-sources), inspiered
 
+**Computer Vision**
+- [Trifocal Relative Pose from Lines at Points and its Efficient Solution](https://arxiv.org/abs/1903.09755), inspiered (not used for now)
+
 ### Tooling
 **Build System**
 - [NOB](https://github.com/tsoding/nob.h), used

@@ -3,7 +3,7 @@
 
 ### Research
 - [x] Write a draft for the paper
-- [ ] Update/Improve the paper
+- [x] Update/Improve the paper
 - [ ] Update [ideas](ideas.md) as the project advances
 - [ ] Add the paper (after it gets approved)
 
@@ -12,7 +12,7 @@
 - [x] Setup debug build
 - [x] Setup release build
 - [x] Setup test build
-- [ ] Libaom integration
+- [ ] FFmpeg integration
 - [ ] Get testing data
 
 ### Platform Layer (shared)

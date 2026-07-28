@@ -1,11 +1,11 @@
 # Build Instructions
-This project is built entirelly using C, with the external dependencies being inluded by the build system itself in header libraries.
+This project only uses C (no Make, CMake or SCons), with the external dependencies being inluded by the build system itself in header libraries.
 
 **Requirements**:
-- A C11 compatible compiler, that's it.
+- A C11 compatible compiler, that's it (tested mainly with `gcc`).
 
 **Building**:
-The first time you compile you will have to generate the build tool, simply run:
+The first time you compile you will have to generate the build tool, simply run (uses `gcc` by default):
 `gcc nob.c -o nob`
 
 Now you can compile the project with:
@@ -16,10 +16,10 @@ The parameters are as follows:
 - PLATFORM: gnu_linux_x11 | gnu_linux_wayland | windows
 - BUILD_TYPE: debug | release | test
 
-So a release build of the inspector on GNU + Linux running wayland is built running:
+So for a release build of the inspector on GNU + Linux using wayland the command is:
 `./nob -target inspector -platform gnu_linux_wayland -build_type release`
 
-> NOTE: for now only the wayland layer is done
+> NOTE: for now only the wayland layer is complete
 
 # Structure
 ## Common code
