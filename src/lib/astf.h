@@ -381,3 +381,24 @@ astf_retrieve_results (void)
           _astf_global_ctx.failed);
 }
 #endif
+
+#ifndef ASTF_STRIP_PREFIX_GUARD_
+#define ASTF_STRIP_PREFIX_GUARD_
+
+#ifdef ASTF_STRIP_PREFIX
+
+#define start_test_suite astf_start_test_suite
+#define retrieve_results astf_retrieve_results
+
+#define assert_equal astf_assert_equal
+#define assert_approx astf_assert_approx
+#define assert_cond astf_assert_cond
+#define assert_true astf_assert_true
+#define assert_false astf_assert_false
+#define assert_null astf_assert_null
+#define assert_not_null astf_assert_not_null
+#define assert_range astf_assert_range
+
+#endif
+
+#endif
