@@ -16,7 +16,7 @@
 - [ ] Get testing data
 
 ### Platform Layer (shared)
-- [ ] Raw X11 platform Layer
+- [x] Raw X11 platform Layer
 - [x] Raw Wayland platform Layer
 - [ ] Input system
 - [ ] Windows platform layer

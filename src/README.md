@@ -24,7 +24,7 @@ Both GNU + Linux back-ends speak their display protocols directly, so no X11 or 
 # Structure
 ## Common code
 This includes the following directories:
-1. `platform`, with the platform layers for GNU + Linux (X11 and Wayland) and Windows
+1. `platform`, with the platform layers for GNU + Linux (X11 and Wayland) and Windows (unimplemented)
 2. `ds`, the data structures used in the projects
 3. `math`, the mathematical functions and objects used in the code
 4. `lib`, third-party code used in the project
