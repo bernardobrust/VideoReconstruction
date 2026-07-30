@@ -104,11 +104,12 @@ main (int argc, char **argv)
                                     : strcat (entry_point, "main.c");
   nob_cmd_append (&cmd, entry_point);
 
-  // Platform utility (buf_read and buf_write)
+  // Platform utility (buf_read and buf_write) and common implementations
   if (strcmp (*platform, "gnu_linux_x11") == 0
       || strcmp (*platform, "gnu_linux_wayland") == 0)
     {
       nob_cmd_append (&cmd, "platform/utility.c");
+      nob_cmd_append (&cmd, "platform/platform_gnu_linux.c");
     }
 
   // Platform layer implementation
