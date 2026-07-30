@@ -1,5 +1,5 @@
 # Build Instructions
-This project only uses C (no Make, CMake or SCons), with the external dependencies being inluded by the build system itself in header libraries.
+This project only uses C (no Make, CMake or SCons), with the external dependencies being included by the build system itself in header libraries.
 
 **Requirements**:
 - A C11 compatible compiler, that's it (tested mainly with `gcc`).
@@ -16,17 +16,17 @@ The parameters are as follows:
 - PLATFORM: gnu_linux_x11 | gnu_linux_wayland | windows
 - BUILD_TYPE: debug | release | test
 
-So for a release build of the inspector on GNU + Linux using wayland the command is:
-`./nob -target inspector -platform gnu_linux_wayland -build_type release`
+For example, to build the inspector for GNU + Linux with X11:
+`./nob -target inspector -platform gnu_linux_x11 -build_type release`
 
-> NOTE: for now only the wayland layer is complete
+Both GNU + Linux back-ends speak their display protocols directly, so no X11 or Wayland development packages are required.
 
 # Structure
 ## Common code
 This includes the following directories:
 1. `platform`, with the platform layers for GNU + Linux (X11 and Wayland) and Windows
 2. `ds`, the data structures used in the projects
-3. `math`, the mathematical functions and onjects used in the code
+3. `math`, the mathematical functions and objects used in the code
 4. `lib`, third-party code used in the project
 5. `test_files`, files used to test the correctness of the programs
 

@@ -72,3 +72,44 @@ buf_read_n (char **buf, unsigned long *buf_size, char *dst, unsigned long n)
   *buf += n;
   *buf_size -= n;
 }
+
+unsigned
+round_up (unsigned value, unsigned alignment)
+{
+  return (value + alignment - 1) / alignment * alignment;
+}
+
+unsigned short
+read_u16_le (const unsigned char *buf)
+{
+  return (unsigned short)(buf[0] | ((unsigned short)buf[1] << 8));
+}
+
+unsigned
+read_u32_le (const unsigned char *buf)
+{
+  return (unsigned)buf[0] | ((unsigned)buf[1] << 8) | ((unsigned)buf[2] << 16)
+         | ((unsigned)buf[3] << 24);
+}
+
+unsigned short
+read_u16_be (const unsigned char *buf)
+{
+  return (unsigned short)(((unsigned short)buf[0] << 8) | buf[1]);
+}
+
+void
+write_u16_le (unsigned char *buf, unsigned short value)
+{
+  buf[0] = (unsigned char)value;
+  buf[1] = (unsigned char)(value >> 8);
+}
+
+void
+write_u32_le (unsigned char *buf, unsigned value)
+{
+  buf[0] = (unsigned char)value;
+  buf[1] = (unsigned char)(value >> 8);
+  buf[2] = (unsigned char)(value >> 16);
+  buf[3] = (unsigned char)(value >> 24);
+}
