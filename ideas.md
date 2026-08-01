@@ -81,8 +81,8 @@ While motion vectors are not unique to AV1, the codec provides a rich source of 
 
 ### 5. Implementation
 - Performance oriented C11 with use of data-oriented-design
-- Use of already existend efficient encoders and decoders (FFmpeg)
-- Data analysis using GNU Octave
+- Use of already existing efficient decoders (FFmpeg)
+- Data analysis using GNU Octave (or python)
 
 ***
 
