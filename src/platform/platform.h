@@ -1,5 +1,7 @@
 // General platform interface
-//
+
+#pragma once
+
 #include <stdbool.h>
 
 typedef struct
