@@ -14,6 +14,8 @@ typedef struct
 } DynArr;
 
 DynArr *dyn_arr_init (int initial_cap, int stride);
+void dyn_arr_free (DynArr *xs);
+
 void *dyn_arr_get (DynArr *xs, int where);
 void dyn_arr_set (DynArr *xs, int where, void *val);
 
@@ -21,8 +23,6 @@ void dyn_arr_push (DynArr *xs, void *new_elem);
 void dyn_arr_insert (DynArr *xs, void *new_elem, int where);
 void dyn_arr_pop (DynArr *xs);
 void dyn_arr_delete (DynArr *xs, int where);
-
-void dyn_arr_free (DynArr *xs);
 
 void dyn_arr_print_data (DynArr *xs);
 void dyn_arr_print_meta_data (DynArr *xs);

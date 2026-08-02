@@ -234,6 +234,39 @@ dyn_arr_test_insert ()
 }
 
 void
+dyn_arr_test_pop ()
+{
+  start_test_suite ("Dynamic array pop");
+
+  // We'll only do simple for this one as it doese'nt even care about the
+  // stride
+
+  // Simple ----------------------------------------------------
+  DynArr *xs = dyn_arr_init (4, sizeof (int));
+
+  dyn_arr_push (xs, &(int){ 4 });
+  dyn_arr_push (xs, &(int){ 4 });
+  dyn_arr_push (xs, &(int){ 4 });
+  dyn_arr_push (xs, &(int){ 4 });
+
+  dyn_arr_pop (xs);
+  assert_equal (3, xs->len);
+  assert_equal (4, xs->cap);
+
+  dyn_arr_pop (xs);
+  assert_equal (2, xs->len);
+  assert_equal (4, xs->cap);
+
+  dyn_arr_pop (xs);
+  assert_equal (1, xs->len);
+  assert_equal (4, xs->cap);
+  // -----------------------------------------------------------
+
+  dyn_arr_free (xs);
+  retrieve_results ();
+}
+
+void
 dyn_arr_all_tests ()
 {
   dyn_arr_test_init ();
@@ -241,4 +274,5 @@ dyn_arr_all_tests ()
   dyn_arr_test_set ();
   dyn_arr_test_push ();
   dyn_arr_test_insert ();
+  dyn_arr_test_pop ();
 }
