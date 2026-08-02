@@ -58,6 +58,10 @@ void _astf_ae_str (const char *exp, const char *act, const char *file,
                    int line);
 void _astf_ae_ptr (const void *exp, const void *act, const char *file,
                    int line);
+void _astf_ae_float (float exp, float act, float eps, const char *file,
+                     int line);
+void _astf_ae_double (double exp, double act, double eps, const char *file,
+                      int line);
 void _astf_assert_not_null (const void *exp, const char *file, int line);
 
 #define astf_assert_equal(expected, actual)                                   \
