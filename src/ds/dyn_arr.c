@@ -63,9 +63,31 @@ dyn_arr_push (DynArr *xs, void *new_elem)
       xs->data = realloc (xs->data, xs->len * xs->stride * 2);
       assert (xs->data != NULL);
       xs->cap *= 2;
-
-      dyn_arr_set (xs, xs->len++, new_elem);
     }
-  else
-    dyn_arr_set (xs, xs->len++, new_elem);
+
+  dyn_arr_set (xs, xs->len++, new_elem);
+}
+
+void
+dyn_arr_insert (DynArr *xs, void *new_elem, int where)
+{
+  assert (xs != NULL);
+  assert (xs->data != NULL);
+  assert (where <= xs->len);
+
+  // Resize needed (factor of 2 by default)
+  if (xs->len >= xs->cap)
+    {
+      xs->data = realloc (xs->data, xs->len * xs->stride * 2);
+      assert (xs->data != NULL);
+      xs->cap *= 2;
+    }
+
+  // Move memory from where forward by 1, opening up space for new_elem at
+  // where
+  memmove (((unsigned char *)(xs->data) + ((where + 1) * xs->stride)),
+           ((unsigned char *)(xs->data) + (where * xs->stride)),
+           (xs->len - where) * xs->stride);
+  ++xs->len;
+  dyn_arr_set (xs, where, new_elem);
 }

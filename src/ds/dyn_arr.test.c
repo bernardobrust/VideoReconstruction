@@ -184,10 +184,61 @@ dyn_arr_test_push ()
 }
 
 void
+dyn_arr_test_insert ()
+{
+  start_test_suite ("Dynamic array insert");
+
+  // Simple ----------------------------------------------------
+  DynArr *xs = dyn_arr_init (4, sizeof (int));
+
+  dyn_arr_push (xs, &(int){ 4 });
+  dyn_arr_push (xs, &(int){ 4 });
+  dyn_arr_push (xs, &(int){ 4 });
+
+  dyn_arr_insert (xs, &(int){ 5 }, 1);
+  assert_equal (5, *(int *)(dyn_arr_get (xs, 1)));
+
+  dyn_arr_insert (xs, &(int){ 10 }, 2);
+  assert_equal (10, *(int *)(dyn_arr_get (xs, 2)));
+
+  dyn_arr_insert (xs, &(int){ 7 }, 0);
+  assert_equal (7, *(int *)(dyn_arr_get (xs, 0)));
+
+  dyn_arr_insert (xs, &(int){ 1 }, 6);
+  assert_equal (1, *(int *)(dyn_arr_get (xs, 6)));
+
+  dyn_arr_insert (xs, &(int){ 2 }, 0);
+  assert_equal (2, *(int *)(dyn_arr_get (xs, 0)));
+  // -----------------------------------------------------------
+
+  // Compound --------------------------------------------------
+  DynArr *xs2 = dyn_arr_init (4, sizeof (St));
+  St data[4] = {
+    { 3.14, 8, 'a' }, { 2.16, 8, 'b' }, { 3.14, 16, 'd' }, { 1.23, 0, 'a' }
+  };
+
+  dyn_arr_insert (xs2, &data[0], 0);
+  dyn_arr_insert (xs2, &data[1], 1);
+  dyn_arr_insert (xs2, &data[2], 1);
+  dyn_arr_insert (xs2, &data[3], 1);
+
+  assert_equal (8, ((St *)(dyn_arr_get (xs2, 0)))->b);
+  assert_equal ('b', ((St *)(dyn_arr_get (xs2, 3)))->c);
+  assert_approx (3.14, ((St *)(dyn_arr_get (xs2, 2)))->a, 1e-2);
+  assert_equal ('a', ((St *)(dyn_arr_get (xs2, 1)))->c);
+  // -----------------------------------------------------------
+
+  dyn_arr_free (xs);
+  dyn_arr_free (xs2);
+  retrieve_results ();
+}
+
+void
 dyn_arr_all_tests ()
 {
   dyn_arr_test_init ();
   dyn_arr_test_get ();
   dyn_arr_test_set ();
   dyn_arr_test_push ();
+  dyn_arr_test_insert ();
 }
