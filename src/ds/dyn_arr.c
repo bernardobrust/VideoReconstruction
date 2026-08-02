@@ -116,3 +116,17 @@ dyn_arr_pop (DynArr *xs)
   // We don't shrink the array
   --xs->len;
 }
+
+void
+dyn_arr_delete (DynArr *xs, int where)
+{
+  assert (xs != NULL);
+  assert (xs->data != NULL);
+  assert (where >= 0 && where < xs->len);
+
+  // Move memory from where backward by 1, eating up the slot at where
+  memmove (((unsigned char *)(xs->data) + (where * xs->stride)),
+           ((unsigned char *)(xs->data) + ((where + 1) * xs->stride)),
+           (xs->len - where - 1) * xs->stride);
+  --xs->len;
+}

@@ -267,6 +267,59 @@ dyn_arr_test_pop ()
 }
 
 void
+dyn_arr_test_delete ()
+{
+
+  start_test_suite ("Dynamic array delete");
+
+  // Simple ----------------------------------------------------
+  DynArr *xs = dyn_arr_init (4, sizeof (int));
+
+  dyn_arr_push (xs, &(int){ 4 });
+  dyn_arr_push (xs, &(int){ 5 });
+  dyn_arr_push (xs, &(int){ 7 });
+  dyn_arr_push (xs, &(int){ 10 });
+  dyn_arr_push (xs, &(int){ -1 });
+  dyn_arr_push (xs, &(int){ 3 });
+
+  dyn_arr_delete (xs, 1);
+  assert_equal (7, *(int *)(dyn_arr_get (xs, 1)));
+
+  dyn_arr_delete (xs, 2);
+  assert_equal (-1, *(int *)(dyn_arr_get (xs, 2)));
+
+  dyn_arr_delete (xs, 0);
+  assert_equal (7, *(int *)(dyn_arr_get (xs, 0)));
+
+  dyn_arr_delete (xs, 2);
+  dyn_arr_delete (xs, 1);
+  assert_equal (7, *(int *)(dyn_arr_get (xs, 0)));
+  // -----------------------------------------------------------
+
+  // Compound --------------------------------------------------
+  DynArr *xs2 = dyn_arr_init (4, sizeof (St));
+  St data[4] = {
+    { 3.14, 8, 'a' }, { 2.16, 8, 'b' }, { 3.14, 16, 'd' }, { 1.23, 0, 'a' }
+  };
+
+  dyn_arr_push (xs2, &data[0]);
+  dyn_arr_push (xs2, &data[1]);
+  dyn_arr_push (xs2, &data[2]);
+  dyn_arr_push (xs2, &data[3]);
+
+  dyn_arr_delete (xs2, 0);
+  dyn_arr_delete (xs2, 0);
+
+  assert_approx (3.14, ((St *)(dyn_arr_get (xs2, 0)))->a, 1e-2);
+  assert_approx (1.23, ((St *)(dyn_arr_get (xs2, 1)))->a, 1e-2);
+  // -----------------------------------------------------------
+
+  dyn_arr_free (xs);
+  dyn_arr_free (xs2);
+  retrieve_results ();
+}
+
+void
 dyn_arr_all_tests ()
 {
   dyn_arr_test_init ();
@@ -275,4 +328,5 @@ dyn_arr_all_tests ()
   dyn_arr_test_push ();
   dyn_arr_test_insert ();
   dyn_arr_test_pop ();
+  dyn_arr_test_delete ();
 }
