@@ -30,7 +30,7 @@ We won't need audio for this project
 - [ ] ...
 
 ### Data Structures (shared)
-- [ ] Dynamic array
+- [x] Dynamic array
 - [ ] ...
 
 ### Systems (inspector)

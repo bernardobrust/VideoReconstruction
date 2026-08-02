@@ -1,11 +1,10 @@
 #include "platform.h"
 
 int
-main (void)
+main ()
 {
   // This is likely running at a few thoused FPS and there is no way to close
   // it, but it works
-
   PlatformState platform_state = { 0 };
   unsigned *image_buffer[680 * 460] = { 0 };
 
@@ -18,4 +17,6 @@ main (void)
     }
 
   platform_stop (&platform_state);
+
+  return 0;
 }
