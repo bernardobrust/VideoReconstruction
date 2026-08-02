@@ -7,8 +7,8 @@
 DynArr *
 dyn_arr_init (int initial_cap, int stride)
 {
-  assert (initial_cap > 1);
-  assert (stride > 1);
+  assert (initial_cap >= 1);
+  assert (stride >= 1);
 
   void *data = malloc (stride * initial_cap);
   assert (data != NULL);
@@ -49,4 +49,23 @@ dyn_arr_set (DynArr *xs, int where, void *val)
   assert (where < xs->len);
 
   memcpy ((unsigned char *)xs->data + (where * xs->stride), val, xs->stride);
+}
+
+void
+dyn_arr_push (DynArr *xs, void *new_elem)
+{
+  assert (xs != NULL);
+  assert (xs->data != NULL);
+
+  // Resize needed (factor of 2 by default)
+  if (xs->len >= xs->cap)
+    {
+      xs->data = realloc (xs->data, xs->len * xs->stride * 2);
+      assert (xs->data != NULL);
+      xs->cap *= 2;
+
+      dyn_arr_set (xs, xs->len++, new_elem);
+    }
+  else
+    dyn_arr_set (xs, xs->len++, new_elem);
 }

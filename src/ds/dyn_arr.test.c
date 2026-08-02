@@ -19,6 +19,7 @@ dyn_arr_test_init ()
 {
   start_test_suite ("Dynamic array initialization");
 
+  // Simple ----------------------------------------------------
   DynArr *xs = dyn_arr_init (2, sizeof (int));
 
   assert_not_null (xs);
@@ -26,7 +27,9 @@ dyn_arr_test_init ()
   assert_equal (2, xs->cap);
   assert_equal (0, xs->len);
   assert_equal (4, xs->stride);
+  // -----------------------------------------------------------
 
+  // Compound --------------------------------------------------
   DynArr *xs2 = dyn_arr_init (4, sizeof (St));
 
   assert_not_null (xs2);
@@ -35,10 +38,10 @@ dyn_arr_test_init ()
   assert_equal (0, xs2->len);
   // It's not 13, know your alignments!
   assert_equal (16, xs2->stride);
+  // -----------------------------------------------------------
 
   dyn_arr_free (xs);
   dyn_arr_free (xs2);
-
   retrieve_results ();
 }
 
@@ -47,6 +50,7 @@ dyn_arr_test_get ()
 {
   start_test_suite ("Dynamic array get");
 
+  // Simple ----------------------------------------------------
   DynArr *xs = dyn_arr_init (4, sizeof (int));
   xs->len = 4;
   int data[4] = { 4, 3, 2, 1 };
@@ -56,7 +60,9 @@ dyn_arr_test_get ()
   assert_equal (3, *(int *)(dyn_arr_get (xs, 1)));
   assert_equal (2, *(int *)(dyn_arr_get (xs, 2)));
   assert_equal (1, *(int *)(dyn_arr_get (xs, 3)));
+  // -----------------------------------------------------------
 
+  // Compound --------------------------------------------------
   DynArr *xs2 = dyn_arr_init (4, sizeof (St));
   xs2->len = 4;
   St data2[4] = {
@@ -68,10 +74,10 @@ dyn_arr_test_get ()
   assert_equal ('b', ((St *)(dyn_arr_get (xs2, 1)))->c);
   assert_approx (3.14, ((St *)(dyn_arr_get (xs2, 2)))->a, 1e-2);
   assert_equal (0, ((St *)(dyn_arr_get (xs2, 3)))->b);
+  // -----------------------------------------------------------
 
   dyn_arr_free (xs);
   dyn_arr_free (xs2);
-
   retrieve_results ();
 }
 
@@ -80,6 +86,7 @@ dyn_arr_test_set ()
 {
   start_test_suite ("Dynamic array set");
 
+  // Simple ----------------------------------------------------
   DynArr *xs = dyn_arr_init (4, sizeof (int));
   xs->len = 4;
 
@@ -93,7 +100,9 @@ dyn_arr_test_set ()
   assert_equal (3, *(int *)(dyn_arr_get (xs, 1)));
   assert_equal (2, *(int *)(dyn_arr_get (xs, 2)));
   assert_equal (1, *(int *)(dyn_arr_get (xs, 3)));
+  // -----------------------------------------------------------
 
+  // Compound --------------------------------------------------
   DynArr *xs2 = dyn_arr_init (4, sizeof (St));
   xs2->len = 4;
   St data[4] = {
@@ -109,10 +118,68 @@ dyn_arr_test_set ()
   assert_equal ('b', ((St *)(dyn_arr_get (xs2, 1)))->c);
   assert_approx (3.14, ((St *)(dyn_arr_get (xs2, 2)))->a, 1e-2);
   assert_equal ('a', ((St *)(dyn_arr_get (xs2, 3)))->c);
+  // -----------------------------------------------------------
 
   dyn_arr_free (xs);
   dyn_arr_free (xs2);
+  retrieve_results ();
+}
 
+void
+dyn_arr_test_push ()
+{
+  start_test_suite ("Dynamic array push");
+
+  // Simple ----------------------------------------------------
+  DynArr *xs = dyn_arr_init (1, sizeof (int));
+
+  dyn_arr_push (xs, &(int){ 4 });
+  assert_equal (4, *(int *)(dyn_arr_get (xs, 0)));
+
+  dyn_arr_push (xs, &(int){ 5 });
+
+  assert_equal (2, xs->len);
+  assert_equal (2, xs->cap);
+  assert_equal (5, *(int *)(dyn_arr_get (xs, 1)));
+
+  dyn_arr_push (xs, &(int){ 10 });
+
+  assert_equal (3, xs->len);
+  assert_equal (4, xs->cap);
+  assert_equal (10, *(int *)(dyn_arr_get (xs, 2)));
+
+  dyn_arr_push (xs, &(int){ 4 });
+
+  assert_equal (4, xs->len);
+  assert_equal (4, xs->cap);
+
+  dyn_arr_push (xs, &(int){ 4 });
+  dyn_arr_push (xs, &(int){ 4 });
+
+  assert_equal (6, xs->len);
+  assert_equal (8, xs->cap);
+  assert_equal (4, *(int *)(dyn_arr_get (xs, 5)));
+  // -----------------------------------------------------------
+
+  // Compound --------------------------------------------------
+  DynArr *xs2 = dyn_arr_init (4, sizeof (St));
+  St data[4] = {
+    { 3.14, 8, 'a' }, { 2.16, 8, 'b' }, { 3.14, 16, 'd' }, { 1.23, 0, 'a' }
+  };
+
+  dyn_arr_push (xs2, &data[0]);
+  dyn_arr_push (xs2, &data[1]);
+  dyn_arr_push (xs2, &data[2]);
+  dyn_arr_push (xs2, &data[3]);
+
+  assert_equal (8, ((St *)(dyn_arr_get (xs2, 0)))->b);
+  assert_equal ('b', ((St *)(dyn_arr_get (xs2, 1)))->c);
+  assert_approx (3.14, ((St *)(dyn_arr_get (xs2, 2)))->a, 1e-2);
+  assert_equal ('a', ((St *)(dyn_arr_get (xs2, 3)))->c);
+  // -----------------------------------------------------------
+
+  dyn_arr_free (xs);
+  dyn_arr_free (xs2);
   retrieve_results ();
 }
 
@@ -122,4 +189,5 @@ dyn_arr_all_tests ()
   dyn_arr_test_init ();
   dyn_arr_test_get ();
   dyn_arr_test_set ();
+  dyn_arr_test_push ();
 }
