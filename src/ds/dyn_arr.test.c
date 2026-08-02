@@ -1,7 +1,6 @@
 #define ASTF_STRIP_PREFIX
 #include "astf.h"
 
-#include <stdio.h>
 #include <string.h>
 
 #include "dyn_arr.c"
@@ -37,6 +36,9 @@ dyn_arr_test_init ()
   // It's not 13, know your alignments!
   assert_equal (16, xs2->stride);
 
+  dyn_arr_free (xs);
+  dyn_arr_free (xs2);
+
   retrieve_results ();
 }
 
@@ -66,6 +68,9 @@ dyn_arr_test_get ()
   assert_equal ('b', ((St *)(dyn_arr_get (xs2, 1)))->c);
   assert_approx (3.14, ((St *)(dyn_arr_get (xs2, 2)))->a, 1e-2);
   assert_equal (0, ((St *)(dyn_arr_get (xs2, 3)))->b);
+
+  dyn_arr_free (xs);
+  dyn_arr_free (xs2);
 
   retrieve_results ();
 }
@@ -104,6 +109,9 @@ dyn_arr_test_set ()
   assert_equal ('b', ((St *)(dyn_arr_get (xs2, 1)))->c);
   assert_approx (3.14, ((St *)(dyn_arr_get (xs2, 2)))->a, 1e-2);
   assert_equal ('a', ((St *)(dyn_arr_get (xs2, 3)))->c);
+
+  dyn_arr_free (xs);
+  dyn_arr_free (xs2);
 
   retrieve_results ();
 }

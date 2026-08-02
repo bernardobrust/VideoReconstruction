@@ -24,6 +24,13 @@ dyn_arr_init (int initial_cap, int stride)
   return xs;
 }
 
+void
+dyn_arr_free (DynArr *xs)
+{
+  free (xs->data);
+  free (xs);
+}
+
 void *
 dyn_arr_get (DynArr *xs, int where)
 {
