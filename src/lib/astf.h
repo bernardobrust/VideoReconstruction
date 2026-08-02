@@ -47,8 +47,11 @@ void astf_start_test_suite (const char *name);
 void astf_retrieve_results ();
 
 void _astf_ae_int (int exp, int act, const char *file, int line);
+void _astf_ae_long (long exp, long act, const char *file, int line);
 void _astf_ae_unsigned (unsigned exp, unsigned act, const char *file,
                         int line);
+void _astf_ae_ulong (unsigned long exp, unsigned long act, const char *file,
+                     int line);
 void _astf_ae_unsigned_short (unsigned short exp, unsigned short act,
                               const char *file, int line);
 void _astf_ae_str (const char *exp, const char *act, const char *file,
