@@ -26,12 +26,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Colors
+// ANSI Colors
+#ifndef ASTF_NO_ANSI_COLORS
 #define astf_output_fail "\x1b[31m"
 #define astf_output_pass "\x1b[32m"
 #define astf_output_warn "\x1b[33m"
 #define astf_output_info "\x1b[36m"
 #define astf_output_normal "\x1b[0m"
+#else
+#define astf_output_fail
+#define astf_output_pass
+#define astf_output_warn
+#define astf_output_info
+#define astf_output_normal
+#endif
 
 // Context
 typedef struct
@@ -46,23 +54,49 @@ extern astf_ctx _astf_global_ctx;
 void astf_start_test_suite (const char *name);
 void astf_retrieve_results ();
 
+// Int types
 void _astf_ae_int (int exp, int act, const char *file, int line);
-void _astf_ae_long (long exp, long act, const char *file, int line);
 void _astf_ae_unsigned (unsigned exp, unsigned act, const char *file,
                         int line);
-void _astf_ae_ulong (unsigned long exp, unsigned long act, const char *file,
-                     int line);
 void _astf_ae_unsigned_short (unsigned short exp, unsigned short act,
                               const char *file, int line);
+void _astf_ae_long (long exp, long act, const char *file, int line);
+void _astf_ae_ulong (unsigned long exp, unsigned long act, const char *file,
+                     int line);
+
+// Bools
+void _astf_ae_bool (bool exp, bool act, const char *file, int line);
+
+// Strings
 void _astf_ae_str (const char *exp, const char *act, const char *file,
                    int line);
+
+// Pointers
 void _astf_ae_ptr (const void *exp, const void *act, const char *file,
                    int line);
-void _astf_ae_float (float exp, float act, float eps, const char *file,
-                     int line);
+void _astf_assert_not_null (const void *exp, const char *file, int line);
+
+// Floats
 void _astf_ae_double (double exp, double act, double eps, const char *file,
                       int line);
-void _astf_assert_not_null (const void *exp, const char *file, int line);
+void _astf_ae_float (float exp, float act, float eps, const char *file,
+                     int line);
+
+// Ranges - Integer types
+void _astf_ae_range_int (int v, int min, int max, const char *f, int l);
+void _astf_ae_range_uint (unsigned int v, unsigned int min, unsigned int max,
+                          const char *f, int l);
+void _astf_ae_range_long (long v, long min, long max, const char *f, int l);
+void _astf_ae_range_ulong (unsigned long v, unsigned long min,
+                           unsigned long max, const char *f, int l);
+void _astf_ae_range_ushort (unsigned short v, unsigned short min,
+                            unsigned short max, const char *f, int l);
+
+// Ranges - Float types
+void _astf_ae_range_float (float v, float min, float max, const char *f,
+                           int l);
+void _astf_ae_range_double (double v, double min, double max, const char *f,
+                            int l);
 
 #define astf_assert_equal(expected, actual)                                   \
   _Generic ((expected),                                                       \
