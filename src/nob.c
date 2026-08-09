@@ -39,7 +39,7 @@ main (int argc, char **argv)
   if (!flag_parse (argc, argv))
     {
       flag_print_error (stderr);
-      exit (EXIT_FAILURE);
+      return EXIT_FAILURE;
     }
 
   argc = flag_rest_argc ();
@@ -67,7 +67,7 @@ main (int argc, char **argv)
         || strcmp (*build_type, "release") == 0
         || strcmp (*build_type, "test") == 0))
     {
-      // Invalid build target
+      // Invalid build type
       nob_log (ERROR,
                "Invalid build type, use one of 'debug', 'release', 'test'");
     }
@@ -94,6 +94,7 @@ main (int argc, char **argv)
     nob_cmd_append (&cmd, "-Wall", "-Wextra", "-Werror", "-Wpedantic", "-ggdb",
                     "-Og");
   else
+    // Yes, -Ofast will be worth it
     nob_cmd_append (&cmd, "-Ofast", "-march=native", "-flto", "-DNDEBUG");
 
   // Source files and includes
@@ -111,12 +112,10 @@ main (int argc, char **argv)
                                                           : "ds/dyn_arr.c");
 
   // Platform utility (buf_read, buf_write, etc.) and common implementations
+  nob_cmd_append (&cmd, "platform/utility.c");
   if (strcmp (*platform, "gnu_linux_x11") == 0
       || strcmp (*platform, "gnu_linux_wayland") == 0)
-    {
-      nob_cmd_append (&cmd, "platform/utility.c");
-      nob_cmd_append (&cmd, "platform/platform_gnu_linux.c");
-    }
+    nob_cmd_append (&cmd, "platform/platform_gnu_linux.c");
 
   // Platform layer implementation
   char platform_layer[64] = "platform/platform_";
@@ -124,7 +123,9 @@ main (int argc, char **argv)
   strcat (platform_layer, ".c");
   nob_cmd_append (&cmd, platform_layer);
 
+  // Anyway we include all directories
   nob_cmd_append (&cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath");
+
   // Include the own directory
   char self_dir[64] = "-I";
   strcat (self_dir, *target);

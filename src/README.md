@@ -21,6 +21,18 @@ For example, to build the inspector for GNU + Linux with X11:
 
 Both GNU + Linux back-ends speak their display protocols directly, so no X11 or Wayland development packages are required.
 
+**Running**:
+So far there is no usage instructions here, you just run the executable generated under `build/`.
+
+**Testing**:
+Testing can be performed with either a whitelist or a blacklist:
+`./build/TEST_EXECUTABLE -enable TESTS_TO_RUN` or `./build/TEST_EXECUTABLE -disable TESTS_TO_EXCLUDE`
+
+Not providing any option will run all of the tests.
+
+List of tests:
+- dyn_arr: dynamic array tests
+
 # Structure
 ## Common code
 This includes the following directories:

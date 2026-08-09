@@ -46,13 +46,31 @@ typedef struct
 {
   unsigned passed;
   unsigned failed;
+
+  unsigned fully_passed_suites;
+  unsigned fully_failed_suites;
+
+  unsigned fully_passed_groups;
+  unsigned fully_failed_groups;
+
+  unsigned partially_failed_suites;
+  unsigned partially_failed_groups;
+
   const char *test_suite_name;
+  const char *group_name;
+
+  bool testing_active;
+  bool group_active;
 } astf_ctx;
 
 extern astf_ctx _astf_global_ctx;
 
+void astf_start_testing ();
+void astf_stop_testing ();
 void astf_start_test_suite (const char *name);
 void astf_retrieve_results ();
+void astf_start_group (char *group_name);
+void astf_end_group ();
 
 // Int types
 void _astf_ae_int (int exp, int act, const char *file, int line);
@@ -143,6 +161,73 @@ astf_start_test_suite (const char *name)
   _astf_global_ctx.passed = 0;
   _astf_global_ctx.failed = 0;
   printf (astf_output_info "\n--- Starting Suite: %s ---\n", name);
+}
+
+void
+astf_start_testing ()
+{
+  _astf_global_ctx.fully_passed_groups = 0;
+  _astf_global_ctx.partially_failed_groups = 0;
+  _astf_global_ctx.fully_failed_groups = 0;
+  _astf_global_ctx.testing_active = true;
+  printf (astf_output_info "=== Starting Testing ===\n");
+}
+
+void
+astf_stop_testing ()
+{
+  if (!_astf_global_ctx.testing_active)
+    return;
+
+  printf (astf_output_info "\n=== Testing Results ===\n");
+  printf (astf_output_pass "Groups fully passed: %u\n",
+          _astf_global_ctx.fully_passed_groups);
+  printf (astf_output_warn "Groups partially failed: %u\n",
+          _astf_global_ctx.partially_failed_groups);
+  printf (astf_output_fail "Groups fully failed: %u\n" astf_output_normal,
+          _astf_global_ctx.fully_failed_groups);
+  _astf_global_ctx.testing_active = false;
+}
+
+void
+astf_start_group (char *group_name)
+{
+  _astf_global_ctx.group_name = group_name;
+  _astf_global_ctx.fully_passed_suites = 0;
+  _astf_global_ctx.partially_failed_suites = 0;
+  _astf_global_ctx.fully_failed_suites = 0;
+  _astf_global_ctx.group_active = true;
+  printf (astf_output_info "\n=== Starting Group: %s ===\n", group_name);
+}
+
+void
+astf_end_group ()
+{
+  if (!_astf_global_ctx.group_active)
+    return;
+
+  printf (astf_output_info "\n=== Results for Group: %s ===\n",
+          _astf_global_ctx.group_name);
+  printf (astf_output_pass "Suites fully passed: %u\n",
+          _astf_global_ctx.fully_passed_suites);
+  printf (astf_output_warn "Suites partially failed: %u\n",
+          _astf_global_ctx.partially_failed_suites);
+  printf (astf_output_fail "Suites fully failed: %u\n" astf_output_normal,
+          _astf_global_ctx.fully_failed_suites);
+
+  if (_astf_global_ctx.testing_active)
+    {
+      if (_astf_global_ctx.partially_failed_suites > 0
+          || (_astf_global_ctx.fully_passed_suites > 0
+              && _astf_global_ctx.fully_failed_suites > 0))
+        _astf_global_ctx.partially_failed_groups++;
+      else if (_astf_global_ctx.fully_failed_suites > 0)
+        _astf_global_ctx.fully_failed_groups++;
+      else
+        _astf_global_ctx.fully_passed_groups++;
+    }
+
+  _astf_global_ctx.group_active = false;
 }
 
 // Assert
@@ -421,6 +506,16 @@ astf_retrieve_results (void)
   printf (astf_output_pass "Passed: %d\n", _astf_global_ctx.passed);
   printf (astf_output_fail "Failed: %d\n" astf_output_normal,
           _astf_global_ctx.failed);
+
+  if (_astf_global_ctx.group_active)
+    {
+      if (_astf_global_ctx.failed == 0)
+        _astf_global_ctx.fully_passed_suites++;
+      else if (_astf_global_ctx.passed == 0)
+        _astf_global_ctx.fully_failed_suites++;
+      else
+        _astf_global_ctx.partially_failed_suites++;
+    }
 }
 #endif
 
@@ -431,6 +526,10 @@ astf_retrieve_results (void)
 
 #define start_test_suite astf_start_test_suite
 #define retrieve_results astf_retrieve_results
+#define start_testing astf_start_testing
+#define stop_testing astf_stop_testing
+#define start_group astf_start_group
+#define end_group astf_end_group
 
 #define assert_equal astf_assert_equal
 #define assert_approx astf_assert_approx
