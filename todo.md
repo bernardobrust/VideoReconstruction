@@ -34,8 +34,8 @@ We won't need audio for this project
 - [ ] ...
 
 ### Systems (inspector)
-- [ ] Event system (key presses and UI buttons)
-- [ ] Input system (input struct)
+- [x] Event system (key presses and UI buttons)
+- [x] Input system (input struct)
 
 ### Renderer (CPU / software renderer) (inspector)
 - [x] Open window + set defaults
