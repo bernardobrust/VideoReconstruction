@@ -19,10 +19,9 @@ main ()
           platform_stop (&platform_state);
         }
 
-      for (int i = 100; i < 300; ++i)
-        {
-          draw_hline (100, 400, i, rgba (255, 0, 0, 255), rp);
-        }
+      draw_triangle (20, 20, 100, 100, 100, 300, rgba (255, 0, 0, 255), rp);
+      draw_rectangle (500, 300, 200, 200, rgba (0, 255, 0, 255), rp);
+      draw_circle (600, 500, 50, rgba (0, 0, 255, 255), rp);
 
       renderer_present (&platform_state, rp);
     }

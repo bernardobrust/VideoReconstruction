@@ -40,10 +40,10 @@ We won't need audio for this project
 ### Renderer (CPU / software renderer) (inspector)
 - [x] Open window + set defaults
 - [x] Draw rectangle
-- [ ] Framerate cap (30 should be good to go as a default)
-- [ ] Draw triangle
-- [ ] Draw circle
+- [x] Draw triangle
+- [x] Draw circle
 - [ ] Draw arrow
+- [ ] Framerate cap (30 should be good to go as a default)
 - [ ] Draw text
 - [ ] Draw frame of a video
 - [ ] Draw transparent rectangle on top of frame
