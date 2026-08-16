@@ -125,6 +125,10 @@ main (int argc, char **argv)
   strcat (platform_layer, *platform);
   strcat (platform_layer, ".c");
   nob_cmd_append (&cmd, platform_layer);
+  nob_cmd_append (&cmd, "platform/event_dispatcher.c");
+
+  // Input
+  nob_cmd_append (&cmd, "input/input.c");
 
   // The renderer
   nob_cmd_append (&cmd, "renderer/renderer.c");

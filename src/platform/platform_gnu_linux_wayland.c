@@ -24,14 +24,15 @@
 #include "utility.h"
 
 // Don't memorize numbers
-// Unused for now as input system is pending
-enum KeyValues
+enum WaylandKeyValues
 {
-  w = 17,
-  a = 30,
-  s = 31,
-  d = 32,
+  CTRL = 29,
+  SHIFT = 42,
   ESC = 1,
+  ONE = 2,
+  TWO = 3,
+  THREE = 4,
+  P = 25,
 };
 
 static unsigned current_id = 1;
@@ -689,8 +690,8 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
     {
       if (opcode == xdg_toplevel_event_configure)
         {
-          __attribute__((unused)) unsigned w = buf_read_u32(msg, msg_len);
-          __attribute__((unused)) unsigned h = buf_read_u32(msg, msg_len);
+          __attribute__ ((unused)) unsigned w = buf_read_u32 (msg, msg_len);
+          __attribute__ ((unused)) unsigned h = buf_read_u32 (msg, msg_len);
           unsigned len = buf_read_u32 (msg, msg_len);
           char buf[256] = "";
 
@@ -917,6 +918,8 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
   assert (platform_state->internal_state != NULL
           && "Failed to alocate memory from internal state");
 
+  event_queue = *dyn_arr_init(16, sizeof(int));
+
   InternalState *state = (InternalState *)platform_state->internal_state;
   memset (state, 0, sizeof (InternalState));
 
@@ -979,18 +982,16 @@ platform_shutdown (PlatformState *platform_state)
     return;
 
   if (state->shm_pool_data != NULL)
-    {
       munmap (state->shm_pool_data, state->shm_pool_size);
-    }
+
   if (state->shm_fd != -1)
-    {
       close (state->shm_fd);
-    }
+
   if (state->fd != -1)
-    {
       close (state->fd);
-    }
+
   free (state);
+  dyn_arr_free(&event_queue);
   platform_state->internal_state = NULL;
 }
 

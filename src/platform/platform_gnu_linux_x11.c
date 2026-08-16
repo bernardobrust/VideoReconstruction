@@ -23,6 +23,20 @@
 #include "platform.h"
 #include "utility.h"
 
+// Don't memorize numbers
+// I'm adding the +8 here as they are the same as wayland's but with an offset
+// of 8
+enum X11KeyValues
+{
+  CTRL = 29 + 8,
+  SHIFT = 42 + 8,
+  ESC = 1 + 8,
+  ONE = 2 + 8,
+  TWO = 3 + 8,
+  THREE = 4 + 8,
+  P = 25 + 8,
+};
+
 enum
 {
   X11_PROTOCOL_MAJOR = 11,
@@ -429,9 +443,10 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
     return false;
 
   InternalState *state = calloc (1, sizeof (*state));
-
   if (state == NULL)
     return false;
+
+  event_queue = *dyn_arr_init (16, sizeof (int));
 
   state->fd = display_connect ();
 
@@ -597,8 +612,9 @@ platform_shutdown (PlatformState *platform_state)
 
   close (state->fd);
   free (state);
+  dyn_arr_free(&event_queue);
+
   platform_state->internal_state = NULL;
-  platform_state->running = false;
 }
 
 bool
