@@ -55,6 +55,8 @@ enum
   X11_ATOM_WM_NAME = 39,
   X11_CW_BACK_PIXEL = 1 << 1,
   X11_CW_EVENT_MASK = 1 << 11,
+  X11_EVENT_MASK_KEY_PRESS = 1 << 0,
+  X11_EVENT_MASK_KEY_RELEASE = 1 << 1,
   X11_EVENT_MASK_EXPOSURE = 1 << 15,
   X11_EVENT_MASK_STRUCTURE_NOTIFY = 1 << 17,
   X11_GC_FOREGROUND = 1 << 2,
@@ -389,7 +391,8 @@ create_window (InternalState *state, int x, int y, int w, int h)
   write_u16_le (body + 18, X11_INPUT_OUTPUT);
   write_u32_le (body + 24, X11_CW_BACK_PIXEL | X11_CW_EVENT_MASK);
   write_u32_le (body + 32,
-                X11_EVENT_MASK_EXPOSURE | X11_EVENT_MASK_STRUCTURE_NOTIFY);
+                X11_EVENT_MASK_EXPOSURE | X11_EVENT_MASK_STRUCTURE_NOTIFY
+                    | X11_EVENT_MASK_KEY_PRESS | X11_EVENT_MASK_KEY_RELEASE);
   write_u32_le (body + 20, state->root_visual);
 
   return send_request (state, 1, (unsigned char)state->depth, body,
@@ -431,6 +434,45 @@ dispatch_event (PlatformState *platform_state, const unsigned char event[32])
            && read_u32_le (event + 8) == state->wm_protocols
            && read_u32_le (event + 12) == state->wm_delete_window)
     platform_state->running = false;
+
+  else if (type == 2 || type == 3)
+    {
+      unsigned char keycode = event[1];
+      bool is_press = (type == 2);
+      EventType ev;
+      bool valid = true;
+
+      switch (keycode)
+        {
+        case CTRL:
+          ev = is_press ? KeyCtrlPress : KeyCtrlRelease;
+          break;
+        case SHIFT:
+          ev = is_press ? KeyShiftPress : KeyShiftRelease;
+          break;
+        case ESC:
+          ev = is_press ? KeyEscPress : KeyEscRelease;
+          break;
+        case ONE:
+          ev = is_press ? KeyOnePress : KeyOneRelease;
+          break;
+        case TWO:
+          ev = is_press ? KeyTwoPress : KeyTwoRelease;
+          break;
+        case THREE:
+          ev = is_press ? KeyThreePress : KeyThreeRelease;
+          break;
+        case P:
+          ev = is_press ? KeyPPress : KeyPRelease;
+          break;
+        default:
+          valid = false;
+          break;
+        }
+
+      if (valid)
+        dyn_arr_push (&event_queue, &ev);
+    }
 }
 
 // ----------------------------------------------------------------
@@ -612,7 +654,7 @@ platform_shutdown (PlatformState *platform_state)
 
   close (state->fd);
   free (state);
-  dyn_arr_free(&event_queue);
+  dyn_arr_free (&event_queue);
 
   platform_state->internal_state = NULL;
 }
@@ -654,6 +696,8 @@ platform_update (PlatformState *platform_state)
       memmove (state->read_buf, state->read_buf + 32, state->read_len - 32);
       state->read_len -= 32;
     }
+
+  platform_dispatch_events (platform_state);
 
   return platform_state->running;
 }

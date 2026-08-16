@@ -27,7 +27,7 @@ typedef struct {
 } InputPlex;
 
 bool input_is_command_pressed(Command c);
+bool input_is_key_pressed(KeyValue k);
 
 void input_set_key_pressed(KeyValue k);
 void input_set_key_released(KeyValue k);
-

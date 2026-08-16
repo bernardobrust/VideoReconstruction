@@ -763,52 +763,45 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
         }
       else if (opcode == 3)
         {
-          // Pending input inplementation
           buf_read_u32 (msg, msg_len);
           buf_read_u32 (msg, msg_len);
-          // unsigned key = buf_read_u32(msg, msg_len);
-          // unsigned key_state = buf_read_u32(msg, msg_len);
+          unsigned key = buf_read_u32 (msg, msg_len);
+          unsigned key_state = buf_read_u32 (msg, msg_len);
 
-          // Input system
-          /*
-          input::Key tracked_key = input::Key::BLANK;
+          EventType ev;
+          bool valid = true;
+          bool is_press = (key_state != 0);
+
           switch (key)
             {
-            case KeyValues::w:
-              {
-                tracked_key = input::Key::w;
-              }
+            case CTRL:
+              ev = is_press ? KeyCtrlPress : KeyCtrlRelease;
               break;
-            case KeyValues::a:
-              {
-                tracked_key = input::Key::a;
-              }
+            case SHIFT:
+              ev = is_press ? KeyShiftPress : KeyShiftRelease;
               break;
-            case KeyValues::s:
-              {
-                tracked_key = input::Key::s;
-              }
+            case ESC:
+              ev = is_press ? KeyEscPress : KeyEscRelease;
               break;
-            case KeyValues::d:
-              {
-                tracked_key = input::Key::d;
-              }
+            case ONE:
+              ev = is_press ? KeyOnePress : KeyOneRelease;
               break;
-            case KeyValues::ESC:
-              {
-                tracked_key = input::Key::ESC;
-              }
+            case TWO:
+              ev = is_press ? KeyTwoPress : KeyTwoRelease;
+              break;
+            case THREE:
+              ev = is_press ? KeyThreePress : KeyThreeRelease;
+              break;
+            case P:
+              ev = is_press ? KeyPPress : KeyPRelease;
               break;
             default:
+              valid = false;
               break;
             }
 
-          if (tracked_key != input::Key::BLANK)
-            {
-              key_state ? input::set_key_pressed (tracked_key)
-                        : input::set_key_released (tracked_key);
-            }
-            */
+          if (valid)
+            dyn_arr_push (&event_queue, &ev);
         }
       else if (opcode == 4)
         {
@@ -918,7 +911,7 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
   assert (platform_state->internal_state != NULL
           && "Failed to alocate memory from internal state");
 
-  event_queue = *dyn_arr_init(16, sizeof(int));
+  event_queue = *dyn_arr_init (16, sizeof (int));
 
   InternalState *state = (InternalState *)platform_state->internal_state;
   memset (state, 0, sizeof (InternalState));
@@ -982,16 +975,16 @@ platform_shutdown (PlatformState *platform_state)
     return;
 
   if (state->shm_pool_data != NULL)
-      munmap (state->shm_pool_data, state->shm_pool_size);
+    munmap (state->shm_pool_data, state->shm_pool_size);
 
   if (state->shm_fd != -1)
-      close (state->shm_fd);
+    close (state->shm_fd);
 
   if (state->fd != -1)
-      close (state->fd);
+    close (state->fd);
 
   free (state);
-  dyn_arr_free(&event_queue);
+  dyn_arr_free (&event_queue);
   platform_state->internal_state = NULL;
 }
 
@@ -999,6 +992,7 @@ bool
 platform_update (PlatformState *platform_state)
 {
   read_and_dispatch (platform_state, false);
+  platform_dispatch_events (platform_state);
 
   return platform_state->running;
 }

@@ -1,12 +1,10 @@
+#include "input.h"
 #include "platform.h"
 #include "renderer.h"
 
 int
 main ()
 {
-  // This is likely running at a few thoused FPS and there is no way to close
-  // it, but it works
-
   RendererPlex rp = init_renderer (680, 560);
 
   PlatformState platform_state = { 0 };
@@ -16,6 +14,11 @@ main ()
 
   while (platform_update (&platform_state))
     {
+      if (input_is_key_pressed (ESC))
+        {
+          platform_stop (&platform_state);
+        }
+
       for (int i = 100; i < 300; ++i)
         {
           draw_hline (100, 400, i, rgba (255, 0, 0, 255), rp);
