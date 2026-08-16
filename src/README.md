@@ -13,7 +13,7 @@ Now you can compile the project with:
 
 The parameters are as follows:
 - TARGET: inspector | reconstructor (see below)
-- PLATFORM: gnu_linux_x11 | gnu_linux_wayland | windows
+- PLATFORM: gnu_linux_x11 | gnu_linux_wayland | windows (windows does not exist for now)
 - BUILD_TYPE: debug | release | test
 
 For example, to build the inspector for GNU + Linux with X11:
@@ -34,13 +34,15 @@ List of tests:
 - dyn_arr: dynamic array tests
 
 # Structure
-## Common code
+## Common code (shared across inspector and reconstructor)
 This includes the following directories:
 1. `platform`, with the platform layers for GNU + Linux (X11 and Wayland) and Windows (unimplemented)
-2. `ds`, the data structures used in the projects
-3. `math`, the mathematical functions and objects used in the code
-4. `lib`, third-party code used in the project
-5. `test_files`, files used to test the correctness of the programs
+2. `input`, input system
+3. `renderer`, the source code for the software renderer
+4. `ds`, the data structures used in the projects
+5. `math`, the mathematical functions and objects used in the code
+6. `lib`, third-party code used in the project
+7. `test_files`, files used to test the correctness of the programs
 
 For now the following are present in `lib/` (we still don't have the video processing integration):
 - [nob](https://github.com/tsoding/nob.h), the build system
@@ -48,7 +50,7 @@ For now the following are present in `lib/` (we still don't have the video proce
 - [astf](https://github.com/bernardobrust/ASTF-V2), for automated testing
 
 ## Inspector
-The inspector is a tool to visualize compression data of the videos, such as color channels, chroma channels and inter prediction.
+The inspector is a tool to visualize compression data of the videos, such as color channels, chroma channels and inter prediction. See more [here](inspector/)
 
 ## Reconstructor
-The reconstructor is a tool to reconstruct 3d models from video data using computer vision.
+The reconstructor is a tool to reconstruct 3d models from video data using computer vision. See more [here](reconstructor/)

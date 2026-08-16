@@ -30,6 +30,7 @@
 
 **Video**
 - [C + FFmpeg + Raylib = High Quality Videos (YES! It IS that simple!)](https://www.youtube.com/watch?v=0To1aYglVHE)
+- [2mpeg4yuv](https://www.youtube.com/playlist?list=PLpM-Dvs8t0VaAFL21D-48W02tJWTeejcM)
 
 ### Philosophy (if you may call it that)
 - [ZII, by Casey Muratori](https://www.youtube.com/watch?v=xt1KNDmOYqA)

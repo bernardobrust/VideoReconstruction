@@ -1,3 +1,6 @@
+### Ongoing:
+- Render an arrow with width $w$ given points $(a, b)$
+
 ### General
 - [x] Update this TODO list with a more concrete plan
 
