@@ -106,6 +106,9 @@ main (int argc, char **argv)
                                     : strcat (entry_point, "main.c");
   nob_cmd_append (&cmd, entry_point);
 
+  // Math
+  nob_cmd_append (&cmd, "math/basic.c");
+
   // Data Structures
   // Test files include the sources directly
   nob_cmd_append (&cmd, strcmp (*build_type, "test") == 0 ? "ds/dyn_arr.test.c"
@@ -123,8 +126,11 @@ main (int argc, char **argv)
   strcat (platform_layer, ".c");
   nob_cmd_append (&cmd, platform_layer);
 
+  // The renderer
+  nob_cmd_append (&cmd, "renderer/renderer.c");
+
   // Anyway we include all directories
-  nob_cmd_append (&cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath");
+  nob_cmd_append (&cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath", "-Irenderer");
 
   // Include the own directory
   char self_dir[64] = "-I";

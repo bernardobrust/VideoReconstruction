@@ -38,8 +38,8 @@ We won't need audio for this project
 - [ ] Input system (input struct)
 
 ### Renderer (CPU / software renderer) (inspector)
-- [ ] Open window + set defaults
-- [ ] Draw rectangle
+- [x] Open window + set defaults
+- [x] Draw rectangle
 - [ ] Framerate cap (30 should be good to go as a default)
 - [ ] Draw triangle
 - [ ] Draw circle
