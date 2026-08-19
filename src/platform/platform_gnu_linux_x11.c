@@ -643,10 +643,9 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
 
   if (query_extension (state, "MIT-SHM", &state->shm_opcode))
     {
-      unsigned row_bytes
-          = round_up (state->width * state->bits_per_pixel,
-                      state->scanline_pad)
-            / 8;
+      unsigned row_bytes = round_up (state->width * state->bits_per_pixel,
+                                     state->scanline_pad)
+                           / 8;
       state->shm_size = (size_t)row_bytes * state->height;
       state->shmid = shmget (IPC_PRIVATE, state->shm_size, IPC_CREAT | 0600);
 
@@ -668,9 +667,7 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
                 }
             }
           else
-            {
               state->shm_data = NULL;
-            }
         }
     }
 
@@ -842,9 +839,8 @@ platform_present (PlatformState *platform_state)
       write_u32_le (body + 28, state->shmseg);
       write_u32_le (body + 32, 0);
 
-      bool sent
-          = send_request (state, state->shm_opcode, X11_SHM_PUT_IMAGE, body,
-                          sizeof (body));
+      bool sent = send_request (state, state->shm_opcode, X11_SHM_PUT_IMAGE,
+                                body, sizeof (body));
       if (!sent)
         platform_state->running = false;
 
