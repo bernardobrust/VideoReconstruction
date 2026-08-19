@@ -28,6 +28,8 @@ main ()
       draw_circle (600, 500, 50, rgba (0, 0, 255, 255), rp);
       draw_rotated_rectangle (200, 200, 80, 50, theta, rgba (155, 100, 0, 255),
                               rp);
+      draw_rotated_oriented_rectangle (300, 300, 400, 400, 80,
+                                       rgba (155, 100, 0, 255), rp);
 
       renderer_present (&platform_state, rp);
     }

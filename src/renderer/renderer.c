@@ -176,8 +176,6 @@ draw_rotated_rectangle (int cx, int cy, int w, int h, float theta,
   // (x0, y0), (x1, y1), (x2, y2)
   // Triangle 2 points:
   // (x0, y0), (x2, y2), (x3, y3)
-
-  // Draw 2 triangles:
   draw_triangle (x0, y0, x1, y1, x2, y2, color, rp);
   draw_triangle (x0, y0, x2, y2, x3, y3, color, rp);
 }
@@ -185,13 +183,39 @@ draw_rotated_rectangle (int cx, int cy, int w, int h, float theta,
 // It's also reasonable to think about in terms of start, end + width. The
 // start -> end vector gives a direction along the center line, this is usefull
 // for the arrow
-/*
 void
 draw_rotated_oriented_rectangle (int dx1, int dy1, int dx2, int dy2, int width,
                                  unsigned color, RendererPlex rp)
 {
+  float dx = dx2 - dx1, dy = dy2 - dy1;
+  float length = sqrtf (dx * dx + dy * dy);
+
+  // Unit vector along the center line
+  float ux = dx / length;
+  float uy = dy / length;
+
+  // Unit vector perpendicular to the center line
+  float nx = -uy;
+  float ny = ux;
+
+  // Offset from center line to either edge
+  float hw = width / 2.0f;
+  float ox = nx * hw;
+  float oy = ny * hw;
+
+  // Four corners
+  float x0 = dx1 + ox, y0 = dy1 + oy;
+  float x1 = dx2 + ox, y1 = dy2 + oy;
+  float x2 = dx2 - ox, y2 = dy2 - oy;
+  float x3 = dx1 - ox, y3 = dy1 - oy;
+
+  // Triangle 1 points:
+  // (x0, y0), (x1, y1), (x2, y2)
+  // Triangle 2 points:
+  // (x0, y0), (x2, y2), (x3, y3)
+  draw_triangle (x0, y0, x1, y1, x2, y2, color, rp);
+  draw_triangle (x0, y0, x2, y2, x3, y3, color, rp);
 }
-*/
 
 // Call platform present to put image then zero out the buffer to clear it
 inline void
