@@ -7,6 +7,7 @@
 // (copy pasted from many places). But it works so I'll take it.
 
 #define _POSIX_C_SOURCE 200112L
+#define _DEFAULT_SOURCE
 
 #include <errno.h>
 #include <fcntl.h>
@@ -16,6 +17,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -60,6 +63,10 @@ enum
   X11_EVENT_MASK_EXPOSURE = 1 << 15,
   X11_EVENT_MASK_STRUCTURE_NOTIFY = 1 << 17,
   X11_GC_FOREGROUND = 1 << 2,
+  X11_QUERY_EXTENSION = 98,
+  X11_SHM_ATTACH = 1,
+  X11_SHM_DETACH = 2,
+  X11_SHM_PUT_IMAGE = 3,
 };
 
 typedef struct
@@ -83,6 +90,12 @@ typedef struct
   unsigned char *image_buffer;
   unsigned char read_buf[8192];
   size_t read_len;
+  unsigned char shm_opcode;
+  unsigned shmseg;
+  int shmid;
+  unsigned char *shm_data;
+  size_t shm_size;
+  bool has_shm;
 } InternalState;
 
 static bool
@@ -351,6 +364,37 @@ intern_atom (InternalState *state, const char *name, unsigned *atom)
 }
 
 static bool
+query_extension (InternalState *state, const char *name,
+                 unsigned char *major_opcode)
+{
+  size_t name_length = strlen (name);
+  size_t body_size = 4 + round_up ((unsigned)name_length, 4);
+  unsigned char *body = calloc (1, body_size);
+
+  if (body == NULL)
+    return false;
+
+  write_u16_le (body, (unsigned short)name_length);
+
+  memcpy (body + 4, name, name_length);
+  bool result = send_request (state, X11_QUERY_EXTENSION, 0, body, body_size);
+  free (body);
+
+  unsigned char reply[32];
+
+  if (!result || !read_reply (state, reply))
+    return false;
+
+  if (reply[8] == 0)
+    return false;
+
+  if (major_opcode != NULL)
+    *major_opcode = reply[9];
+
+  return true;
+}
+
+static bool
 set_title (InternalState *state, const char *title)
 {
   size_t title_length = strlen (title);
@@ -595,6 +639,41 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
   state->width = (unsigned)w;
   state->height = (unsigned)h;
   state->image_buffer = (unsigned char *)image_buffer;
+  state->shmid = -1;
+
+  if (query_extension (state, "MIT-SHM", &state->shm_opcode))
+    {
+      unsigned row_bytes
+          = round_up (state->width * state->bits_per_pixel,
+                      state->scanline_pad)
+            / 8;
+      state->shm_size = (size_t)row_bytes * state->height;
+      state->shmid = shmget (IPC_PRIVATE, state->shm_size, IPC_CREAT | 0600);
+
+      if (state->shmid >= 0)
+        {
+          state->shm_data = (unsigned char *)shmat (state->shmid, NULL, 0);
+          if (state->shm_data != (void *)-1)
+            {
+              state->shmseg = next_resource_id (state);
+              unsigned char attach_body[12] = { 0 };
+              write_u32_le (attach_body, state->shmseg);
+              write_u32_le (attach_body + 4, (unsigned)state->shmid);
+              attach_body[8] = 0;
+
+              if (send_request (state, state->shm_opcode, X11_SHM_ATTACH,
+                                attach_body, sizeof (attach_body)))
+                {
+                  state->has_shm = true;
+                }
+            }
+          else
+            {
+              state->shm_data = NULL;
+            }
+        }
+    }
+
   platform_state->internal_state = state;
   platform_state->running = true;
 
@@ -602,6 +681,9 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
       || !intern_atom (state, "WM_PROTOCOLS", &state->wm_protocols)
       || !intern_atom (state, "WM_DELETE_WINDOW", &state->wm_delete_window))
     goto fail_with_state;
+
+  if (state->has_shm && state->shmid >= 0)
+    shmctl (state->shmid, IPC_RMID, NULL);
 
   unsigned char protocols[24] = { 0 };
   write_u32_le (protocols, state->window);
@@ -644,6 +726,20 @@ platform_shutdown (PlatformState *platform_state)
 
   if (state == NULL)
     return;
+
+  if (state->has_shm && state->shmseg != 0 && state->shm_opcode != 0)
+    {
+      unsigned char body[4] = { 0 };
+      write_u32_le (body, state->shmseg);
+      send_request (state, state->shm_opcode, X11_SHM_DETACH, body,
+                    sizeof (body));
+    }
+
+  if (state->shm_data != NULL && state->shm_data != (void *)-1)
+    shmdt (state->shm_data);
+
+  if (state->shmid >= 0)
+    shmctl (state->shmid, IPC_RMID, NULL);
 
   if (state->window != 0)
     {
@@ -720,6 +816,41 @@ platform_present (PlatformState *platform_state)
   unsigned row_bytes
       = round_up (state->width * state->bits_per_pixel, state->scanline_pad)
         / 8;
+
+  if (state->has_shm && state->shm_data != NULL)
+    {
+      for (unsigned row = 0; row < state->height; ++row)
+        memcpy (state->shm_data + (size_t)row * row_bytes,
+                state->image_buffer + (size_t)row * state->width * 4,
+                state->width * (bytes_per_pixel < 4 ? bytes_per_pixel : 4));
+
+      unsigned char body[36] = { 0 };
+      write_u32_le (body, state->window);
+      write_u32_le (body + 4, state->gc);
+      write_u16_le (body + 8, (unsigned short)state->width);
+      write_u16_le (body + 10, (unsigned short)state->height);
+      write_u16_le (body + 12, 0);
+      write_u16_le (body + 14, 0);
+      write_u16_le (body + 16, (unsigned short)state->width);
+      write_u16_le (body + 18, (unsigned short)state->height);
+      write_u16_le (body + 20, 0);
+      write_u16_le (body + 22, 0);
+      body[24] = (unsigned char)state->depth;
+      body[25] = X11_Z_PIXMAP;
+      body[26] = 0;
+      body[27] = 0;
+      write_u32_le (body + 28, state->shmseg);
+      write_u32_le (body + 32, 0);
+
+      bool sent
+          = send_request (state, state->shm_opcode, X11_SHM_PUT_IMAGE, body,
+                          sizeof (body));
+      if (!sent)
+        platform_state->running = false;
+
+      return;
+    }
+
   unsigned max_data = state->max_request_words * 4 - 24;
   unsigned rows = max_data / row_bytes;
 
