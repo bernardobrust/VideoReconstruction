@@ -41,7 +41,7 @@ We won't need audio for this project
 - [x] Draw rectangle
 - [x] Draw triangle
 - [x] Draw circle
-- [x] Draw rotated rectangle
+- [x] Draw rotated rectangle (with angle and with orientation)
 - [ ] Draw arrow
 - [ ] Framerate cap (30 should be good as a default)
 - [ ] Draw text
@@ -69,3 +69,6 @@ We won't need audio for this project
 ### Extra (inspector)
 - [ ] Test coverage
 - [ ] Data analysis
+
+### Documentation (both)
+- [ ] Maybe explain the geometry of the renderer better?
