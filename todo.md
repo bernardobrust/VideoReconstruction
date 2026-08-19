@@ -36,22 +36,23 @@ We won't need audio for this project
 - [x] Dynamic array
 - [ ] ...
 
-### Systems (inspector)
-- [x] Event system (key presses and UI buttons)
-- [x] Input system (input struct)
-
-### Renderer (CPU / software renderer) (inspector)
+### Renderer (CPU / software renderer) (shared)
 - [x] Open window + set defaults
 - [x] Draw rectangle
 - [x] Draw triangle
 - [x] Draw circle
+- [x] Draw rotated rectangle
 - [ ] Draw arrow
-- [ ] Framerate cap (30 should be good to go as a default)
+- [ ] Framerate cap (30 should be good as a default)
 - [ ] Draw text
 - [ ] Draw frame of a video
 - [ ] Draw transparent rectangle on top of frame
 - [ ] Scale video resolution to block dimensions
 - [ ] TODO ...
+
+### Systems (inspector)
+- [x] Event system (key presses and UI buttons)
+- [x] Input system (input struct)
 
 ### Core (inspector)
 - [ ] App state PLEX (a.k.a fat struct)

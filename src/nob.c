@@ -134,8 +134,8 @@ main (int argc, char **argv)
   nob_cmd_append (&cmd, "renderer/renderer.c");
 
   // Anyway we include all directories
-  nob_cmd_append (&cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath", "-Irenderer",
-                  "-Iinput");
+  nob_cmd_append (&cmd, "-lm", "-Ilib", "-Ids", "-Iplatform", "-Imath",
+                  "-Irenderer", "-Iinput");
 
   // Include the own directory
   char self_dir[64] = "-I";

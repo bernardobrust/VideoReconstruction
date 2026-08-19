@@ -7,6 +7,9 @@ nob.old
 gdb.txt
 compile_commands.json
 
+# Perf data
+perf.*
+
 # Tex build
 *.aux
 *.log

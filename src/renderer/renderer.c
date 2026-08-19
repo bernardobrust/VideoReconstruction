@@ -3,6 +3,7 @@
 #include "performance.h"
 #include "platform.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -135,6 +136,62 @@ draw_circle (int cx, int cy, int r, unsigned color, RendererPlex rp)
         }
     }
 }
+
+// For the rotated rectangle it makes more sense to take center, width, height
+// and angle instead of four points. It's geometrically easier to reason about
+// it this way
+void
+draw_rotated_rectangle (int cx, int cy, int w, int h, float theta,
+                        unsigned color, RendererPlex rp)
+{
+  float c = cosf (theta);
+  float s = sinf (theta);
+
+  // Width direction
+  float ux = c, uy = s;
+
+  // Height direction
+  float vx = -s, vy = c;
+
+  float hw = w / 2.0f;
+  float hh = h / 2.0f;
+
+  // Top-left
+  float x0 = cx - hw * ux - hh * vx;
+  float y0 = cy - hw * uy - hh * vy;
+
+  // Top-right
+  float x1 = cx + hw * ux - hh * vx;
+  float y1 = cy + hw * uy - hh * vy;
+
+  // Bottom-right
+  float x2 = cx + hw * ux + hh * vx;
+  float y2 = cy + hw * uy + hh * vy;
+
+  // Bottom-left
+  float x3 = cx - hw * ux + hh * vx;
+  float y3 = cy - hw * uy + hh * vy;
+
+  // Triangle 1 points:
+  // (x0, y0), (x1, y1), (x2, y2)
+  // Triangle 2 points:
+  // (x0, y0), (x2, y2), (x3, y3)
+
+  // Draw 2 triangles:
+  draw_triangle (x0, y0, x1, y1, x2, y2, color, rp);
+  draw_triangle (x0, y0, x2, y2, x3, y3, color, rp);
+}
+
+// It's also reasonable to think about in terms of start, end + width. The
+// start -> end vector gives a direction along the center line, this is usefull
+// for the arrow
+/*
+void
+draw_rotated_oriented_rectangle (int dx1, int dy1, int dx2, int dy2, int width,
+                                 unsigned color, RendererPlex rp)
+{
+}
+*/
 
 // Call platform present to put image then zero out the buffer to clear it
 inline void
