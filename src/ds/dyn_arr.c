@@ -29,7 +29,7 @@ dyn_arr_init (int initial_cap, int stride)
   return xs;
 }
 
-void
+inline void
 dyn_arr_free (DynArr *xs)
 {
   assert (xs != NULL);
@@ -39,7 +39,7 @@ dyn_arr_free (DynArr *xs)
   free (xs);
 }
 
-void *
+inline void *
 dyn_arr_get (DynArr *xs, int where)
 {
   assert (xs != NULL);
@@ -52,7 +52,7 @@ dyn_arr_get (DynArr *xs, int where)
   return r;
 }
 
-void
+inline void
 dyn_arr_set (DynArr *xs, int where, void *val)
 {
   assert (xs != NULL);
@@ -103,7 +103,7 @@ dyn_arr_insert (DynArr *xs, void *new_elem, int where)
   dyn_arr_set (xs, where, new_elem);
 }
 
-void
+inline void
 dyn_arr_pop (DynArr *xs)
 {
   assert (xs != NULL);

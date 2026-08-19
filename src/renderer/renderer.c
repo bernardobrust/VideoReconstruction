@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-unsigned
+inline unsigned
 rgba (unsigned r, unsigned g, unsigned b, unsigned a)
 {
   return a << 24 | r << 16 | g << 8 | b;
@@ -15,7 +15,7 @@ rgba (unsigned r, unsigned g, unsigned b, unsigned a)
 
 // For now it's this simple alocation, latter we can check for aspect ratio &&
 // all
-RendererPlex
+inline RendererPlex
 init_renderer (int w, int h)
 {
   RendererPlex rp;

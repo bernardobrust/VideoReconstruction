@@ -1,6 +1,6 @@
 #include "basic.h"
 
-int
+inline int
 clamp_int (int v, int min, int max)
 {
   if (v < min)
@@ -23,7 +23,7 @@ Zero     if A, B, and P are collinear
 
 The result is also 2 * signed area of the triangle ABP
 */
-int
+inline int
 determinant_ab_ap_int (int ax, int ay, int bx, int by, int px, int py)
 {
   return (px - ax) * (by - ay) - (py - ay) * (bx - ax);
