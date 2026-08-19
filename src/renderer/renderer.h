@@ -27,7 +27,7 @@ void draw_rotated_rectangle (int cx, int cy, int w, int h, float theta,
 void draw_rotated_oriented_rectangle (int dx1, int dy1, int dx2, int dy2,
                                       int width, unsigned color,
                                       RendererPlex rp);
-void draw_arrow (int x1, int y1, int x2, int y2, int w, int h, float theta,
+void draw_arrow (int startx, int starty, int endx, int endy, int thickness,
                  unsigned color, RendererPlex rp);
 
 void renderer_present (PlatformState *platform_state, RendererPlex rp);

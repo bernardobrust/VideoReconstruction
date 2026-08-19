@@ -190,18 +190,18 @@ draw_rotated_oriented_rectangle (int dx1, int dy1, int dx2, int dy2, int width,
   float dx = dx2 - dx1, dy = dy2 - dy1;
   float length = sqrtf (dx * dx + dy * dy);
 
+  if (length == 0.0f)
+    return;
+
   // Unit vector along the center line
-  float ux = dx / length;
-  float uy = dy / length;
+  float ux = dx / length, uy = dy / length;
 
   // Unit vector perpendicular to the center line
-  float nx = -uy;
-  float ny = ux;
+  float nx = -uy, ny = ux;
 
   // Offset from center line to either edge
   float hw = width / 2.0f;
-  float ox = nx * hw;
-  float oy = ny * hw;
+  float ox = nx * hw, oy = ny * hw;
 
   // Four corners
   float x0 = dx1 + ox, y0 = dy1 + oy;
@@ -215,6 +215,39 @@ draw_rotated_oriented_rectangle (int dx1, int dy1, int dx2, int dy2, int width,
   // (x0, y0), (x2, y2), (x3, y3)
   draw_triangle (x0, y0, x1, y1, x2, y2, color, rp);
   draw_triangle (x0, y0, x2, y2, x3, y3, color, rp);
+}
+
+// It's just a rectangle with a triangle on top
+void
+draw_arrow (int startx, int starty, int endx, int endy, int thickness,
+            unsigned color, RendererPlex rp)
+{
+  // Same geometry from draw_rotated_oriented_rectangle
+  float dx = endx - startx, dy = endy - starty;
+  float length = sqrtf (dx * dx + dy * dy);
+
+  if (length == 0.0f)
+    return;
+
+  float ux = dx / length, uy = dy / length;
+  float nx = -uy, ny = ux;
+
+  // Arbitrary scale, it should keep proportions to the shaft
+  float head_thickness = thickness * 1.4f;
+
+  float basex = endx - ux * head_thickness, basey = endy - uy * head_thickness;
+  float leftx = basex + nx * head_thickness,
+        lefty = basey + ny * head_thickness;
+  float rightx = basex - nx * head_thickness,
+        righty = basey - ny * head_thickness;
+
+  int shaft_end_x = endx - ux * head_thickness,
+      shaft_end_y = endy - uy * head_thickness;
+
+  draw_rotated_oriented_rectangle (startx, starty, shaft_end_x, shaft_end_y,
+                                   thickness, color, rp);
+
+  draw_triangle (endx, endy, leftx, lefty, rightx, righty, color, rp);
 }
 
 // Call platform present to put image then zero out the buffer to clear it

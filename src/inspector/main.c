@@ -30,6 +30,7 @@ main ()
                               rp);
       draw_rotated_oriented_rectangle (300, 300, 400, 400, 80,
                                        rgba (155, 100, 0, 255), rp);
+      draw_arrow (400, 400, 600, 200, 20, rgba (255, 0, 0, 255), rp);
 
       renderer_present (&platform_state, rp);
     }

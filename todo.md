@@ -42,7 +42,7 @@ We won't need audio for this project
 - [x] Draw triangle
 - [x] Draw circle
 - [x] Draw rotated rectangle (with angle and with orientation)
-- [ ] Draw arrow
+- [x] Draw arrow
 - [ ] Framerate cap (30 should be good as a default)
 - [ ] Draw text
 - [ ] Draw frame of a video
