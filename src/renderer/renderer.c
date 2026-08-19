@@ -54,12 +54,11 @@ void
 draw_triangle (int x1, int y1, int x2, int y2, int x3, int y3, unsigned color,
                RendererPlex rp)
 {
-  // We'll be using barycentric coordinates for the triangle
+  // We'll be using barycentric coordinates for the triangle (props to TSoding
+  // on Olive.c)
 
-  int min_x = MIN3 (x1, x2, x3);
-  int max_x = MAX3 (x1, x2, x3);
-  int min_y = MIN3 (y1, y2, y3);
-  int max_y = MAX3 (y1, y2, y3);
+  int min_x = MIN3 (x1, x2, x3), max_x = MAX3 (x1, x2, x3);
+  int min_y = MIN3 (y1, y2, y3), max_y = MAX3 (y1, y2, y3);
 
   // Clamp to image buffer
   min_x = clamp_int (min_x, 0, rp.w - 1);
@@ -114,9 +113,7 @@ draw_rectangle (int x1, int y1, int x2, int y2, unsigned color,
 void
 draw_circle (int cx, int cy, int r, unsigned color, RendererPlex rp)
 {
-  int x = r;
-  int y = 0;
-  int err = 1 - r;
+  int x = r, y = 0, err = 1 - r;
 
   while (x >= y)
     {

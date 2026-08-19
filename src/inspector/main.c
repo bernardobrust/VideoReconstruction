@@ -16,9 +16,7 @@ main ()
   while (platform_update (&platform_state))
     {
       if (input_is_key_pressed (ESC))
-        {
           platform_stop (&platform_state);
-        }
 
       // Frame-dependent for now
       theta += 0.001f;

@@ -30,13 +30,17 @@ We won't need audio for this project
 
 ### Math Library (shared)
 - [ ] Basic utilities (clamp, 2D lerp, etc.)
+- [ ] Tests for the math lib
 - [ ] ...
 
 ### Data Structures (shared)
 - [x] Dynamic array
+- [x] Dynamic array tests
 - [ ] ...
 
 ### Renderer (CPU / software renderer) (shared)
+Should we test the rendering primitives?
+
 - [x] Open window + set defaults
 - [x] Draw rectangle
 - [x] Draw triangle
@@ -67,7 +71,7 @@ We won't need audio for this project
 - [ ] TODO ...
 
 ### Extra (inspector)
-- [ ] Test coverage
+- [ ] Test coverage (like FATE's)
 - [ ] Data analysis
 
 ### Documentation (both)
