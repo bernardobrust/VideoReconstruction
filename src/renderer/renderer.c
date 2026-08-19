@@ -1,5 +1,6 @@
 #include "renderer.h"
 #include "basic.h"
+#include "performance.h"
 #include "platform.h"
 
 #include <stdlib.h>
@@ -32,7 +33,7 @@ draw_hline (int x0, int x1, int y, unsigned color, RendererPlex rp)
     return;
 
   // Wrong order
-  if (x0 > x1)
+  if (unlikely (x0 > x1))
     {
       // Trust me it's not worth swapping with XOR
       int t = x0;
@@ -43,8 +44,9 @@ draw_hline (int x0, int x1, int y, unsigned color, RendererPlex rp)
   x0 = clamp_int (x0, 0, rp.w - 1);
   x1 = clamp_int (x1, 0, rp.w - 1);
 
-  for (int i = 0; i < x1 - x0; ++i)
-    *(rp.image_buffer + y * rp.w + x0 + i) = color;
+  unsigned *p = rp.image_buffer + y * rp.w + x0;
+  for (int x = x0; x <= x1; ++x)
+    *p++ = color;
 }
 
 void
@@ -68,9 +70,7 @@ draw_triangle (int x1, int y1, int x2, int y2, int x3, int y3, unsigned color,
 
   // No need to render
   if (area == 0)
-    {
-      return;
-    }
+    return;
 
   for (int y = min_y; y <= max_y; ++y)
     {
@@ -82,9 +82,7 @@ draw_triangle (int x1, int y1, int x2, int y2, int x3, int y3, unsigned color,
 
           if ((area > 0 && w0 >= 0 && w1 >= 0 && w2 >= 0)
               || (area < 0 && w0 <= 0 && w1 <= 0 && w2 <= 0))
-            {
-              rp.image_buffer[y * rp.w + x] = color;
-            }
+            rp.image_buffer[y * rp.w + x] = color;
         }
     }
 }
@@ -106,14 +104,10 @@ draw_rectangle (int x1, int y1, int x2, int y2, unsigned color,
 
   // No need to render
   if ((max_x - min_x) * (max_y - min_y) == 0)
-    {
-      return;
-    }
+    return;
 
   for (int y = min_y; y <= max_y; ++y)
-    {
-      draw_hline (min_x, max_x, y, color, rp);
-    }
+    draw_hline (min_x, max_x, y, color, rp);
 }
 
 void
@@ -133,9 +127,7 @@ draw_circle (int cx, int cy, int r, unsigned color, RendererPlex rp)
       ++y;
 
       if (err < 0)
-        {
-          err += 2 * y + 1;
-        }
+        err += 2 * y + 1;
       else
         {
           --x;
