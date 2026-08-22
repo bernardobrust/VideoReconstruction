@@ -1,5 +1,4 @@
 ### Ongoing:
-- Link FFmpeg's libs
 - Decode 1 frame of a $.mp4$ AV1 encoded video
 
 ### General
@@ -18,7 +17,7 @@ We'll add a lot more stuff here as the project advances
 - [x] Setup debug build
 - [x] Setup release build
 - [x] Setup test build
-- [ ] FFmpeg integration (`libavformat`, `libavcodec`, `libavutil`)
+- [x] FFmpeg integration
 - [ ] Get testing data
 
 ### Platform Layer (shared)
@@ -60,6 +59,7 @@ Should we test the rendering primitives?
 - [x] Input system (input struct)
 
 ### Core (inspector)
+- [ ] Take the video to use as a parameter of the inspector binary
 - [ ] App state PLEX (a.k.a fat struct)
 - [ ] Render motion vectors per block
 - [ ] Compression data...
@@ -72,7 +72,7 @@ Should we test the rendering primitives?
 - [ ] TODO ...
 
 ### Extra (inspector)
-- [ ] Test coverage (like FATE's)
+- [ ] Test coverage (like Like FFmpeg's FATE but a lot simpler)
 - [ ] Data analysis
 
 ### Documentation (both)

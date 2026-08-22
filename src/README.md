@@ -2,7 +2,35 @@
 This project only uses C (no Make, CMake or SCons), with the external dependencies being included by the build system itself in header libraries.
 
 **Requirements**:
-- A C11 compatible compiler, that's it (tested mainly with `gcc`).
+- A C11 compatible compiler (tested mainly with `gcc`).
+- FFmpeg development libraries: `avformat`, `avcodec`, `swscale`, and `avutil`.
+
+The libraries can be installed in GNU + Linux systems as follows (if I added anything wrong here please open an issue):
+- Debian / Ubuntu:
+```bash
+sudo apt install libavformat-dev libavcodec-dev libswscale-dev libavutil-dev
+```
+- Fedora / RHEL / CentOS / Rocky Linux / AlmaLinux (FFmpeg packages are generally provided through additional repositories such as RPM Fusion):
+```bash
+sudo dnf install ffmpeg-devel
+```
+- Arch Linux / Manjaro / CachyOS:
+```bash
+sudo pacman -S ffmpeg
+```
+- openSUSE (Package names may vary with the FFmpeg version available in the configured repositories):
+```bash
+sudo zypper install ffmpeg-6-libavformat-devel ffmpeg-6-libavcodec-devel ffmpeg-6-libswscale-devel ffmpeg-6-libavutil-devel
+```
+- Alpine Linux:
+```bash
+sudo apk add ffmpeg-dev
+```
+- Gentoo (The best distro):
+**USE flags: dav1d (enabled by default)**
+```bash
+sudo emerge media-video/ffmpeg
+```
 
 **Building**:
 The first time you compile you will have to generate the build tool, simply run (uses `gcc` by default):

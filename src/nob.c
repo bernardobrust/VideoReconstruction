@@ -134,8 +134,14 @@ main (int argc, char **argv)
   nob_cmd_append (&cmd, "renderer/renderer.c");
 
   // Anyway we include all directories
-  nob_cmd_append (&cmd, "-lm", "-Ilib", "-Ids", "-Iplatform", "-Imath",
-                  "-Irenderer", "-Iinput");
+  nob_cmd_append (&cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath", "-Irenderer",
+                  "-Iinput");
+
+  // Other used libraries. These are only valid in GNU + Linux and assume that
+  // the host computer acutally has them installed. After we add Windows I'll
+  // have to also see how to link using MSVC
+  nob_cmd_append (&cmd, "-lm", "-lavformat", "-lavcodec", "-lswscale",
+                  "-lavutil");
 
   // Include the own directory
   char self_dir[64] = "-I";
