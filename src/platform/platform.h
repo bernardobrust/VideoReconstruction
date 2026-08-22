@@ -51,3 +51,5 @@ void platform_present (PlatformState *platform_state);
 double platform_get_time ();
 
 void platform_sleep (double ms);
+
+int platform_file_exists (char *filepath);

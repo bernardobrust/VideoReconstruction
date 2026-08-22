@@ -5,10 +5,11 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "platform.h"
 
-double
+inline double
 platform_get_time (void)
 {
   struct timeval time;
@@ -31,4 +32,21 @@ platform_sleep (double ms)
   while (nanosleep (&time, &time) == -1 && errno == EINTR)
     {
     }
+}
+
+// Returns: 0 => OK
+// 1 => wrong path
+// 2 => inacessible
+inline int
+platform_file_exists (char *filepath)
+{
+  if (access (filepath, F_OK) != 0)
+    {
+      if (errno == ENOENT)
+        return 1;
+      else
+        return 2;
+    }
+
+  return 0;
 }
