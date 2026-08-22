@@ -1,5 +1,5 @@
 ### Ongoing:
-- Decode 1 frame of a $.mp4$ AV1 encoded video
+- Decode 1 frame of a $.mp4$ AV1 encoded video (done, but collors are wrong)
 
 ### General
 - [x] Update this TODO list with a more concrete plan
@@ -49,7 +49,7 @@ Should we test the rendering primitives?
 - [x] Draw arrow
 - [ ] Framerate cap (30 should be good as a default)
 - [ ] Draw text
-- [ ] Draw frame of a video
+- [x] Draw frame of a video
 - [ ] Draw transparent rectangle on top of frame
 - [ ] Scale video resolution to block dimensions
 - [ ] TODO ...
@@ -59,7 +59,7 @@ Should we test the rendering primitives?
 - [x] Input system (input struct)
 
 ### Core (inspector)
-- [ ] Take the video to use as a parameter of the inspector binary
+- [x] Take the video to use as a parameter of the inspector binary
 - [ ] App state PLEX (a.k.a fat struct)
 - [ ] Render motion vectors per block
 - [ ] Compression data...
