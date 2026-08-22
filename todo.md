@@ -1,5 +1,6 @@
 ### Ongoing:
-- Render an arrow with width $w$ given points $(a, b)$
+- Link FFmpeg's libs
+- Decode 1 frame of a $.mp4$ AV1 encoded video
 
 ### General
 - [x] Update this TODO list with a more concrete plan
