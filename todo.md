@@ -1,5 +1,7 @@
 ### Ongoing:
 - Decode 1 frame of a $.mp4$ AV1 encoded video (done, but collors are wrong)
+- Factor the decoding logic out
+- Decode more frames
 
 ### General
 - [x] Update this TODO list with a more concrete plan
