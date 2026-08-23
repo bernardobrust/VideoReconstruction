@@ -28,6 +28,8 @@ We won't need audio for this project
 - [x] Raw X11 platform Layer
 - [x] Raw Wayland platform Layer
 - [ ] Windows platform layer
+- [ ] Floating windows on window managers
+- [ ] Full screen
 - [ ] Mac platform layer (?)
 
 ### Math Library (shared)
@@ -62,6 +64,7 @@ Should we test the rendering primitives?
 
 ### Core (inspector)
 - [x] Take the video to use as a parameter of the inspector binary
+- [ ] Scale/downscale video to a given WxH
 - [ ] App state PLEX (a.k.a fat struct)
 - [ ] Render motion vectors per block
 - [ ] Compression data...
