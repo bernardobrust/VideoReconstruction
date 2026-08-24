@@ -2,6 +2,7 @@
 - Decode 1 frame of a $.mp4$ AV1 encoded video (done, but collors are wrong)
 - Factor the decoding logic out
 - Decode more frames
+- Rescale video to arbitrary resolution
 
 ### General
 - [x] Update this TODO list with a more concrete plan
@@ -40,6 +41,7 @@ We won't need audio for this project
 ### Data Structures (shared)
 - [x] Dynamic array
 - [x] Dynamic array tests
+- [ ] Move tests to separate testing file
 - [ ] ...
 
 ### Renderer (CPU / software renderer) (shared)
