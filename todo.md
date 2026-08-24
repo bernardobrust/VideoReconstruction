@@ -1,8 +1,7 @@
 ### Ongoing:
-- Decode 1 frame of a $.mp4$ AV1 encoded video (done, but collors are wrong)
+- Fix colloring (colors with high R are with high B)
 - Factor the decoding logic out
-- Decode more frames
-- Rescale video to arbitrary resolution
+- Rescale video to arbitrary resolution (will be used latter for drawing frames side-by-side) 
 
 ### General
 - [x] Update this TODO list with a more concrete plan
@@ -21,7 +20,7 @@ We'll add a lot more stuff here as the project advances
 - [x] Setup release build
 - [x] Setup test build
 - [x] FFmpeg integration
-- [ ] Get testing data
+- [ ] Get testing data (I have some mock videos but we'll need more latter)
 
 ### Platform Layer (shared)
 We won't need audio for this project
@@ -41,7 +40,7 @@ We won't need audio for this project
 ### Data Structures (shared)
 - [x] Dynamic array
 - [x] Dynamic array tests
-- [ ] Move tests to separate testing file
+- [ ] Move tests to separate testing file for shared code
 - [ ] ...
 
 ### Renderer (CPU / software renderer) (shared)
@@ -53,16 +52,17 @@ Should we test the rendering primitives?
 - [x] Draw circle
 - [x] Draw rotated rectangle (with angle and with orientation)
 - [x] Draw arrow
-- [ ] Framerate cap (30 should be good as a default)
+- [ ] Framerate cap (30 should be good as a default, but maybe we don't even care about this)
 - [ ] Draw text
 - [x] Draw frame of a video
-- [ ] Draw transparent rectangle on top of frame
+- [ ] Draw transparent rectangle on top of frame (and arrow)
 - [ ] Scale video resolution to block dimensions
-- [ ] TODO ...
+- [ ] TODO: add more here as it turns out as needed ...
 
 ### Systems (inspector)
 - [x] Event system (key presses and UI buttons)
 - [x] Input system (input struct)
+- [ ] Add mouse to the input system
 
 ### Core (inspector)
 - [x] Take the video to use as a parameter of the inspector binary
