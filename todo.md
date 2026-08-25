@@ -1,7 +1,7 @@
 ### Ongoing:
 - Fix colloring (colors with high R are with high B)
 - Factor the decoding logic out
-- Rescale video to arbitrary resolution (will be used latter for drawing frames side-by-side) 
+- Rescale video to arbitrary resolution (will be used latter for drawing frames side-by-side)
 
 ### General
 - [x] Update this TODO list with a more concrete plan
@@ -30,7 +30,7 @@ We won't need audio for this project
 - [ ] Windows platform layer
 - [ ] Floating windows on window managers
 - [ ] Full screen
-- [ ] Mac platform layer (?)
+- [ ] Mac platform layer? (Sounds like a pain for little gain)
 
 ### Math Library (shared)
 - [ ] Basic utilities (clamp, 2D lerp, etc.)
@@ -40,7 +40,7 @@ We won't need audio for this project
 ### Data Structures (shared)
 - [x] Dynamic array
 - [x] Dynamic array tests
-- [ ] Move tests to separate testing file for shared code
+- [x] Move tests to separate testing file for shared code
 - [ ] ...
 
 ### Renderer (CPU / software renderer) (shared)

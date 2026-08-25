@@ -3,8 +3,9 @@
 
 #include <string.h>
 
+// This is actually really good for testing
 #include "dyn_arr.c"
-#include "dyn_arr.h"
+
 #include "dyn_arr.test.h"
 
 typedef struct

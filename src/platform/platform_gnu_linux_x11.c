@@ -747,7 +747,6 @@ platform_shutdown (PlatformState *platform_state)
 
   close (state->fd);
   free (state);
-  dyn_arr_free (&event_queue);
 
   platform_state->internal_state = NULL;
 }

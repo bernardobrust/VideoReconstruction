@@ -11,7 +11,7 @@ buf_write_u32 (char *buf, unsigned long *buf_size, unsigned long buf_cap,
   assert (*buf_size + sizeof (x) <= buf_cap);
   assert (((size_t)buf + *buf_size) % sizeof (x) == 0);
 
-  *(unsigned *)(buf + *buf_size) = x;
+  memcpy(buf + *buf_size, &x, sizeof x);
   *buf_size += sizeof (x);
 }
 
@@ -30,10 +30,13 @@ void
 buf_write_string (char *buf, unsigned long *buf_size, unsigned long buf_cap,
                   char *src, unsigned src_len)
 {
-  assert (*buf_size + src_len <= buf_cap);
+  unsigned padded_len = ROUNDUP_4 (src_len);
+  assert (*buf_size + padded_len <= buf_cap);
 
   buf_write_u32 (buf, buf_size, buf_cap, src_len);
-  memcpy (buf + *buf_size, src, ROUNDUP_4 (src_len));
+  memcpy (buf + *buf_size, src, src_len);
+  memset (buf + *buf_size + src_len, 0, padded_len - src_len);
+
   *buf_size += ROUNDUP_4 (src_len);
 }
 

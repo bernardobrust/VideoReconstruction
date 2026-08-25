@@ -41,9 +41,9 @@ Now you can compile the project with:
 `./nob -target TARGET -platform PLATFORM -build_type BUILD_TYPE`
 
 The parameters are as follows:
-- TARGET: inspector | reconstructor (see below)
+- TARGET: inspector | reconstructor | tests (see below)
 - PLATFORM: gnu_linux_x11 | gnu_linux_wayland | windows (windows does not exist for now)
-- BUILD_TYPE: debug | release | test
+- BUILD_TYPE: debug | release
 
 For example, to build the inspector for GNU + Linux with X11:
 `./nob -target inspector -platform gnu_linux_x11 -build_type release`

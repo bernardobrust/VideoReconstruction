@@ -259,7 +259,8 @@ create_shared_memory_file (unsigned long size, InternalState *state)
   if (fd == -1)
     exit (errno);
 
-  assert (shm_unlink (name) != -1);
+  int shm_ret = shm_unlink (name);
+  assert (shm_ret == 0 || errno == ENOENT);
 
   if (ftruncate (fd, size) == -1)
     exit (errno);
@@ -920,7 +921,8 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
   tv.tv_sec = 0;
   tv.tv_usec = 0;
 
-  assert (gettimeofday (&tv, NULL) != -1);
+  int time_ret = gettimeofday (&tv, NULL);
+  assert (time_ret != -1);
 
   srand (tv.tv_sec * 1000 * 1000 + tv.tv_usec);
 

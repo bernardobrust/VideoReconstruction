@@ -31,10 +31,9 @@ main (int argc, char **argv)
   // Argument parsing for build
   // No default target
   char **target = flag_str ("target", "", "Target to build");
-  char **platform
-      = flag_str ("platform", "gnu_linux_x11", "Platform to build");
+  char **platform = flag_str ("platform", "", "Platform to build");
   char **build_type
-      = flag_str ("build_type", "debug", "Debug, release or test");
+      = flag_str ("build_type", "", "What kind of binary to generate");
 
   if (!flag_parse (argc, argv))
     {
@@ -47,11 +46,12 @@ main (int argc, char **argv)
 
   // Validating
   if (!(strcmp (*target, "inspector") == 0
-        || strcmp (*target, "reconstructor") == 0))
+        || strcmp (*target, "reconstructor") == 0)
+      || strcmp (*target, "tests") == 0)
     {
       // Invalid build target
-      nob_log (ERROR,
-               "Invalid target, use one of 'inspector' or 'reconstructor'");
+      nob_log (ERROR, "Invalid target, use one of 'inspector', "
+                      "'reconstructor' or 'tests'");
     }
 
   if (!(strcmp (*platform, "gnu_linux_x11") == 0
@@ -64,12 +64,10 @@ main (int argc, char **argv)
     }
 
   if (!(strcmp (*build_type, "debug") == 0
-        || strcmp (*build_type, "release") == 0
-        || strcmp (*build_type, "test") == 0))
+        || strcmp (*build_type, "release") == 0))
     {
       // Invalid build type
-      nob_log (ERROR,
-               "Invalid build type, use one of 'debug', 'release', 'test'");
+      nob_log (ERROR, "Invalid build type, use one of 'debug' or 'release'");
     }
 
   nob_log (INFO, "Building target: %s, for platform: %s", *target, *platform);
@@ -90,7 +88,7 @@ main (int argc, char **argv)
   nob_cmd_append (&cmd, "-o", bin_name);
 
   // Debug information and warnings and release flags
-  if (strcmp (*build_type, "debug") == 0 || strcmp (*build_type, "test") == 0)
+  if (strcmp (*build_type, "debug") == 0)
     nob_cmd_append (&cmd, "-Wall", "-Wextra", "-Werror", "-Wpedantic", "-ggdb",
                     "-Og");
   else
@@ -101,9 +99,7 @@ main (int argc, char **argv)
   // Entry point
   char entry_point[64] = { 0 };
   strcat (entry_point, *target);
-  strcat (entry_point, "/");
-  strcmp (*build_type, "test") == 0 ? strcat (entry_point, "main.test.c")
-                                    : strcat (entry_point, "main.c");
+  strcat (entry_point, "/main.c");
   nob_cmd_append (&cmd, entry_point);
 
   // Math
@@ -111,8 +107,8 @@ main (int argc, char **argv)
 
   // Data Structures
   // Test files include the sources directly
-  nob_cmd_append (&cmd, strcmp (*build_type, "test") == 0 ? "ds/dyn_arr.test.c"
-                                                          : "ds/dyn_arr.c");
+  nob_cmd_append (&cmd, strcmp (*target, "tests") == 0 ? "tests/dyn_arr.test.c"
+                                                       : "ds/dyn_arr.c");
 
   // Platform utility (buf_read, buf_write, etc.) and common implementations
   nob_cmd_append (&cmd, "platform/utility.c");
