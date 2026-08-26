@@ -34,7 +34,7 @@ We won't need audio for this project
 
 ### Math Library (shared)
 - [ ] Basic utilities (clamp, 2D lerp, etc.)
-- [ ] Tests for the math lib
+- [ ] Tests for the math lib (May not be needed as these formulas are proven results)
 - [ ] ...
 
 ### Data Structures (shared)
@@ -80,6 +80,7 @@ Should we test the rendering primitives?
 
 ### Extra (inspector)
 - [ ] Test coverage (like Like FFmpeg's FATE but a lot simpler)
+- [ ] Paralelized build?
 - [ ] Data analysis
 
 ### Documentation (both)
