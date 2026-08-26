@@ -26,7 +26,7 @@ main (int argc, char **argv)
 
   int file_exists = platform_file_exists (video_file);
   if (file_exists == 0)
-    printf ("Video to inspect: %s\n", video_file);
+    printf ("Video to inspect: %s.\n", video_file);
   else if (file_exists == 1)
     {
       fprintf (stderr, "File does not exist. Is the path correct?\n");
@@ -42,7 +42,6 @@ main (int argc, char **argv)
   // I'll drop the entire code here for decoding and factor it out latter just
   // for testing
   AVFormatContext *fmt = NULL;
-
   if (avformat_open_input (&fmt, video_file, NULL, NULL) < 0)
     {
       fprintf (stderr, "Could not open video file.\n");
@@ -57,8 +56,7 @@ main (int argc, char **argv)
     }
 
   int video_stream = -1;
-
-  for (unsigned i = 0; i < fmt->nb_streams; i++)
+  for (unsigned i = 0; i < fmt->nb_streams; ++i)
     {
       if (fmt->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
         {
@@ -75,7 +73,6 @@ main (int argc, char **argv)
     }
 
   AVStream *stream = fmt->streams[video_stream];
-
   const AVCodec *decoder = avcodec_find_decoder (stream->codecpar->codec_id);
   if (!decoder)
     {
@@ -129,6 +126,7 @@ main (int argc, char **argv)
       return EXIT_FAILURE;
     }
 
+  // Decode a single frame
   int got_frame = 0;
   while (!got_frame && av_read_frame (fmt, packet) >= 0)
     {
@@ -151,7 +149,6 @@ main (int argc, char **argv)
       while (!got_frame)
         {
           int ret = avcodec_receive_frame (codec, frame);
-
           if (ret == 0)
             {
               got_frame = 1;
@@ -175,11 +172,10 @@ main (int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  printf ("Decoded frame: %dx%d, pixel format %s\n", frame->width,
-          frame->height, av_get_pix_fmt_name (frame->format));
+  int width = frame->width,  height = frame->height;
+  printf ("Decoded frame: %dx%d, pixel format %s\n", width,
+          height, av_get_pix_fmt_name (frame->format));
 
-  int width = frame->width;
-  int height = frame->height;
   struct SwsContext *sws
       = sws_getContext (width, height, frame->format, width, height,
                         AV_PIX_FMT_RGBA, SWS_BILINEAR, NULL, NULL, NULL);
@@ -190,8 +186,7 @@ main (int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  uint32_t *image = malloc ((size_t)width * height * sizeof (uint32_t));
-
+  unsigned *image = malloc ((size_t)width * height * sizeof (unsigned));
   if (!image)
     {
       fprintf (stderr, "Could not allocate image.\n");
