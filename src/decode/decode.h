@@ -2,16 +2,14 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavutil/imgutils.h>
-#include <libswscale/swscale.h>
 
 typedef struct
 {
-  int video_stream, w, h, format;
+  int video_stream;
   char *video_file;
   AVFormatContext *fmt;
   AVStream *stream;
-  AVCodec *decoder;
+  const AVCodec *decoder;
   AVCodecContext *codec;
   AVFrame *frame;
   AVPacket *packet;

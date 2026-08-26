@@ -126,12 +126,15 @@ main (int argc, char **argv)
   // Input
   nob_cmd_append (&cmd, "input/input.c");
 
-  // The renderer
+  // Renderer
   nob_cmd_append (&cmd, "renderer/renderer.c");
+
+  // Decoder
+  nob_cmd_append (&cmd, "decode/decode.c");
 
   // Anyway we include all directories
   nob_cmd_append (&cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath", "-Irenderer",
-                  "-Iinput");
+                  "-Iinput", "-Idecode");
 
   // Other used libraries. These are only valid in GNU + Linux and assume that
   // the host computer acutally has them installed. After we add Windows I'll

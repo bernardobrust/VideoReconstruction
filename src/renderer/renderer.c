@@ -1,7 +1,6 @@
 #include "renderer.h"
 #include "basic.h"
 #include "performance.h"
-#include "platform.h"
 
 #include <math.h>
 #include <stdlib.h>
