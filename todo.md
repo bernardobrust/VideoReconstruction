@@ -1,7 +1,7 @@
 ### Ongoing:
 - Fix colloring (colors with high R are with high B)
-- Factor the decoding logic out
 - Rescale video to arbitrary resolution (will be used latter for drawing frames side-by-side)
+- Cleanup of the code
 
 ### General
 - [x] Update this TODO list with a more concrete plan
