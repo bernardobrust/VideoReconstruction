@@ -16,4 +16,4 @@ typedef struct
 } VideoPlex;
 
 VideoPlex *init_video (char *video_file);
-unsigned *decode_next_frame ();
+int decode_next_frame (VideoPlex *vp, unsigned *image);

@@ -1,10 +1,11 @@
-#include "renderer.h"
-#include "basic.h"
-#include "performance.h"
-
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "basic.h"
+#include "performance.h"
+#include "renderer.h"
 
 inline unsigned
 rgba (unsigned r, unsigned g, unsigned b, unsigned a)
@@ -18,6 +19,11 @@ inline RendererPlex *
 init_renderer (int w, int h)
 {
   RendererPlex *rp = (RendererPlex *)malloc (sizeof (RendererPlex));
+  if (!rp)
+    {
+      fprintf (stderr, "Could not allocate RendererPlex.\n");
+      return NULL;
+    }
 
   rp->w = w;
   rp->h = h;

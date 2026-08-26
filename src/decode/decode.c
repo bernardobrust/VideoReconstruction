@@ -25,6 +25,11 @@ VideoPlex *
 init_video (char *video_file)
 {
   VideoPlex *vp = (VideoPlex *)malloc (sizeof (VideoPlex));
+  if (!vp)
+    {
+      fprintf (stderr, "Could not allocate VideoPlex.\n");
+      return NULL;
+    }
 
   vp->fmt = NULL;
   if (avformat_open_input (&vp->fmt, video_file, NULL, NULL) < 0)
@@ -114,8 +119,72 @@ init_video (char *video_file)
   return vp;
 }
 
-unsigned *
-decode_next_frame ()
+int
+decode_next_frame (VideoPlex *vp, unsigned *image)
 {
-  return NULL;
+  // Decode a single frame
+  int got_frame = 0;
+  while (!got_frame && av_read_frame (vp->fmt, vp->packet) >= 0)
+    {
+      // Ignore audio/subtitle/etc, we don't need that
+      if (vp->packet->stream_index != vp->video_stream)
+        {
+          av_packet_unref (vp->packet);
+          continue;
+        }
+
+      // Give compressed packet to decoder
+      if (avcodec_send_packet (vp->codec, vp->packet) < 0)
+        {
+          fprintf (stderr, "Error sending packet to decoder\n");
+          av_packet_unref (vp->packet);
+          break;
+        }
+
+      // A packet may produce zero, one, or multiple frames
+      while (!got_frame)
+        {
+          int ret = avcodec_receive_frame (vp->codec, vp->frame);
+          if (ret == 0)
+            {
+              got_frame = 1;
+              break;
+            }
+
+          if (ret == AVERROR (EAGAIN) || ret == AVERROR_EOF)
+            break;
+
+          fprintf (stderr,
+                   "Error receiving decoded frame (ignored for now).\n");
+          break;
+        }
+
+      av_packet_unref (vp->packet);
+    }
+
+  if (!got_frame)
+    {
+      fprintf (stderr, "Could not decode first frame.\n");
+      return 1;
+    }
+
+  int w = vp->frame->width, h = vp->frame->height, format = vp->frame->format;
+  printf ("Decoded frame: %dx%d, pixel format %s\n", w, h,
+          av_get_pix_fmt_name (format));
+
+  struct SwsContext *sws = sws_getContext (w, h, format, w, h, AV_PIX_FMT_RGBA,
+                                           SWS_BILINEAR, NULL, NULL, NULL);
+  if (!sws)
+    {
+      fprintf (stderr, "Could not create scaler.\n");
+      return 2;
+    }
+
+  uint8_t *dst_data[4] = { (uint8_t *)image, NULL, NULL, NULL };
+  int dst_linesize[4] = { w * 4, 0, 0, 0 };
+
+  sws_scale (sws, (const uint8_t *const *)vp->frame->data, vp->frame->linesize,
+             0, h, dst_data, dst_linesize);
+
+  return 0;
 }

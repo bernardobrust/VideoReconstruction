@@ -41,90 +41,30 @@ main (int argc, char **argv)
     }
 
   VideoPlex *vp = init_video (video_file);
+  // init_video prints the error
   if (vp == NULL)
     return EXIT_FAILURE;
 
-  // Decode a single frame
-  int got_frame = 0;
-  while (!got_frame && av_read_frame (vp->fmt, vp->packet) >= 0)
-    {
-      // Ignore audio/subtitle/etc, we don't need that
-      if (vp->packet->stream_index != vp->video_stream)
-        {
-          av_packet_unref (vp->packet);
-          continue;
-        }
+  int w = vp->frame->width, h = vp->frame->height;
 
-      // Give compressed packet to decoder
-      if (avcodec_send_packet (vp->codec, vp->packet) < 0)
-        {
-          fprintf (stderr, "Error sending packet to decoder\n");
-          av_packet_unref (vp->packet);
-          break;
-        }
-
-      // A packet may produce zero, one, or multiple frames
-      while (!got_frame)
-        {
-          int ret = avcodec_receive_frame (vp->codec, vp->frame);
-          if (ret == 0)
-            {
-              got_frame = 1;
-              break;
-            }
-
-          if (ret == AVERROR (EAGAIN) || ret == AVERROR_EOF)
-            break;
-
-          fprintf (stderr,
-                   "Error receiving decoded frame (ignored for now).\n");
-          break;
-        }
-
-      av_packet_unref (vp->packet);
-    }
-
-  if (!got_frame)
-    {
-      fprintf (stderr, "Could not decode first frame.\n");
-      return EXIT_FAILURE;
-    }
-
-  int width = vp->frame->width, height = vp->frame->height,
-      format = vp->frame->format;
-  printf ("Decoded frame: %dx%d, pixel format %s\n", width, height,
-          av_get_pix_fmt_name (format));
-
-  struct SwsContext *sws
-      = sws_getContext (width, height, format, width, height, AV_PIX_FMT_RGBA,
-                        SWS_BILINEAR, NULL, NULL, NULL);
-
-  if (!sws)
-    {
-      fprintf (stderr, "Could not create scaler.\n");
-      return EXIT_FAILURE;
-    }
-
-  unsigned *image = malloc ((size_t)width * height * sizeof (unsigned));
+  unsigned *image = malloc ((size_t)w * h * sizeof (unsigned));
   if (!image)
     {
       fprintf (stderr, "Could not allocate image.\n");
       return EXIT_FAILURE;
     }
 
-  uint8_t *dst_data[4] = { (uint8_t *)image, NULL, NULL, NULL };
-  int dst_linesize[4] = { width * 4, 0, 0, 0 };
-
-  sws_scale (sws, (const uint8_t *const *)vp->frame->data, vp->frame->linesize,
-             0, height, dst_data, dst_linesize);
-
-  // Done decoding 1 frame
+  // decode_next_frame prints the error
+  if (decode_next_frame (vp, image) != 0)
+    return EXIT_FAILURE;
 
   // Initialize the renderer and platform
-  RendererPlex *rp = init_renderer (width, height);
+  RendererPlex *rp = init_renderer (w, h);
+  if (!rp)
+    return EXIT_FAILURE;
 
   PlatformState platform_state = { 0 };
-  platform_init (&platform_state, "Inspector", 0, 0, rp->w, rp->h,
+  platform_init (&platform_state, "Inspector", 0, 0, w, h,
                  (char *)rp->image_buffer);
 
   // Main app loop
@@ -133,8 +73,9 @@ main (int argc, char **argv)
       if (input_is_key_pressed (ESC))
         platform_stop (&platform_state);
 
+      // move this to the renderer
       memcpy (rp->image_buffer, image,
-              (size_t)rp->w * rp->h * sizeof (*rp->image_buffer));
+              (size_t)w * h * sizeof (*rp->image_buffer));
 
       renderer_present (&platform_state, rp);
     }
