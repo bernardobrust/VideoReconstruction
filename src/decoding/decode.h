@@ -17,5 +17,5 @@ typedef struct
   AVPacket *packet;
 } VideoPlex;
 
-VideoPlex init_video (char *video_file);
+VideoPlex *init_video (char *video_file);
 unsigned *decode_next_frame ();

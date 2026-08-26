@@ -10,6 +10,7 @@
 #include "input.h"
 #include "platform.h"
 #include "renderer.h"
+// #include "decode.h"
 
 int
 main (int argc, char **argv)
@@ -172,9 +173,9 @@ main (int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  int width = frame->width,  height = frame->height;
-  printf ("Decoded frame: %dx%d, pixel format %s\n", width,
-          height, av_get_pix_fmt_name (frame->format));
+  int width = frame->width, height = frame->height;
+  printf ("Decoded frame: %dx%d, pixel format %s\n", width, height,
+          av_get_pix_fmt_name (frame->format));
 
   struct SwsContext *sws
       = sws_getContext (width, height, frame->format, width, height,
@@ -202,11 +203,11 @@ main (int argc, char **argv)
   // Done decoding 1 frame
 
   // Initialize the renderer and platform
-  RendererPlex rp = init_renderer (width, height);
+  RendererPlex *rp = init_renderer (width, height);
 
   PlatformState platform_state = { 0 };
-  platform_init (&platform_state, "Inspector", 0, 0, rp.w, rp.h,
-                 (char *)rp.image_buffer);
+  platform_init (&platform_state, "Inspector", 0, 0, rp->w, rp->h,
+                 (char *)rp->image_buffer);
 
   // Main app loop
   while (platform_update (&platform_state))
@@ -214,8 +215,8 @@ main (int argc, char **argv)
       if (input_is_key_pressed (ESC))
         platform_stop (&platform_state);
 
-      memcpy (rp.image_buffer, image,
-              (size_t)rp.w * rp.h * sizeof (*rp.image_buffer));
+      memcpy (rp->image_buffer, image,
+              (size_t)rp->w * rp->h * sizeof (*rp->image_buffer));
 
       renderer_present (&platform_state, rp);
     }
