@@ -45,7 +45,16 @@ main (int argc, char **argv)
   if (vp == NULL)
     return EXIT_FAILURE;
 
-  int w = vp->frame->width, h = vp->frame->height;
+  int w = vp->codec->width, h = vp->codec->height;
+
+  // Initialize the renderer and platform
+  RendererPlex *rp = init_renderer (w, h);
+  if (!rp)
+    return EXIT_FAILURE;
+
+  // decode_next_frame prints the error
+  if (decode_next_frame (vp, rp->image_buffer) != 0)
+    return EXIT_FAILURE;
 
   unsigned *image = malloc ((size_t)w * h * sizeof (unsigned));
   if (!image)
@@ -54,18 +63,13 @@ main (int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  // decode_next_frame prints the error
-  if (decode_next_frame (vp, image) != 0)
-    return EXIT_FAILURE;
-
-  // Initialize the renderer and platform
-  RendererPlex *rp = init_renderer (w, h);
-  if (!rp)
-    return EXIT_FAILURE;
-
   PlatformState platform_state = { 0 };
-  platform_init (&platform_state, "Inspector", 0, 0, w, h,
+  platform_init (&platform_state, "Inspector", 0, 0, rp->w, rp->h,
                  (char *)rp->image_buffer);
+
+  // Just for testing:
+  AVRational fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
+  double frame_time_ms = 1000.0 * fps.den / fps.num;
 
   // Main app loop
   while (platform_update (&platform_state))
@@ -73,9 +77,11 @@ main (int argc, char **argv)
       if (input_is_key_pressed (ESC))
         platform_stop (&platform_state);
 
-      // move this to the renderer
-      memcpy (rp->image_buffer, image,
-              (size_t)w * h * sizeof (*rp->image_buffer));
+      if (decode_next_frame (vp, rp->image_buffer) != 0)
+        // Wrong but ok
+        return EXIT_FAILURE;
+
+      platform_sleep ((uint32_t)frame_time_ms);
 
       renderer_present (&platform_state, rp);
     }

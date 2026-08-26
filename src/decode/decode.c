@@ -164,11 +164,11 @@ decode_next_frame (VideoPlex *vp, unsigned *image)
 
   if (!got_frame)
     {
-      fprintf (stderr, "Could not decode first frame.\n");
+      fprintf (stderr, "Could not decode frame or it's the last one.\n");
       return 1;
     }
 
-  int w = vp->frame->width, h = vp->frame->height, format = vp->frame->format;
+  int w = vp->codec->width, h = vp->codec->height, format = vp->frame->format;
   printf ("Decoded frame: %dx%d, pixel format %s\n", w, h,
           av_get_pix_fmt_name (format));
 
