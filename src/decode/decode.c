@@ -1,25 +1,12 @@
 #include "decode.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
-
-/*
-typedef struct
-{
-  int video_stream;
-  char *video_file;
-  AVFormatContext *fmt;
-  AVStream *stream;
-  AVCodec *decoder;
-  AVCodecContext *codec;
-  AVFrame *frame;
-  AVPacket *packet;
-} VideoPlex;
-*/
 
 VideoPlex *
 init_video (char *video_file)
@@ -119,65 +106,107 @@ init_video (char *video_file)
   return vp;
 }
 
+// We may want to factor the scaling out of here
+// Convention: negative = error
+//             0 = ok
+//             1 = end
 int
 decode_next_frame (VideoPlex *vp, unsigned *image)
 {
-  // Decode a single frame
-  int got_frame = 0;
-  while (!got_frame && av_read_frame (vp->fmt, vp->packet) >= 0)
+  bool got_frame = false;
+  while (!got_frame)
     {
-      // Ignore audio/subtitle/etc, we don't need that
+      int ret = av_read_frame (vp->fmt, vp->packet);
+
+      if (ret < 0)
+        {
+          // Input is exhausted, flush the decoder
+          ret = avcodec_send_packet (vp->codec, NULL);
+
+          if (ret < 0 && ret != AVERROR_EOF)
+            {
+              fprintf (stderr, "Error flushing decoder.\n");
+              return -1;
+            }
+
+          // Receive any frames buffered inside the decoder
+          while (!got_frame)
+            {
+              ret = avcodec_receive_frame (vp->codec, vp->frame);
+
+              if (ret == 0)
+                {
+                  got_frame = true;
+                  break;
+                }
+
+              if (ret == AVERROR_EOF)
+                {
+                  // No more frames. This really is the end
+                  return 1;
+                }
+
+              if (ret == AVERROR (EAGAIN))
+                {
+                  // Shouldn't normally happen after flushing
+                  return 1;
+                }
+
+              fprintf (stderr, "Error receiving flushed frame.\n");
+              return -1;
+            }
+
+          break;
+        }
+
+      // Ignore non-video packets
       if (vp->packet->stream_index != vp->video_stream)
         {
           av_packet_unref (vp->packet);
           continue;
         }
 
-      // Give compressed packet to decoder
-      if (avcodec_send_packet (vp->codec, vp->packet) < 0)
+      ret = avcodec_send_packet (vp->codec, vp->packet);
+      av_packet_unref (vp->packet);
+
+      if (ret < 0)
         {
-          fprintf (stderr, "Error sending packet to decoder\n");
-          av_packet_unref (vp->packet);
-          break;
+          fprintf (stderr, "Error sending packet to decoder.\n");
+          return -1;
         }
 
-      // A packet may produce zero, one, or multiple frames
+      // A packet can produce zero, one, or multiple frames
       while (!got_frame)
         {
-          int ret = avcodec_receive_frame (vp->codec, vp->frame);
+          ret = avcodec_receive_frame (vp->codec, vp->frame);
+
           if (ret == 0)
             {
-              got_frame = 1;
+              got_frame = true;
               break;
             }
 
-          if (ret == AVERROR (EAGAIN) || ret == AVERROR_EOF)
+          if (ret == AVERROR (EAGAIN))
             break;
 
-          fprintf (stderr,
-                   "Error receiving decoded frame (ignored for now).\n");
-          break;
+          if (ret == AVERROR_EOF)
+            return 1;
+
+          fprintf (stderr, "Error receiving decoded frame.\n");
+          return -1;
         }
-
-      av_packet_unref (vp->packet);
     }
 
-  if (!got_frame)
-    {
-      fprintf (stderr, "Could not decode frame or it's the last one.\n");
-      return 1;
-    }
-
+  // Convert the decoded frame. We may want to factor this out
   int w = vp->codec->width, h = vp->codec->height, format = vp->frame->format;
-  printf ("Decoded frame: %dx%d, pixel format %s\n", w, h,
-          av_get_pix_fmt_name (format));
 
   struct SwsContext *sws = sws_getContext (w, h, format, w, h, AV_PIX_FMT_RGBA,
                                            SWS_BILINEAR, NULL, NULL, NULL);
+
   if (!sws)
     {
       fprintf (stderr, "Could not create scaler.\n");
-      return 2;
+      return -2;
     }
 
   uint8_t *dst_data[4] = { (uint8_t *)image, NULL, NULL, NULL };
@@ -185,6 +214,8 @@ decode_next_frame (VideoPlex *vp, unsigned *image)
 
   sws_scale (sws, (const uint8_t *const *)vp->frame->data, vp->frame->linesize,
              0, h, dst_data, dst_linesize);
+
+  sws_freeContext (sws);
 
   return 0;
 }

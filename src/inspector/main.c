@@ -73,13 +73,15 @@ main (int argc, char **argv)
       if (input_is_key_pressed (ESC))
         platform_stop (&platform_state);
 
-      if (decode_next_frame (vp, rp->image_buffer) != 0)
+      int ret = decode_next_frame (vp, rp->image_buffer);
+      if (ret < 0)
         return EXIT_FAILURE;
+      if (ret == 1)
+        return EXIT_SUCCESS;
 
       renderer_present (&platform_state, rp);
 
       next_frame += frame_time_ms;
-
       now = platform_get_time ();
       remaining = next_frame - now;
 
