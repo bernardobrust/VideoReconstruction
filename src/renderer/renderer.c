@@ -254,8 +254,9 @@ draw_arrow (int startx, int starty, int endx, int endy, int thickness,
 
 // Call platform present to put image then zero out the buffer to clear it
 inline void
-renderer_present (PlatformState *platform_state, RendererPlex *rp)
+renderer_present (PlatformState *platform_state, __attribute__((unused)) RendererPlex *rp)
 {
   platform_present (platform_state);
-  memset (rp->image_buffer, 0, rp->w * rp->h * sizeof (unsigned));
+  // We don't actually need this for now
+  // memset (rp->image_buffer, 0, rp->w * rp->h * sizeof (unsigned));
 }

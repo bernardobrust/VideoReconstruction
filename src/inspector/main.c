@@ -40,14 +40,15 @@ main (int argc, char **argv)
       return EXIT_FAILURE;
     }
 
+  // Initializing video
   VideoPlex *vp = init_video (video_file);
   // init_video prints the error
-  if (vp == NULL)
+  if (!vp)
     return EXIT_FAILURE;
 
   int w = vp->codec->width, h = vp->codec->height;
 
-  // Initialize the renderer and platform
+  // Initialize the renderer
   RendererPlex *rp = init_renderer (w, h);
   if (!rp)
     return EXIT_FAILURE;
@@ -56,37 +57,36 @@ main (int argc, char **argv)
   if (decode_next_frame (vp, rp->image_buffer) != 0)
     return EXIT_FAILURE;
 
-  unsigned *image = malloc ((size_t)w * h * sizeof (unsigned));
-  if (!image)
-    {
-      fprintf (stderr, "Could not allocate image.\n");
-      return EXIT_FAILURE;
-    }
-
+  // Initialize platform
   PlatformState platform_state = { 0 };
   platform_init (&platform_state, "Inspector", 0, 0, rp->w, rp->h,
                  (char *)rp->image_buffer);
 
-  // Just for testing:
+  // Stable framerate at video FPS, we'll have a lot of work latter (?) to fix
+  // the fps of the UI
   AVRational fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
-  double frame_time_ms = 1000.0 * fps.den / fps.num;
+  double frame_time_ms = 1000.0 * fps.den / fps.num,
+         next_frame = platform_get_time (), now, remaining;
 
-  // Main app loop
   while (platform_update (&platform_state))
     {
       if (input_is_key_pressed (ESC))
         platform_stop (&platform_state);
 
       if (decode_next_frame (vp, rp->image_buffer) != 0)
-        // Wrong but ok
         return EXIT_FAILURE;
 
-      platform_sleep ((uint32_t)frame_time_ms);
-
       renderer_present (&platform_state, rp);
-    }
 
-  platform_stop (&platform_state);
+      next_frame += frame_time_ms;
+
+      now = platform_get_time ();
+      remaining = next_frame - now;
+
+      // If this is negative we are actually delayed
+      if (remaining > 0)
+        platform_sleep (remaining);
+    }
 
   return EXIT_SUCCESS;
 }

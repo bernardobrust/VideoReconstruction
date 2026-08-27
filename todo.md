@@ -1,7 +1,6 @@
 ### Ongoing:
 - Fix colloring (colors with high R are with high B)
 - Rescale video to arbitrary resolution (will be used latter for drawing frames side-by-side)
-- Cleanup of the code
 
 ### General
 - [x] Update this TODO list with a more concrete plan
@@ -52,12 +51,13 @@ Should we test the rendering primitives?
 - [x] Draw circle
 - [x] Draw rotated rectangle (with angle and with orientation)
 - [x] Draw arrow
-- [ ] Framerate cap (30 should be good as a default, but maybe we don't even care about this)
+- [x] Framerate stability on video framerate
+- [ ] UI fixed framerate
 - [ ] Draw text
 - [x] Draw frame of a video
 - [ ] Draw transparent rectangle on top of frame (and arrow)
 - [ ] Scale video resolution to block dimensions
-- [ ] TODO: add more here as it turns out as needed ...
+- [ ] Paralelize the renderer
 
 ### Systems (inspector)
 - [x] Event system (key presses and UI buttons)
