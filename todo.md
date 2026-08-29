@@ -1,6 +1,11 @@
 ### Ongoing:
-- Fix colloring (colors with high R are with high B)
+- @fix Fix colloring (colors with high R are with high B)
 - Rescale video to arbitrary resolution (will be used latter for drawing frames side-by-side)
+
+#### Per-file basis
+- @decode.c check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
+- @dyn_arr.c check if $2$ is a reasonable scale factor, or add a macro to change it
+- @tests/main.c check if this strategy for argument handling is good
 
 ### General
 - [x] Update this TODO list with a more concrete plan
@@ -20,6 +25,7 @@ We'll add a lot more stuff here as the project advances
 - [x] Setup test build
 - [x] FFmpeg integration
 - [ ] Get testing data (I have some mock videos but we'll need more latter)
+- [ ] Translation units of `shared` and individual projects via inclusion of `.c` files
 
 ### Platform Layer (shared)
 We won't need audio for this project
@@ -28,12 +34,11 @@ We won't need audio for this project
 - [x] Raw Wayland platform Layer
 - [ ] Windows platform layer
 - [ ] Floating windows on window managers
-- [ ] Full screen
+- [ ] Full screen support
 - [ ] Mac platform layer? (Sounds like a pain for little gain)
 
 ### Math Library (shared)
 - [ ] Basic utilities (clamp, 2D lerp, etc.)
-- [ ] Tests for the math lib (May not be needed as these formulas are proven results)
 - [ ] ...
 
 ### Data Structures (shared)
@@ -66,7 +71,7 @@ Should we test the rendering primitives?
 
 ### Core (inspector)
 - [x] Take the video to use as a parameter of the inspector binary
-- [ ] Scale/downscale video to a given WxH
+- [ ] Scale/downscale video to a given WxH (ongoing)
 - [ ] App state PLEX (a.k.a fat struct)
 - [ ] Render motion vectors per block
 - [ ] Compression data...
