@@ -789,7 +789,7 @@ platform_update (PlatformState *platform_state)
       state->read_len -= 32;
     }
 
-  platform_dispatch_events (platform_state);
+  platform_dispatch_events ();
 
   return platform_state->running;
 }

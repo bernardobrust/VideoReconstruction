@@ -6,10 +6,8 @@
 DynArr event_queue;
 
 void
-platform_dispatch_events (PlatformState *platform_state)
+platform_dispatch_events (void)
 {
-  (void)platform_state;
-
   for (int i = 0; i < event_queue.len; ++i)
     {
       EventType ev = *(EventType *)dyn_arr_get (&event_queue, i);

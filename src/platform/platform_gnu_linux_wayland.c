@@ -994,7 +994,7 @@ bool
 platform_update (PlatformState *platform_state)
 {
   read_and_dispatch (platform_state, false);
-  platform_dispatch_events (platform_state);
+  platform_dispatch_events ();
 
   return platform_state->running;
 }

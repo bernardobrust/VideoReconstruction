@@ -42,7 +42,7 @@ void platform_shutdown (PlatformState *platform_state);
 
 bool platform_update (PlatformState *platform_state);
 
-void platform_dispatch_events (PlatformState *platform_state);
+void platform_dispatch_events (void);
 
 void platform_stop (PlatformState *platform_state);
 
