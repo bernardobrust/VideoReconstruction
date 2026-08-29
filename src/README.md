@@ -1,5 +1,5 @@
 # Build Instructions
-This project only uses C, the build system is a separete C file [`nob.c`](nob.c) (check the structure section).
+This project only uses C, the build system is a separate C file [`nob.c`](nob.c) (check the structure section).
 
 ### Requirements:
 - A C11 compatible compiler (tested mainly with `gcc`).
@@ -73,7 +73,7 @@ This includes the following directories:
 6. `lib`, third-party code used in the project
 7. `test_files`, files used to test the correctness of the programs
 
-For now the following are present in `lib/` (the `.h` files are in there):
+The following are present in `lib/` (the `.h` files are in there):
 - [nob](https://github.com/tsoding/nob.h), the build system (by TSoding)
 - [flag](https://github.com/tsoding/flag.h), for parsing the build system arguments (by TSoding)
 - [astf](https://github.com/bernardobrust/ASTF-V2), for automated testing (by me)

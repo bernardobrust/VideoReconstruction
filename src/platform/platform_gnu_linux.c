@@ -36,7 +36,7 @@ platform_sleep (double ms)
 
 // Returns: 0 => OK
 // 1 => wrong path
-// 2 => inacessible
+// 2 => inaccessible
 inline int
 platform_file_exists (char *filepath)
 {

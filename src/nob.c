@@ -137,7 +137,7 @@ main (int argc, char **argv)
                   "-Iinput", "-Idecode");
 
   // Other used libraries. These are only valid in GNU + Linux and assume that
-  // the host computer acutally has them installed. After we add Windows I'll
+  // the host computer actually has them installed. After we add Windows I'll
   // have to also see how to link using MSVC
   nob_cmd_append (&cmd, "-lm", "-lavformat", "-lavcodec", "-lswscale",
                   "-lavutil");
@@ -147,6 +147,11 @@ main (int argc, char **argv)
   strcat (self_dir, *target);
   nob_cmd_append (&cmd, self_dir);
 
+// clangd is anoying here, so we suppress the warnings
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc23-extensions"
+#pragma clang diagnostic ignored "-Wvariadic-macro-arguments-omitted"
   if (!nob_cmd_run (&cmd))
     return EXIT_FAILURE;
+#pragma clang diagnostic pop
 }

@@ -48,7 +48,7 @@ void platform_stop (PlatformState *platform_state);
 
 void platform_present (PlatformState *platform_state);
 
-double platform_get_time ();
+double platform_get_time (void);
 
 void platform_sleep (double ms);
 

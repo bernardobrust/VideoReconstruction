@@ -15,7 +15,7 @@ rgba (unsigned r, unsigned g, unsigned b, unsigned a)
 
 // For now it's this simple alocation, latter we can check for aspect ratio &&
 // all
-inline RendererPlex *
+RendererPlex *
 init_renderer (int w, int h)
 {
   RendererPlex *rp = (RendererPlex *)malloc (sizeof (RendererPlex));
@@ -254,7 +254,8 @@ draw_arrow (int startx, int starty, int endx, int endy, int thickness,
 
 // Call platform present to put image then zero out the buffer to clear it
 inline void
-renderer_present (PlatformState *platform_state, __attribute__((unused)) RendererPlex *rp)
+renderer_present (PlatformState *platform_state,
+                  __attribute__ ((unused)) RendererPlex *rp)
 {
   platform_present (platform_state);
   // We don't actually need this for now

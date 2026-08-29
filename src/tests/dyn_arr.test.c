@@ -16,7 +16,7 @@ typedef struct
 } St;
 
 void
-dyn_arr_test_init ()
+dyn_arr_test_init (void)
 {
   start_test_suite ("Dynamic array initialization");
 
@@ -47,7 +47,7 @@ dyn_arr_test_init ()
 }
 
 void
-dyn_arr_test_get ()
+dyn_arr_test_get (void)
 {
   start_test_suite ("Dynamic array get");
 
@@ -83,7 +83,7 @@ dyn_arr_test_get ()
 }
 
 void
-dyn_arr_test_set ()
+dyn_arr_test_set (void)
 {
   start_test_suite ("Dynamic array set");
 
@@ -91,7 +91,7 @@ dyn_arr_test_set ()
   DynArr *xs = dyn_arr_init (4, sizeof (int));
   xs->len = 4;
 
-  // Coumpount literals are better here
+  // Compound literals are better here
   dyn_arr_set (xs, 0, &(int){ 4 });
   dyn_arr_set (xs, 1, &(int){ 3 });
   dyn_arr_set (xs, 2, &(int){ 2 });
@@ -127,7 +127,7 @@ dyn_arr_test_set ()
 }
 
 void
-dyn_arr_test_push ()
+dyn_arr_test_push (void)
 {
   start_test_suite ("Dynamic array push");
 
@@ -185,7 +185,7 @@ dyn_arr_test_push ()
 }
 
 void
-dyn_arr_test_insert ()
+dyn_arr_test_insert (void)
 {
   start_test_suite ("Dynamic array insert");
 
@@ -235,11 +235,11 @@ dyn_arr_test_insert ()
 }
 
 void
-dyn_arr_test_pop ()
+dyn_arr_test_pop (void)
 {
   start_test_suite ("Dynamic array pop");
 
-  // We'll only do simple for this one as it doese'nt even care about the
+  // We'll only do simple for this one as it doesn't even care about the
   // stride
 
   // Simple ----------------------------------------------------
@@ -268,7 +268,7 @@ dyn_arr_test_pop ()
 }
 
 void
-dyn_arr_test_delete ()
+dyn_arr_test_delete (void)
 {
 
   start_test_suite ("Dynamic array delete");
@@ -321,7 +321,7 @@ dyn_arr_test_delete ()
 }
 
 void
-dyn_arr_all_tests ()
+dyn_arr_all_tests (void)
 {
   dyn_arr_test_init ();
   dyn_arr_test_get ();

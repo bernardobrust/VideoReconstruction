@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
@@ -45,7 +44,7 @@ init_video (char *video_file)
   if (vp->video_stream < 0)
     {
       fprintf (stderr,
-               "No video stream found. Is the file correclty encoded?\n");
+               "No video stream found. Is the file correctly encoded?\n");
       return NULL;
     }
 
@@ -107,9 +106,10 @@ init_video (char *video_file)
 }
 
 // We may want to factor the scaling out of here
-// Convention: negative = error
-//             0 = ok
-//             1 = end
+// Convention:
+// negative = error
+// 0 = ok
+// 1 = end
 int
 decode_next_frame (VideoPlex *vp, unsigned *image)
 {
@@ -140,17 +140,13 @@ decode_next_frame (VideoPlex *vp, unsigned *image)
                   break;
                 }
 
+              // No more frames. This really is the end
               if (ret == AVERROR_EOF)
-                {
-                  // No more frames. This really is the end
-                  return 1;
-                }
+                return 1;
 
+              // Shouldn't normally happen after flushing, but isn't an error
               if (ret == AVERROR (EAGAIN))
-                {
-                  // Shouldn't normally happen after flushing
-                  return 1;
-                }
+                return 1;
 
               fprintf (stderr, "Error receiving flushed frame.\n");
               return -1;

@@ -1,4 +1,4 @@
-// I have to say that Platform Layers are the most Copy-Pastey Ever invented
+// I have to say that Platform Layers are the most Copy-Pasty Ever invented
 
 // Use these definitions if and only if we're on GNU + Linux and Wayland
 
@@ -102,7 +102,7 @@ typedef struct
 // Internal functions
 // ----------------------------------------------------------------
 static int
-display_connect ()
+display_connect (void)
 {
   char *xdg_runtime_dir = getenv ("XDG_RUNTIME_DIR");
 
@@ -831,7 +831,7 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
   fprintf (stderr, "object_id=%u opcode=%u msg_len=%lu\n", object_id, opcode,
            *msg_len);
 
-  assert (0 && "Unimplemented message recived");
+  assert (0 && "Unimplemented message received");
 }
 
 static void
@@ -910,7 +910,7 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
 
   platform_state->internal_state = malloc (sizeof (InternalState));
   assert (platform_state->internal_state != NULL
-          && "Failed to alocate memory from internal state");
+          && "Failed to allocate memory from internal state");
 
   event_queue = *dyn_arr_init (16, sizeof (int));
 

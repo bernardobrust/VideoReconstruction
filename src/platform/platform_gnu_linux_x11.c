@@ -667,7 +667,7 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
                 }
             }
           else
-              state->shm_data = NULL;
+            state->shm_data = NULL;
         }
     }
 

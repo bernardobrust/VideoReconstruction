@@ -18,8 +18,8 @@ int
 main (int argc, char **argv)
 {
   // CLI parsing
-  // enabled tests is a whitelist
-  // disabled tests is a blacklist
+  // enabled_tests is a whitelist
+  // disabled_tests is a blacklist
   Flag_List *enabled_tests = flag_list ("enable", "List flag");
   Flag_List *disabled_tests = flag_list ("disable", "List flag");
 

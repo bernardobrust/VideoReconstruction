@@ -110,7 +110,7 @@ dyn_arr_pop (DynArr *xs)
   assert (xs->data != NULL);
 
   // We could ignore the operation and return doing nothing, but if this assert
-  // fails it's likelly a programming error
+  // fails it's likely a programming error
   assert (xs->len > 0);
 
   // We don't shrink the array
