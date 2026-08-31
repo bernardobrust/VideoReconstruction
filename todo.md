@@ -1,6 +1,7 @@
 ### Ongoing:
 - @fix Fix colloring (colors with high R are with high B)
 - Rescale video to arbitrary resolution (will be used latter for drawing frames side-by-side)
+- Windows platform layer
 
 #### Per-file basis
 - @decode.c check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter

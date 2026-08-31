@@ -2,10 +2,10 @@
 #include <string.h>
 
 /*
-** Build configuration
-**
-** We're ignoring windows for now (no one should use that anyway)
-*/
+ * Build configuration
+ * We could use nob string views but just buffering up 64 chars should do the
+ * trick
+ */
 
 #define NOB_IMPLEMENTATION
 #include "lib/nob.h"
@@ -60,7 +60,7 @@ main (int argc, char **argv)
     {
       // Invalid build target
       nob_log (ERROR, "Invalid platform, use one of 'gnu_linux_x11', "
-                      "'gnu_linux_wayland', 'windows'");
+                      "'gnu_linux_wayland' or 'windows'");
     }
 
   if (!(strcmp (*build_type, "debug") == 0
@@ -141,11 +141,6 @@ main (int argc, char **argv)
   // have to also see how to link using MSVC
   nob_cmd_append (&cmd, "-lm", "-lavformat", "-lavcodec", "-lswscale",
                   "-lavutil");
-
-  // Include the own directory
-  char self_dir[64] = "-I";
-  strcat (self_dir, *target);
-  nob_cmd_append (&cmd, self_dir);
 
 // clangd is anoying here, so we suppress the warnings
 #pragma clang diagnostic push

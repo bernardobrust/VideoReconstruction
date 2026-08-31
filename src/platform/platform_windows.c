@@ -1,0 +1,15 @@
+#include "platform.h"
+
+bool platform_init (PlatformState *platform_state, const char *window_name,
+                    int x, int y, int w, int h, char *image_buffer);
+void platform_shutdown (PlatformState *platform_state);
+
+bool platform_update (PlatformState *platform_state);
+void platform_dispatch_events (void);
+void platform_present (PlatformState *platform_state);
+
+double platform_get_time (void);
+void platform_sleep (double ms);
+int platform_file_exists (char *filepath);
+
+void platform_stop (PlatformState *platform_state);

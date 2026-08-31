@@ -2,7 +2,7 @@
 This project only uses C, the build system is a separate C file [`nob.c`](nob.c) (check the structure section).
 
 ### Requirements:
-- A C11 compatible compiler (tested mainly with `gcc`).
+- A C11 compatible compiler (tested mainly with `gcc` for GNU + Linux, `mingw-gcc` for windows).
 - FFmpeg development libraries: `avformat`, `avcodec`, `swscale`, and `avutil`.
 
 The libraries can be installed in GNU + Linux systems as follows (if I added anything wrong here please open an issue):
