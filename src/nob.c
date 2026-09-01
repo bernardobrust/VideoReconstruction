@@ -114,8 +114,11 @@ main (int argc, char **argv)
     {
       nob_cmd_append (&cmd, "/nologo", "/std:c11");
 
-      if (str_eq (*build_type, "debug"))
+      /*if (str_eq (*build_type, "debug"))
         nob_cmd_append (&cmd, "/W4", "/WX", "/external:W0",
+                        "/external:anglebrackets", "/Zi", "/Od");*/
+      if (str_eq (*build_type, "debug"))
+        nob_cmd_append (&cmd, "/W4", "/external:W0",
                         "/external:anglebrackets", "/Zi", "/Od");
       else
         nob_cmd_append (&cmd, "/O2", "/GL", "/DNDEBUG");
