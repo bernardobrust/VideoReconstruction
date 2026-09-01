@@ -1,7 +1,13 @@
 # Build objects
 build/
+.vs/
 nob
 nob.old
+*.o
+*.obj
+*.exe*
+*.json
+*.pdb
 
 # Debug information
 gdb.txt

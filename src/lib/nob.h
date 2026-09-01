@@ -180,8 +180,9 @@
 #define _WINCON_
 #include <direct.h>
 #include <io.h>
-#include <shellapi.h>
 #include <windows.h>
+
+#include <shellapi.h>
 #else
 #ifdef __APPLE__
 #include <mach-o/dyld.h>

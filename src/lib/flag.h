@@ -474,8 +474,8 @@ size_t *
 flag_c_size (void *c, const char *name, uint64_t def, const char *desc)
 {
   Flag *flag = flag__new_flag ((Flag_Context *)c, FLAG_SIZE, name, desc);
-  flag->val.as_size = def;
-  flag->def.as_size = def;
+  flag->val.as_size = (size_t)def;
+  flag->def.as_size = (size_t)def;
   return &flag->val.as_size;
 }
 
@@ -485,8 +485,8 @@ flag_c_size_var (void *c, size_t *var, const char *name, uint64_t def,
 {
   Flag *flag = flag__new_flag ((Flag_Context *)c, FLAG_SIZE, name, desc);
   flag->ref = var;
-  flag->def.as_size = def;
-  *var = def;
+  flag->def.as_size = (size_t)def;
+  *var = (size_t)def;
 }
 
 size_t *
@@ -1027,6 +1027,7 @@ flag_c_parse (void *c, int argc, char **argv)
                         arg = equals;
                       }
 
+                    /*
                     static_assert (
                         sizeof (unsigned long long int) == sizeof (size_t),
                         "The original author designed this for x86_64 machine "
@@ -1036,6 +1037,7 @@ flag_c_parse (void *c, int argc, char **argv)
                         "this code for your case and maybe even send the "
                         "patch to upstream to make it work on a wider range "
                         "of environments.");
+                        */
                     char *endptr;
                     unsigned long long int result
                         = strtoull (arg, &endptr, 10);
@@ -1055,7 +1057,7 @@ flag_c_parse (void *c, int argc, char **argv)
                       }
 
                     if (!ignore)
-                      *(size_t *)flag__get_ref (&fc->flags[i]) = result;
+                      *(size_t *)flag__get_ref (&fc->flags[i]) = (size_t)result;
                   }
                   break;
 

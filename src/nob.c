@@ -1,35 +1,43 @@
 #include <stdlib.h>
 #include <string.h>
 
-/*
- * Build configuration
- * We could use nob string views but just buffering up 64 chars should do the
- * trick
- */
-
 #define NOB_IMPLEMENTATION
 #include "lib/nob.h"
 
 #define FLAG_IMPLEMENTATION
 #include "lib/flag.h"
 
-// Directories
 #define BUILD_DIR "build/"
 
-// Compiler information
-#define CC "gcc"
-#define C_VERSION "--std=c11"
+// Helper functions
+static bool
+str_eq (const char *a, const char *b)
+{
+  return strcmp (a, b) == 0;
+}
+
+static bool
+is_linux_platform (const char *platform)
+{
+  return str_eq (platform, "gnu_linux_x11")
+         || str_eq (platform, "gnu_linux_wayland");
+}
+
+static bool
+is_windows_platform (const char *platform)
+{
+  return str_eq (platform, "windows");
+}
 
 int
 main (int argc, char **argv)
 {
-  // Build setup
   NOB_GO_REBUILD_URSELF (argc, argv);
+
   if (!nob_mkdir_if_not_exists (BUILD_DIR))
     return EXIT_FAILURE;
 
-  // Argument parsing for build
-  // No default target
+  // CLI parsing
   char **target = flag_str ("target", "", "Target to build");
   char **platform = flag_str ("platform", "", "Platform to build");
   char **build_type
@@ -44,83 +52,128 @@ main (int argc, char **argv)
   argc = flag_rest_argc ();
   argv = flag_rest_argv ();
 
-  // Validating
-  if (!(strcmp (*target, "inspector") == 0
-        || strcmp (*target, "reconstructor") == 0)
-      || strcmp (*target, "tests") == 0)
+  // Validation
+  bool valid_target = str_eq (*target, "inspector")
+                      || str_eq (*target, "reconstructor")
+                      || str_eq (*target, "tests");
+
+  if (!valid_target)
     {
-      // Invalid build target
-      nob_log (ERROR, "Invalid target, use one of 'inspector', "
-                      "'reconstructor' or 'tests'");
+      nob_log (NOB_ERROR, "Invalid target, use one of "
+                          "'inspector', 'reconstructor' or 'tests'");
+      return EXIT_FAILURE;
     }
 
-  if (!(strcmp (*platform, "gnu_linux_x11") == 0
-        || strcmp (*platform, "gnu_linux_wayland") == 0
-        || strcmp (*platform, "windows") == 0))
+  bool valid_platform = str_eq (*platform, "gnu_linux_x11")
+                        || str_eq (*platform, "gnu_linux_wayland")
+                        || str_eq (*platform, "windows");
+
+  if (!valid_platform)
     {
-      // Invalid build target
-      nob_log (ERROR, "Invalid platform, use one of 'gnu_linux_x11', "
-                      "'gnu_linux_wayland' or 'windows'");
+      nob_log (NOB_ERROR, "Invalid platform, use one of "
+                          "'gnu_linux_x11', 'gnu_linux_wayland' or 'windows'");
+      return EXIT_FAILURE;
     }
 
-  if (!(strcmp (*build_type, "debug") == 0
-        || strcmp (*build_type, "release") == 0))
+  bool valid_build_type
+      = str_eq (*build_type, "debug") || str_eq (*build_type, "release");
+
+  if (!valid_build_type)
     {
-      // Invalid build type
-      nob_log (ERROR, "Invalid build type, use one of 'debug' or 'release'");
+      nob_log (NOB_ERROR,
+               "Invalid build type, use one of 'debug' or 'release'");
+      return EXIT_FAILURE;
     }
 
   nob_log (INFO, "Building target: %s, for platform: %s", *target, *platform);
   nob_log (INFO, "Build mode: %s", *build_type);
 
-  // Nob build
   Nob_Cmd cmd = { 0 };
 
-  // Basics
-  char bin_name[64] = BUILD_DIR;
+  // Compiler selection
+  if (is_windows_platform (*platform))
+    nob_cmd_append (&cmd, "cl");
+  else
+    nob_cmd_append (&cmd, "gcc");
+
+  // Output binary
+  char bin_name[256] = { 0 };
+
+  strcat (bin_name, BUILD_DIR);
   strcat (bin_name, *target);
   strcat (bin_name, "_");
   strcat (bin_name, *build_type);
   strcat (bin_name, "_");
   strcat (bin_name, *platform);
 
-  nob_cmd_append (&cmd, CC, C_VERSION);
-  nob_cmd_append (&cmd, "-o", bin_name);
+  if (is_windows_platform (*platform))
+    strcat (bin_name, ".exe");
 
-  // Debug information and warnings and release flags
-  if (strcmp (*build_type, "debug") == 0)
-    nob_cmd_append (&cmd, "-Wall", "-Wextra", "-Werror", "-Wpedantic", "-ggdb",
-                    "-Og");
+  // Compiler options
+  if (is_windows_platform (*platform))
+    {
+      nob_cmd_append (&cmd, "/nologo", "/std:c11");
+
+      if (str_eq (*build_type, "debug"))
+        nob_cmd_append (&cmd, "/W4", "/WX", "/external:W0",
+                        "/external:anglebrackets", "/Zi", "/Od");
+      else
+        nob_cmd_append (&cmd, "/O2", "/GL", "/DNDEBUG");
+
+      // MSVC output executable
+      char output_option[64] = { 0 };
+      snprintf (output_option, sizeof (output_option), "/Fe:%s", bin_name);
+
+      nob_cmd_append (&cmd, output_option);
+    }
   else
-    // Yes, -Ofast will be worth it
-    nob_cmd_append (&cmd, "-Ofast", "-march=native", "-flto", "-DNDEBUG");
+    {
+      nob_cmd_append (&cmd, "--std=c11");
 
-  // Source files and includes
+      if (str_eq (*build_type, "debug"))
+        nob_cmd_append (&cmd, "-Wall", "-Wextra", "-Werror", "-Wpedantic",
+                        "-ggdb", "-Og");
+      else
+        nob_cmd_append (&cmd, "-Ofast", "-march=native", "-flto", "-DNDEBUG");
+
+      nob_cmd_append (&cmd, "-o", bin_name);
+    }
+
   // Entry point
-  char entry_point[64] = { 0 };
+  char entry_point[256] = { 0 };
+
   strcat (entry_point, *target);
   strcat (entry_point, "/main.c");
+
   nob_cmd_append (&cmd, entry_point);
 
   // Math
   nob_cmd_append (&cmd, "math/basic.c");
 
-  // Data Structures
-  // Test files include the sources directly
-  nob_cmd_append (&cmd, strcmp (*target, "tests") == 0 ? "tests/dyn_arr.test.c"
-                                                       : "ds/dyn_arr.c");
+  // Data structures
+  // Tests include the implementations directly.
+  if (str_eq (*target, "tests"))
+    nob_cmd_append (&cmd, "tests/dyn_arr.test.c");
+  else
+    nob_cmd_append (&cmd, "ds/dyn_arr.c");
 
-  // Platform utility (buf_read, buf_write, etc.) and common implementations
+  // Platform utilities
   nob_cmd_append (&cmd, "platform/utility.c");
-  if (strcmp (*platform, "gnu_linux_x11") == 0
-      || strcmp (*platform, "gnu_linux_wayland") == 0)
+
+  // Platform layer common code
+  if (is_linux_platform (*platform))
     nob_cmd_append (&cmd, "platform/platform_gnu_linux.c");
 
-  // Platform layer implementation
-  char platform_layer[64] = "platform/platform_";
+  // Platform layer
+  char platform_layer[256] = { 0 };
+
+  strcat (platform_layer, "platform/platform_");
   strcat (platform_layer, *platform);
   strcat (platform_layer, ".c");
+
   nob_cmd_append (&cmd, platform_layer);
+
+  // Event dispatcher
   nob_cmd_append (&cmd, "platform/event_dispatcher.c");
 
   // Input
@@ -132,21 +185,60 @@ main (int argc, char **argv)
   // Decoder
   nob_cmd_append (&cmd, "decode/decode.c");
 
-  // Anyway we include all directories
-  nob_cmd_append (&cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath", "-Irenderer",
-                  "-Iinput", "-Idecode");
+  // Includes
+  if (is_windows_platform (*platform))
+    nob_cmd_append (&cmd, "/Ilib", "/Ids", "/Iplatform", "/Imath",
+                    "/Irenderer", "/Iinput", "/Idecode");
+  else
+    nob_cmd_append (&cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath",
+                    "-Irenderer", "-Iinput", "-Idecode");
 
-  // Other used libraries. These are only valid in GNU + Linux and assume that
-  // the host computer actually has them installed. After we add Windows I'll
-  // have to also see how to link using MSVC
-  nob_cmd_append (&cmd, "-lm", "-lavformat", "-lavcodec", "-lswscale",
-                  "-lavutil");
+  // Libraries
+  if (is_windows_platform (*platform))
+    {
+      // Mine is at:
+      // C:\Users\berna\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg.Shared_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build-shared\include\libavcodec\avcodec.h
+      char *ffmpeg_dir = getenv ("FFMPEG_DIR");
+      if (ffmpeg_dir == NULL)
+        {
+          nob_log (ERROR,
+                   "FFMPEG_DIR is not set, please define where you installed "
+                   "your FFmpeg libraries on this eviroment variable");
+          return EXIT_FAILURE;
+        }
 
-// clangd is anoying here, so we suppress the warnings
+      char ffmpeg_include[1024];
+      char ffmpeg_lib[1024];
+
+      snprintf (ffmpeg_include, sizeof (ffmpeg_include), "/I%s/include",
+                ffmpeg_dir);
+
+      snprintf (ffmpeg_lib, sizeof (ffmpeg_lib), "/LIBPATH:%s/lib",
+                ffmpeg_dir);
+
+      nob_cmd_append (&cmd, ffmpeg_include);
+      nob_cmd_append (&cmd, "/link", ffmpeg_lib, "avformat.lib", "avcodec.lib",
+                      "swscale.lib", "avutil.lib", "shell32.lib");
+
+      if (str_eq (*build_type, "release"))
+        nob_cmd_append (&cmd, "/LTCG");
+    }
+  else
+    nob_cmd_append (&cmd, "-lm", "-lavformat", "-lavcodec", "-lswscale",
+                    "-lavutil");
+
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc23-extensions"
 #pragma clang diagnostic ignored "-Wvariadic-macro-arguments-omitted"
+#endif
+
   if (!nob_cmd_run (&cmd))
     return EXIT_FAILURE;
+
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
+
+  return EXIT_SUCCESS;
 }

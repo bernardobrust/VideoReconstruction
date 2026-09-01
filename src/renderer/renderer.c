@@ -178,8 +178,10 @@ draw_rotated_rectangle (int cx, int cy, int w, int h, float theta,
   // (x0, y0), (x1, y1), (x2, y2)
   // Triangle 2 points:
   // (x0, y0), (x2, y2), (x3, y3)
-  draw_triangle (x0, y0, x1, y1, x2, y2, color, rp);
-  draw_triangle (x0, y0, x2, y2, x3, y3, color, rp);
+  draw_triangle ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
+                 rp);
+  draw_triangle ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
+                 rp);
 }
 
 // It's also reasonable to think about in terms of start, end + width. The
@@ -189,8 +191,8 @@ void
 draw_rotated_oriented_rectangle (int dx1, int dy1, int dx2, int dy2, int width,
                                  unsigned color, RendererPlex *rp)
 {
-  float dx = dx2 - dx1, dy = dy2 - dy1;
-  float length = sqrtf (dx * dx + dy * dy);
+  int dx = dx2 - dx1, dy = dy2 - dy1;
+  float length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
 
   if (length == 0.0f)
     return;
@@ -215,8 +217,10 @@ draw_rotated_oriented_rectangle (int dx1, int dy1, int dx2, int dy2, int width,
   // (x0, y0), (x1, y1), (x2, y2)
   // Triangle 2 points:
   // (x0, y0), (x2, y2), (x3, y3)
-  draw_triangle (x0, y0, x1, y1, x2, y2, color, rp);
-  draw_triangle (x0, y0, x2, y2, x3, y3, color, rp);
+  draw_triangle ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
+                 rp);
+  draw_triangle ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
+                 rp);
 }
 
 // It's just a rectangle with a triangle on top
@@ -225,8 +229,8 @@ draw_arrow (int startx, int starty, int endx, int endy, int thickness,
             unsigned color, RendererPlex *rp)
 {
   // Same geometry from draw_rotated_oriented_rectangle
-  float dx = endx - startx, dy = endy - starty;
-  float length = sqrtf (dx * dx + dy * dy);
+  int dx = endx - startx, dy = endy - starty;
+  float length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
 
   if (length == 0.0f)
     return;
@@ -243,21 +247,20 @@ draw_arrow (int startx, int starty, int endx, int endy, int thickness,
   float rightx = basex - nx * head_thickness,
         righty = basey - ny * head_thickness;
 
-  int shaft_end_x = endx - ux * head_thickness,
-      shaft_end_y = endy - uy * head_thickness;
+  float shaft_end_x = endx - ux * head_thickness,
+        shaft_end_y = endy - uy * head_thickness;
 
-  draw_rotated_oriented_rectangle (startx, starty, shaft_end_x, shaft_end_y,
-                                   thickness, color, rp);
+  draw_rotated_oriented_rectangle ((int)startx, (int)starty, (int)shaft_end_x,
+                                   (int)shaft_end_y, thickness, color, rp);
 
-  draw_triangle (endx, endy, leftx, lefty, rightx, righty, color, rp);
+  draw_triangle ((int)endx, (int)endy, (int)leftx, (int)lefty, (int)rightx,
+                 (int)righty, color, rp);
 }
 
 // Call platform present to put image then zero out the buffer to clear it
 inline void
-renderer_present (PlatformState *platform_state,
-                  __attribute__ ((unused)) RendererPlex *rp)
+renderer_present (PlatformState *platform_state, RendererPlex *rp)
 {
   platform_present (platform_state);
-  // We don't actually need this for now
-  // memset (rp->image_buffer, 0, rp->w * rp->h * sizeof (unsigned));
+  memset (rp->image_buffer, 0, rp->w * rp->h * sizeof (unsigned));
 }
