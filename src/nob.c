@@ -203,7 +203,7 @@ main (int argc, char **argv)
         {
           nob_log (ERROR,
                    "FFMPEG_DIR is not set, please define where you installed "
-                   "your FFmpeg libraries on this eviroment variable");
+                   "your FFmpeg libraries on this environment variable");
           return EXIT_FAILURE;
         }
 

@@ -2,8 +2,8 @@
 This project only uses C, the build system is a separate C file [`nob.c`](nob.c) (check the structure section).
 
 ### Requirements:
-- A C11 compatible compiler (tested mainly with `gcc` for GNU + Linux, `mingw-gcc` for windows).
-- FFmpeg development libraries: `avformat`, `avcodec`, `swscale`, and `avutil`.
+- A C11 compatible compiler (tested mainly with `gcc` for GNU + Linux, `cl` for windows).
+- FFmpeg development libraries: `avformat`, `avcodec`, `swscale`, and `avutil`. If running on Windows the environment variable `FFMPEG_DIR` must be set to the directory where the FFmpeg libraries are located.
 
 The libraries can be installed in GNU + Linux systems as follows (if I added anything wrong here please open an issue):
 - Debian / Ubuntu:
@@ -35,10 +35,10 @@ sudo emerge media-video/ffmpeg
 
 ### Building:
 The first time you compile you will have to generate the build tool, simply run (uses `gcc` by default):
-`gcc nob.c -o nob`
+`gcc nob.c -o nob` or `cl nob.c`
 
 Now you can compile the project with:
-`./nob -target TARGET -platform PLATFORM -build_type BUILD_TYPE`
+`./nob(.exe) -target TARGET -platform PLATFORM -build_type BUILD_TYPE`
 
 The parameters are as follows:
 - TARGET: inspector | reconstructor | tests (see below)
