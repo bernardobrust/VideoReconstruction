@@ -16,7 +16,7 @@
 
 ### General
 - [x] Update this TODO list with a more concrete plan
-- [ ] Add non-online sources (like books) to [sources](sources.md)
+- [x] Add non-online sources (like books) to [sources](sources.md)
 
 ### Research
 We'll add a lot more stuff here as the project advances
@@ -68,7 +68,7 @@ Should we test the rendering primitives?
 - [ ] UI fixed framerate
 - [ ] Draw text
 - [x] Draw frame of a video
-- [ ] Draw transparent rectangle on top of frame (and arrow)
+- [x] Draw transparent rectangle on top of frame (and arrow)
 - [ ] Scale video resolution to block dimensions
 - [ ] Paralelize the renderer
 

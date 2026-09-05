@@ -57,3 +57,26 @@
 - [Compression oriented programming, by Casey Muratori](https://caseymuratori.com/blog_0015)
 - [Casey Muratori – The Big OOPs: Anatomy of a Thirty-five-year Mistake](https://www.youtube.com/watch?v=wo84LFzx5nI&t=6616s)
 - [The Root of The Root of All Evil](https://www.youtube.com/watch?v=hpj6r6CjJf8)
+
+## Books Used
+**Video Processing**
+- Video Dismistified: A Handbook for the Digital Engineer, by Keith Jack
+
+**Computer Vision**
+- Computer Vision: Algorithms and Applications, by Richard Szeliski
+- Multiple View Geometry in Computer Vision, by Richard Hartley and Andrew Zisserman
+
+> Notice that there are very few books on computer vision and video processing. That is due to the fact that these fields change very rapidly, and books are usually outdated by the time they are published. Most of the information is found in research papers and online sources.
+
+**C Programming**
+- C Programming Language, by Brian W. Kernighan and Dennis M. Ritchie
+- Expert C Programming: Deep C Secrets, by Peter van der Linden
+
+**Performance**
+- Agner Fog's Optimizing Software in C++: An Optimization Guide for Windows, Linux and Mac Platforms
+- Computer Systems: A Programmer's Perspective, by Randal E. Bryant and David R. O'Hallaron
+- Performance Analysis and Tuning on Modern CPUs, by Denis Bakhvalov
+- The Art of X86 Assembly, by Randall Hyde
+- The Art of Computer Programming, by Donald E. Knuth
+- Hacker's Delight, by Henry S. Warren, Jr.
+- Computer Organization and Design: The Hardware/Software Interface, by David A. Patterson and John L. Hennessy
