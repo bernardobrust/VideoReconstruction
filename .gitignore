@@ -9,9 +9,11 @@ nob.old
 *.json
 *.pdb
 
+# Big files, see the main sources.md for where to get some
+test_files
+
 # Debug information
 gdb.txt
-compile_commands.json
 
 # Perf data
 perf.*

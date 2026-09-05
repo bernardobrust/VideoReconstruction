@@ -2,7 +2,7 @@
 This project only uses C, the build system is a separate C file [`nob.c`](nob.c) (check the structure section).
 
 ### Requirements:
-- A C11 compatible compiler (tested mainly with `gcc` for GNU + Linux, `cl` for windows).
+- A C11 compatible compiler, tested mainly with `gcc` on GNU + Linux, `cl` (msvc) on windows.
 - FFmpeg development libraries: `avformat`, `avcodec`, `swscale`, and `avutil`. If running on Windows the environment variable `FFMPEG_DIR` must be set to the directory where the FFmpeg libraries are located.
 
 The libraries can be installed in GNU + Linux systems as follows (if I added anything wrong here please open an issue):
@@ -26,11 +26,18 @@ sudo zypper install ffmpeg-9-libavformat-devel ffmpeg-9-libavcodec-devel ffmpeg-
 ```bash
 sudo apk add ffmpeg-dev
 ```
-- Gentoo (The best distro):
+- Gentoo:
 
 **USE flags: dav1d (enabled by default)**
 ```bash
 sudo emerge media-video/ffmpeg
+```
+
+If you are using a different distribution, please check the package manager for the FFmpeg development libraries.
+
+On Windows the easiest way is with ``win-get``, just run:
+```powershell
+winget install "FFmpeg (Shared)"
 ```
 
 ### Building:
@@ -50,12 +57,15 @@ For example, to build the inspector for GNU + Linux with X11:
 
 Both GNU + Linux back-ends speak their display protocols directly, so no X11 or Wayland development packages are required.
 
+The generated executable will be in the form ""TARGET_BUILD_TYPE_PLATFORM(.exe)"" in the `build/` directory. Exemple: `build/inspector_release_gnu_linux_x11` or `build\inspector_debug_windows.exe`
+
 ### Running:
-So far there is no usage instructions here, you just run the executable generated under `build/`. It will be in the format "target_buildtype_platform".
+You can tun the inspector using the executable and passing a video path:
+``build/inspector_...(.exe) video_path``
 
 ### Testing:
 Testing can be performed with either a whitelist or a blacklist:
-`./build/TEST_EXECUTABLE -enable TESTS_TO_RUN` or `./build/TEST_EXECUTABLE -disable TESTS_TO_EXCLUDE`
+`./build/tests_...(.exe) -enable TESTS_TO_RUN` or `./build/tests_...(.exe) -disable TESTS_TO_EXCLUDE`
 
 Not providing any option will run all of the tests.
 
@@ -71,7 +81,7 @@ This includes the following directories:
 4. `ds`, the data structures used in the projects
 5. `math`, the mathematical functions and objects used in the code
 6. `lib`, third-party code used in the project
-7. `test_files`, files used to test the correctness of the programs
+7. `test_files`, files used to test the correctness of the programs. For now this is empty as I didn't write any tests that directly require video data, but I recommend checking the sources for where to get some testing data.
 
 The following are present in `lib/` (the `.h` files are in there):
 - [nob](https://github.com/tsoding/nob.h), the build system (by TSoding)

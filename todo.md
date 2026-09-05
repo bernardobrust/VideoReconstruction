@@ -1,12 +1,12 @@
 ### Ongoing:
-- @fix Fix colloring (colors with high R are with high B)
+- @FIX Fix colloring (colors with high R are with high B)
 - Rescale video to arbitrary resolution (will be used latter for drawing frames side-by-side)
 - Windows platform layer
 
 #### Per-file basis
-- @decode.c check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
-- @dyn_arr.c check if $2$ is a reasonable scale factor, or add a macro to change it
-- @tests/main.c check if this strategy for argument handling is good
+- decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
+- dyn_arr.c : @OPTIMIZATION check if $2$ is a reasonable scale factor, or add a macro to change it
+- tests/main.c : @IMPROVEMENT check if this strategy for argument handling is good
 
 ### General
 - [x] Update this TODO list with a more concrete plan
