@@ -81,40 +81,66 @@ draw_hline (int x0, int x1, int y, unsigned color, RendererPlex *rp)
 
 // Standard shapes
 
+// Previously I was using barycentric coordinates as TSoding used in Olive.c,
+// but profiling with VTune pointed that that was highly inefficient. So I
+// decided to use the edge function method, which, being honest, is also easier
+// to reason about.
 void
 draw_triangle (int x1, int y1, int x2, int y2, int x3, int y3, unsigned color,
                RendererPlex *rp)
 {
-  // We'll be using barycentric coordinates for the triangle (props to TSoding
-  // on Olive.c)
-
   int min_x = MIN3 (x1, x2, x3), max_x = MAX3 (x1, x2, x3);
   int min_y = MIN3 (y1, y2, y3), max_y = MAX3 (y1, y2, y3);
 
-  // Clamp to image buffer
   min_x = clamp_int (min_x, 0, rp->w - 1);
   max_x = clamp_int (max_x, 0, rp->w - 1);
   min_y = clamp_int (min_y, 0, rp->h - 1);
   max_y = clamp_int (max_y, 0, rp->h - 1);
 
   int area = determinant_ab_ap_int (x1, y1, x2, y2, x3, y3);
-
-  // No need to render
   if (area == 0)
     return;
 
+  int a0 = y3 - y2, b0 = x2 - x3;
+  int a1 = y1 - y3, b1 = x3 - x1;
+  int a2 = y2 - y1, b2 = x1 - x2;
+
+  int w0_row = determinant_ab_ap_int (x2, y2, x3, y3, min_x, min_y),
+      w1_row = determinant_ab_ap_int (x3, y3, x1, y1, min_x, min_y),
+      w2_row = determinant_ab_ap_int (x1, y1, x2, y2, min_x, min_y);
+
+  // Just invert everything
+  if (area < 0)
+    {
+      a0 = -a0;
+      b0 = -b0;
+      w0_row = -w0_row;
+      a1 = -a1;
+      b1 = -b1;
+      w1_row = -w1_row;
+      a2 = -a2;
+      b2 = -b2;
+      w2_row = -w2_row;
+    }
+
   for (int y = min_y; y <= max_y; ++y)
     {
+      int w0 = w0_row, w1 = w1_row, w2 = w2_row;
+      int row_offset = y * rp->w;
+
       for (int x = min_x; x <= max_x; ++x)
         {
-          int w0 = determinant_ab_ap_int (x2, y2, x3, y3, x, y);
-          int w1 = determinant_ab_ap_int (x3, y3, x1, y1, x, y);
-          int w2 = determinant_ab_ap_int (x1, y1, x2, y2, x, y);
+          if ((w0 | w1 | w2) >= 0)
+            rp->image_buffer[row_offset + x] = color;
 
-          if ((area > 0 && w0 >= 0 && w1 >= 0 && w2 >= 0)
-              || (area < 0 && w0 <= 0 && w1 <= 0 && w2 <= 0))
-            rp->image_buffer[y * rp->w + x] = color;
+          w0 += a0;
+          w1 += a1;
+          w2 += a2;
         }
+
+      w0_row += b0;
+      w1_row += b1;
+      w2_row += b2;
     }
 }
 
@@ -122,10 +148,8 @@ void
 draw_rectangle (int x1, int y1, int x2, int y2, unsigned color,
                 RendererPlex *rp)
 {
-  int min_x = MIN (x1, x2);
-  int max_x = MAX (x1, x2);
-  int min_y = MIN (y1, y2);
-  int max_y = MAX (y1, y2);
+  int min_x = MIN (x1, x2), max_x = MAX (x1, x2);
+  int min_y = MIN (y1, y2), max_y = MAX (y1, y2);
 
   // Clamp to image buffer
   min_x = clamp_int (min_x, 0, rp->w - 1);
@@ -301,23 +325,50 @@ draw_triangle_t (int x1, int y1, int x2, int y2, int x3, int y3,
   max_y = clamp_int (max_y, 0, rp->h - 1);
 
   int area = determinant_ab_ap_int (x1, y1, x2, y2, x3, y3);
-
   if (area == 0)
     return;
 
+  int a0 = y3 - y2, b0 = x2 - x3;
+  int a1 = y1 - y3, b1 = x3 - x1;
+  int a2 = y2 - y1, b2 = x1 - x2;
+
+  int w0_row = determinant_ab_ap_int (x2, y2, x3, y3, min_x, min_y),
+      w1_row = determinant_ab_ap_int (x3, y3, x1, y1, min_x, min_y),
+      w2_row = determinant_ab_ap_int (x1, y1, x2, y2, min_x, min_y);
+
+  // Just invert everything
+  if (area < 0)
+    {
+      a0 = -a0;
+      b0 = -b0;
+      w0_row = -w0_row;
+      a1 = -a1;
+      b1 = -b1;
+      w1_row = -w1_row;
+      a2 = -a2;
+      b2 = -b2;
+      w2_row = -w2_row;
+    }
+
   for (int y = min_y; y <= max_y; ++y)
     {
+      int w0 = w0_row, w1 = w1_row, w2 = w2_row;
+      int row_offset = y * rp->w;
+
       for (int x = min_x; x <= max_x; ++x)
         {
-          int w0 = determinant_ab_ap_int (x2, y2, x3, y3, x, y);
-          int w1 = determinant_ab_ap_int (x3, y3, x1, y1, x, y);
-          int w2 = determinant_ab_ap_int (x1, y1, x2, y2, x, y);
+          if ((w0 | w1 | w2) >= 0)
+            rp->image_buffer[row_offset + x]
+                = blend_rgba_pixel (color, rp->image_buffer[row_offset + x]);
 
-          if ((area > 0 && w0 >= 0 && w1 >= 0 && w2 >= 0)
-              || (area < 0 && w0 <= 0 && w1 <= 0 && w2 <= 0))
-            rp->image_buffer[y * rp->w + x]
-                = blend_rgba_pixel (color, rp->image_buffer[y * rp->w + x]);
+          w0 += a0;
+          w1 += a1;
+          w2 += a2;
         }
+
+      w0_row += b0;
+      w1_row += b1;
+      w2_row += b2;
     }
 }
 
@@ -325,10 +376,8 @@ void
 draw_rectangle_t (int x1, int y1, int x2, int y2, unsigned color,
                   RendererPlex *rp)
 {
-  int min_x = MIN (x1, x2);
-  int max_x = MAX (x1, x2);
-  int min_y = MIN (y1, y2);
-  int max_y = MAX (y1, y2);
+  int min_x = MIN (x1, x2), max_x = MAX (x1, x2);
+  int min_y = MIN (y1, y2), max_y = MAX (y1, y2);
 
   // Clamp to image buffer
   min_x = clamp_int (min_x, 0, rp->w - 1);
