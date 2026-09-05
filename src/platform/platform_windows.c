@@ -8,8 +8,8 @@
 #define NOMINMAX
 #endif
 
-#include <windows.h>
 #include <timeapi.h>
+#include <windows.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -19,9 +19,9 @@
 #include "platform.h"
 
 // IDK what this does really, but it dosen't work without this
-#pragma comment (lib, "user32.lib")
-#pragma comment (lib, "gdi32.lib")
-#pragma comment (lib, "winmm.lib")
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "winmm.lib")
 
 typedef struct
 {
@@ -279,11 +279,10 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
   if (pos_y < 0)
     pos_y = CW_USEDEFAULT;
 
-  HWND hwnd = CreateWindowExA (0, class_name,
-                               window_name != NULL ? window_name
-                                                   : "Video Reconstruction",
-                               style, pos_x, pos_y, window_w, window_h, NULL,
-                               NULL, instance, platform_state);
+  HWND hwnd = CreateWindowExA (
+      0, class_name,
+      window_name != NULL ? window_name : "Video Reconstruction", style, pos_x,
+      pos_y, window_w, window_h, NULL, NULL, instance, platform_state);
 
   if (hwnd == NULL)
     {
@@ -429,11 +428,10 @@ platform_sleep (double ms)
   LARGE_INTEGER start, current;
   QueryPerformanceCounter (&start);
 
-  double target_counts
-      = (ms * (double)win32_perf_frequency.QuadPart) / 1000.0;
+  double target_counts = (ms * (double)win32_perf_frequency.QuadPart) / 1000.0;
 
   if (ms > 2.0)
-      Sleep ((DWORD)(ms - 1.0));
+    Sleep ((DWORD)(ms - 1.0));
 
   for (;;)
     {
@@ -469,10 +467,10 @@ platform_file_exists (char *filepath)
   if (attrs & FILE_ATTRIBUTE_DIRECTORY)
     return 0;
 
-  HANDLE file = CreateFileA (
-      filepath, GENERIC_READ,
-      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
-      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  HANDLE file
+      = CreateFileA (filepath, GENERIC_READ,
+                     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                     NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (file == INVALID_HANDLE_VALUE)
     {
@@ -483,7 +481,7 @@ platform_file_exists (char *filepath)
         return 2;
     }
   else
-      CloseHandle (file);
+    CloseHandle (file);
 
   return 0;
 }
