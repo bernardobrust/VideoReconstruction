@@ -15,8 +15,8 @@ test_files
 # Debug information
 gdb.txt
 
-# Perf data
-perf.*
+# Profiling data
+profiling/
 
 # Tex build
 *.aux

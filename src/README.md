@@ -2,7 +2,7 @@
 This project only uses C, the build system is a separate C file [`nob.c`](nob.c) (check the structure section).
 
 ### Requirements:
-- A C11 compatible compiler, tested mainly with `gcc` on GNU + Linux, `cl` (msvc) on windows.
+- A C11 compatible compiler, tested mainly with `gcc` on GNU + Linux, `cl` (msvc, make sure you are using a 64-bit version) on windows.
 - FFmpeg development libraries: `avformat`, `avcodec`, `swscale`, and `avutil`. If running on Windows the environment variable `FFMPEG_DIR` must be set to the directory where the FFmpeg libraries are located.
 
 The libraries can be installed in GNU + Linux systems as follows (if I added anything wrong here please open an issue):
@@ -35,7 +35,7 @@ sudo emerge media-video/ffmpeg
 
 If you are using a different distribution, please check the package manager for the FFmpeg development libraries.
 
-On Windows the easiest way is with ``win-get``, just run:
+On Windows the easiest way is with `win-get`, just run:
 ```powershell
 winget install "FFmpeg (Shared)"
 ```
@@ -93,3 +93,8 @@ The inspector is a tool to visualize compression data of the videos, such as col
 
 ### Reconstructor
 The reconstructor is a tool to reconstruct 3d models from video data using computer vision. See more [here](reconstructor/)
+
+# Profiling
+In this project we use both `perf` and "Intel VTune Profiler" (check [sources](../sources.md)). Profiling data is not uploaded to GitHub as it's hardware dependent and can be extracted with ease.
+
+Information relevat to performance can be found on the [TODO list](../todo.md)

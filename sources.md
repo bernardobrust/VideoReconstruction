@@ -24,7 +24,7 @@
 
 ### Tooling
 **Profiling**
-- [Intel VTune Profiler](https://www.intel.com/content/www/us/en/developer/tools/oneapi/vtune-profiler.html), used on Windows
+- [Intel VTune Profiler](https://www.intel.com/content/www/us/en/developer/tools/oneapi/vtune-profiler.html), used
 - [Perf](https://perf.wiki.kernel.org/index.php/Main_Page), used on GNU + Linux
 
 **Debugging**

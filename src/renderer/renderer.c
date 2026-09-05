@@ -7,7 +7,7 @@
 #include "performance.h"
 #include "renderer.h"
 
-inline unsigned
+unsigned
 rgba (unsigned r, unsigned g, unsigned b, unsigned a)
 {
   return a << 24 | r << 16 | g << 8 | b;
@@ -258,7 +258,7 @@ draw_arrow (int startx, int starty, int endx, int endy, int thickness,
 }
 
 // Call platform present to put image then zero out the buffer to clear it
-inline void
+void
 renderer_present (PlatformState *platform_state, RendererPlex *rp)
 {
   platform_present (platform_state);
