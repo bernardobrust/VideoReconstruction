@@ -196,7 +196,8 @@ decode_next_frame (VideoPlex *vp, unsigned *image)
   // Convert the decoded frame. We may want to factor this out
   int w = vp->codec->width, h = vp->codec->height, format = vp->frame->format;
 
-  struct SwsContext *sws = sws_getContext (w, h, format, w, h, AV_PIX_FMT_RGBA,
+  // Using RGBA was swapping the colors, so we use BGRA instead.
+  struct SwsContext *sws = sws_getContext (w, h, format, w, h, AV_PIX_FMT_BGRA,
                                            SWS_BILINEAR, NULL, NULL, NULL);
 
   if (!sws)

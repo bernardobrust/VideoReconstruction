@@ -1,13 +1,12 @@
 ### Ongoing:
-- @FIX Fix colloring (colors with high R are with high B)
 - Rescale video to arbitrary resolution (will be used latter for drawing frames side-by-side and video resolutions diferent from the monitor)
-- Windows platform layer
 
 #### Per-file basis
 - decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
+- decode.c : @IMPROVEMENT check if the "RGBA" vs "BGRA" problem is platform-specific, more specifically, if it has to do with "XRGB8888" on wayland, or with endianess.
 - dyn_arr.c : @OPTIMIZATION check if $2$ is a reasonable scale factor, or add a macro to change it
 - tests/main.c : @IMPROVEMENT check if this strategy for argument handling is good
-- platform/platform.h : @FEATURE add a function to get monitor resolution (or maybe a function to get the monitor size and position)
+- platform.h : @FEATURE add a function to get monitor resolution (or maybe a function to get the monitor size and position)
 
 ### Performance
 - @PERFORMANCE For now the main bottleneck is the decode -> send image buffer to display loop, which is not paralelized. We can improve this latter by using a queue of decoded frames and a separate thread for the renderer.

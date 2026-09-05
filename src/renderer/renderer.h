@@ -12,8 +12,6 @@ RendererPlex *init_renderer (int w, int h);
 
 unsigned rgba (unsigned r, unsigned g, unsigned b, unsigned a);
 
-unsigned *init_image_buffer (int w, int h);
-
 void draw_hline (int x0, int x1, int y, unsigned color, RendererPlex *rp);
 
 void draw_triangle (int x1, int y1, int x2, int y2, int x3, int y3,
