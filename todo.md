@@ -14,6 +14,7 @@
 
 ### General
 - [x] Update this TODO list with a more concrete plan
+- [ ] Add non-online sources (like books) to [sources](sources.md)
 
 ### Research
 We'll add a lot more stuff here as the project advances
@@ -37,7 +38,7 @@ We won't need audio for this project
 
 - [x] Raw X11 platform Layer
 - [x] Raw Wayland platform Layer
-- [ ] Windows platform layer
+- [x] Windows platform layer
 - [ ] Floating windows on window managers
 - [ ] Full screen support
 - [ ] Mac platform layer? (Sounds like a pain for little gain)
@@ -86,7 +87,6 @@ Should we test the rendering primitives?
 - [ ] Video timeline
 - [ ] Side-by-side frame comparison (basic)
 - [ ] Side-by-side frame comparison (mapping block translations)
-- [ ] TODO ...
 
 ### Extra (inspector)
 - [ ] Test coverage (like Like FFmpeg's FATE but a lot simpler)

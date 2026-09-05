@@ -46,9 +46,14 @@
 - [C + FFmpeg + Raylib = High Quality Videos (YES! It IS that simple!)](https://www.youtube.com/watch?v=0To1aYglVHE), inspired
 - [2mpeg4yuv](https://www.youtube.com/playlist?list=PLpM-Dvs8t0VaAFL21D-48W02tJWTeejcM), inspired
 
+**Software architecture and performance**
+- [Handmade Hero](https://handmadehero.org/), both inspired and used
+- [Software Quality](https://www.youtube.com/playlist?list=PLEMXAbCVnmY4JbNByvpgEzWsLRKVaF_pk), both inspired and used
+
 ### Philosophy (if you may call it that)
 - [ZII, by Casey Muratori](https://www.youtube.com/watch?v=xt1KNDmOYqA)
 - [The first ECS, by Molly Rocket](https://www.youtube.com/watch?v=73Do0OScoOU)
 - [Simple code, by Molly Rocket](https://www.youtube.com/watch?v=Ge3aKEmZcqY&t=1093s)
 - [Compression oriented programming, by Casey Muratori](https://caseymuratori.com/blog_0015)
 - [Casey Muratori – The Big OOPs: Anatomy of a Thirty-five-year Mistake](https://www.youtube.com/watch?v=wo84LFzx5nI&t=6616s)
+- [The Root of The Root of All Evil](https://www.youtube.com/watch?v=hpj6r6CjJf8)
