@@ -78,6 +78,14 @@ main (int argc, char **argv)
       if (ret == 1)
         return EXIT_SUCCESS;
 
+      // Trying out transparent shapes
+      draw_triangle_t (0, 0, 500, 500, 700, 200, rgba (255, 0, 0, 100), rp);
+      draw_circle_t (200, 200, 100, rgba (255, 255, 0, 128), rp);
+      draw_rectangle_t (500, 500, 600, 600, rgba (0, 0, 255, 128), rp);
+
+      draw_arrow_t (300, 300, 400, 400, 8, rgba (0, 255, 0, 128), rp);
+      draw_arrow_t (100, 1200, 500, 400, 12, rgba (120, 120, 200, 180), rp);
+
       renderer_present (&platform_state, rp);
 
       next_frame += frame_time_ms;

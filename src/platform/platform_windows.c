@@ -8,8 +8,9 @@
 #define NOMINMAX
 #endif
 
-#include <timeapi.h>
 #include <windows.h>
+
+#include <timeapi.h>
 
 #include <stdbool.h>
 #include <stdint.h>

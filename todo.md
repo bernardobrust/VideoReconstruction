@@ -7,10 +7,12 @@
 - dyn_arr.c : @OPTIMIZATION check if $2$ is a reasonable scale factor, or add a macro to change it
 - tests/main.c : @IMPROVEMENT check if this strategy for argument handling is good
 - platform.h : @FEATURE add a function to get monitor resolution (or maybe a function to get the monitor size and position)
+- renderer.c : @FIX, @OPTIMIZATION the circle looks weird, it likelly has to do with the loops tho i'm not certain
 
 ### Performance
-- @PERFORMANCE For now the main bottleneck is the decode -> send image buffer to display loop, which is not paralelized. We can improve this latter by using a queue of decoded frames and a separate thread for the renderer.
-- @PERFORMANCE Keep in mind that we NEED the entire get video data -> render to be fast enough to support live video streams, so we need it to support arbitrary frame and bit rates.
+- @PERFORMANCE For now the main bottleneck is the decode -> send image buffer to display loop, which is not paralelized. We can improve this latter by using a queue of decoded frames and a separate thread for the renderer
+- @PERFORMANCE Keep in mind that we NEED the entire get video data -> render to be fast enough to support live video streams, so we need it to support arbitrary frame and bit rates
+- @PERFORMANCE The transparent shape drawing is a massive performance bottleneck, we need to optimize it. Maybe we can use a different approach for this, like using a separate buffer for the transparent shapes and then blending it with the video frame
 
 ### General
 - [x] Update this TODO list with a more concrete plan
