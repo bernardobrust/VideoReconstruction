@@ -1,5 +1,5 @@
-### Ongoing:
-- Rescale video to arbitrary resolution (will be used latter for drawing frames side-by-side and video resolutions diferent from the monitor)
+### Notes:
+As it turns out libdav1d does not export motion vectors in FFmpeg the same way HEVC does. So I'll basically have to hack the library and export them myself.
 
 #### Per-file basis
 - decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
@@ -13,6 +13,11 @@
 - @PERFORMANCE For now the main bottleneck is the decode -> send image buffer to display loop, which is not paralelized. We can improve this latter by using a queue of decoded frames and a separate thread for the renderer
 - @PERFORMANCE Keep in mind that we NEED the entire get video data -> render to be fast enough to support live video streams, so we need it to support arbitrary frame and bit rates
 - @PERFORMANCE The transparent shape drawing is a massive performance bottleneck, we need to optimize it. Maybe we can use a different approach for this, like using a separate buffer for the transparent shapes and then blending it with the video frame
+
+### Detour (top priority)
+- [ ] Hack libdav1d to export motion vectors in a way that we can use them in the inspector. This will require some research and experimentation, but it should be doable.
+- [ ] Statically link the modified version into this repo
+- [ ] Change the decoder to use the modified version of libdav1d and use the motion vectors to render them on top of the video frame
 
 ### General
 - [x] Update this TODO list with a more concrete plan

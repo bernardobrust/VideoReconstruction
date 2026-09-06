@@ -4,8 +4,50 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <libavutil/frame.h>
 #include <libavutil/imgutils.h>
+#include <libavutil/motion_vector.h>
+#include <libavutil/opt.h>
 #include <libswscale/swscale.h>
+
+// For debugging
+static void
+print_motion_vectors (const AVFrame *frame)
+{
+  AVFrameSideData *sd
+      = av_frame_get_side_data (frame, AV_FRAME_DATA_MOTION_VECTORS);
+
+  printf ("frame pts=%" PRId64 ", motion vector side data: %s\n", frame->pts,
+          sd ? "YES" : "NO");
+
+  if (!sd)
+    {
+      printf ("No motion vectors for this frame\n");
+      return;
+    }
+
+  const AVMotionVector *mvs = (const AVMotionVector *)sd->data;
+
+  int nb_mvs = (int)(sd->size / sizeof (*mvs));
+
+  printf ("Motion vectors: %d\n", nb_mvs);
+
+  for (int i = 0; i < nb_mvs; i++)
+    {
+      const AVMotionVector *mv = &mvs[i];
+
+      printf ("source=%d "
+              "block=%dx%d "
+              "src=(%d,%d) "
+              "dst=(%d,%d) "
+              "motion=(%d,%d) "
+              "scale=%d flags=0x%" PRIx64 "\n",
+
+              mv->source, mv->w, mv->h, mv->src_x, mv->src_y, mv->dst_x,
+              mv->dst_y, mv->motion_x, mv->motion_y, mv->motion_scale,
+              mv->flags);
+    }
+}
 
 VideoPlex *
 init_video (char *video_file)
@@ -80,6 +122,8 @@ init_video (char *video_file)
       return NULL;
     }
 
+  // Important: we need to set the export_mvs flag to get motion vectors
+  av_opt_set_int (vp->codec, "flags2", AV_CODEC_FLAG2_EXPORT_MVS, 0);
   if (avcodec_open2 (vp->codec, vp->decoder, NULL) < 0)
     {
       fprintf (stderr, "Could not open decoder\n");
@@ -136,6 +180,8 @@ decode_next_frame (VideoPlex *vp, unsigned *image)
 
               if (ret == 0)
                 {
+                  print_motion_vectors (vp->frame);
+
                   got_frame = true;
                   break;
                 }
@@ -178,6 +224,8 @@ decode_next_frame (VideoPlex *vp, unsigned *image)
 
           if (ret == 0)
             {
+              print_motion_vectors (vp->frame);
+
               got_frame = true;
               break;
             }
