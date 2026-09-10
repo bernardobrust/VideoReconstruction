@@ -7,11 +7,12 @@
 #include "dyn_arr.c"
 
 #include "dyn_arr.test.h"
+#include "macros.h"
 
 typedef struct
 {
-  double a;
-  int b;
+  f64 a;
+  s32 b;
   char c;
 } St;
 
@@ -21,7 +22,7 @@ dyn_arr_test_init (void)
   start_test_suite ("Dynamic array initialization");
 
   // Simple ----------------------------------------------------
-  DynArr *xs = dyn_arr_init (2, sizeof (int));
+  DynArr *xs = dyn_arr_init (2, sizeof (s32));
 
   assert_not_null (xs);
   assert_not_null (xs->data);
@@ -52,15 +53,15 @@ dyn_arr_test_get (void)
   start_test_suite ("Dynamic array get");
 
   // Simple ----------------------------------------------------
-  DynArr *xs = dyn_arr_init (4, sizeof (int));
+  DynArr *xs = dyn_arr_init (4, sizeof (s32));
   xs->len = 4;
-  int data[4] = { 4, 3, 2, 1 };
+  s32 data[4] = { 4, 3, 2, 1 };
   memcpy (xs->data, data, 4 * 4);
 
-  assert_equal (4, *(int *)(dyn_arr_get (xs, 0)));
-  assert_equal (3, *(int *)(dyn_arr_get (xs, 1)));
-  assert_equal (2, *(int *)(dyn_arr_get (xs, 2)));
-  assert_equal (1, *(int *)(dyn_arr_get (xs, 3)));
+  assert_equal (4, *(s32 *)(dyn_arr_get (xs, 0)));
+  assert_equal (3, *(s32 *)(dyn_arr_get (xs, 1)));
+  assert_equal (2, *(s32 *)(dyn_arr_get (xs, 2)));
+  assert_equal (1, *(s32 *)(dyn_arr_get (xs, 3)));
   // -----------------------------------------------------------
 
   // Compound --------------------------------------------------
@@ -88,19 +89,19 @@ dyn_arr_test_set (void)
   start_test_suite ("Dynamic array set");
 
   // Simple ----------------------------------------------------
-  DynArr *xs = dyn_arr_init (4, sizeof (int));
+  DynArr *xs = dyn_arr_init (4, sizeof (s32));
   xs->len = 4;
 
   // Compound literals are better here
-  dyn_arr_set (xs, 0, &(int){ 4 });
-  dyn_arr_set (xs, 1, &(int){ 3 });
-  dyn_arr_set (xs, 2, &(int){ 2 });
-  dyn_arr_set (xs, 3, &(int){ 1 });
+  dyn_arr_set (xs, 0, &(s32){ 4 });
+  dyn_arr_set (xs, 1, &(s32){ 3 });
+  dyn_arr_set (xs, 2, &(s32){ 2 });
+  dyn_arr_set (xs, 3, &(s32){ 1 });
 
-  assert_equal (4, *(int *)(dyn_arr_get (xs, 0)));
-  assert_equal (3, *(int *)(dyn_arr_get (xs, 1)));
-  assert_equal (2, *(int *)(dyn_arr_get (xs, 2)));
-  assert_equal (1, *(int *)(dyn_arr_get (xs, 3)));
+  assert_equal (4, *(s32 *)(dyn_arr_get (xs, 0)));
+  assert_equal (3, *(s32 *)(dyn_arr_get (xs, 1)));
+  assert_equal (2, *(s32 *)(dyn_arr_get (xs, 2)));
+  assert_equal (1, *(s32 *)(dyn_arr_get (xs, 3)));
   // -----------------------------------------------------------
 
   // Compound --------------------------------------------------
@@ -132,34 +133,34 @@ dyn_arr_test_push (void)
   start_test_suite ("Dynamic array push");
 
   // Simple ----------------------------------------------------
-  DynArr *xs = dyn_arr_init (1, sizeof (int));
+  DynArr *xs = dyn_arr_init (1, sizeof (s32));
 
-  dyn_arr_push (xs, &(int){ 4 });
-  assert_equal (4, *(int *)(dyn_arr_get (xs, 0)));
+  dyn_arr_push (xs, &(s32){ 4 });
+  assert_equal (4, *(s32 *)(dyn_arr_get (xs, 0)));
 
-  dyn_arr_push (xs, &(int){ 5 });
+  dyn_arr_push (xs, &(s32){ 5 });
 
   assert_equal (2, xs->len);
   assert_equal (2, xs->cap);
-  assert_equal (5, *(int *)(dyn_arr_get (xs, 1)));
+  assert_equal (5, *(s32 *)(dyn_arr_get (xs, 1)));
 
-  dyn_arr_push (xs, &(int){ 10 });
+  dyn_arr_push (xs, &(s32){ 10 });
 
   assert_equal (3, xs->len);
   assert_equal (4, xs->cap);
-  assert_equal (10, *(int *)(dyn_arr_get (xs, 2)));
+  assert_equal (10, *(s32 *)(dyn_arr_get (xs, 2)));
 
-  dyn_arr_push (xs, &(int){ 4 });
+  dyn_arr_push (xs, &(s32){ 4 });
 
   assert_equal (4, xs->len);
   assert_equal (4, xs->cap);
 
-  dyn_arr_push (xs, &(int){ 4 });
-  dyn_arr_push (xs, &(int){ 4 });
+  dyn_arr_push (xs, &(s32){ 4 });
+  dyn_arr_push (xs, &(s32){ 4 });
 
   assert_equal (6, xs->len);
   assert_equal (8, xs->cap);
-  assert_equal (4, *(int *)(dyn_arr_get (xs, 5)));
+  assert_equal (4, *(s32 *)(dyn_arr_get (xs, 5)));
   // -----------------------------------------------------------
 
   // Compound --------------------------------------------------
@@ -190,26 +191,26 @@ dyn_arr_test_insert (void)
   start_test_suite ("Dynamic array insert");
 
   // Simple ----------------------------------------------------
-  DynArr *xs = dyn_arr_init (4, sizeof (int));
+  DynArr *xs = dyn_arr_init (4, sizeof (s32));
 
-  dyn_arr_push (xs, &(int){ 4 });
-  dyn_arr_push (xs, &(int){ 4 });
-  dyn_arr_push (xs, &(int){ 4 });
+  dyn_arr_push (xs, &(s32){ 4 });
+  dyn_arr_push (xs, &(s32){ 4 });
+  dyn_arr_push (xs, &(s32){ 4 });
 
-  dyn_arr_insert (xs, &(int){ 5 }, 1);
-  assert_equal (5, *(int *)(dyn_arr_get (xs, 1)));
+  dyn_arr_insert (xs, &(s32){ 5 }, 1);
+  assert_equal (5, *(s32 *)(dyn_arr_get (xs, 1)));
 
-  dyn_arr_insert (xs, &(int){ 10 }, 2);
-  assert_equal (10, *(int *)(dyn_arr_get (xs, 2)));
+  dyn_arr_insert (xs, &(s32){ 10 }, 2);
+  assert_equal (10, *(s32 *)(dyn_arr_get (xs, 2)));
 
-  dyn_arr_insert (xs, &(int){ 7 }, 0);
-  assert_equal (7, *(int *)(dyn_arr_get (xs, 0)));
+  dyn_arr_insert (xs, &(s32){ 7 }, 0);
+  assert_equal (7, *(s32 *)(dyn_arr_get (xs, 0)));
 
-  dyn_arr_insert (xs, &(int){ 1 }, 6);
-  assert_equal (1, *(int *)(dyn_arr_get (xs, 6)));
+  dyn_arr_insert (xs, &(s32){ 1 }, 6);
+  assert_equal (1, *(s32 *)(dyn_arr_get (xs, 6)));
 
-  dyn_arr_insert (xs, &(int){ 2 }, 0);
-  assert_equal (2, *(int *)(dyn_arr_get (xs, 0)));
+  dyn_arr_insert (xs, &(s32){ 2 }, 0);
+  assert_equal (2, *(s32 *)(dyn_arr_get (xs, 0)));
   // -----------------------------------------------------------
 
   // Compound --------------------------------------------------
@@ -243,12 +244,12 @@ dyn_arr_test_pop (void)
   // stride
 
   // Simple ----------------------------------------------------
-  DynArr *xs = dyn_arr_init (4, sizeof (int));
+  DynArr *xs = dyn_arr_init (4, sizeof (s32));
 
-  dyn_arr_push (xs, &(int){ 4 });
-  dyn_arr_push (xs, &(int){ 4 });
-  dyn_arr_push (xs, &(int){ 4 });
-  dyn_arr_push (xs, &(int){ 4 });
+  dyn_arr_push (xs, &(s32){ 4 });
+  dyn_arr_push (xs, &(s32){ 4 });
+  dyn_arr_push (xs, &(s32){ 4 });
+  dyn_arr_push (xs, &(s32){ 4 });
 
   dyn_arr_pop (xs);
   assert_equal (3, xs->len);
@@ -274,27 +275,27 @@ dyn_arr_test_delete (void)
   start_test_suite ("Dynamic array delete");
 
   // Simple ----------------------------------------------------
-  DynArr *xs = dyn_arr_init (4, sizeof (int));
+  DynArr *xs = dyn_arr_init (4, sizeof (s32));
 
-  dyn_arr_push (xs, &(int){ 4 });
-  dyn_arr_push (xs, &(int){ 5 });
-  dyn_arr_push (xs, &(int){ 7 });
-  dyn_arr_push (xs, &(int){ 10 });
-  dyn_arr_push (xs, &(int){ -1 });
-  dyn_arr_push (xs, &(int){ 3 });
+  dyn_arr_push (xs, &(s32){ 4 });
+  dyn_arr_push (xs, &(s32){ 5 });
+  dyn_arr_push (xs, &(s32){ 7 });
+  dyn_arr_push (xs, &(s32){ 10 });
+  dyn_arr_push (xs, &(s32){ -1 });
+  dyn_arr_push (xs, &(s32){ 3 });
 
   dyn_arr_delete (xs, 1);
-  assert_equal (7, *(int *)(dyn_arr_get (xs, 1)));
+  assert_equal (7, *(s32 *)(dyn_arr_get (xs, 1)));
 
   dyn_arr_delete (xs, 2);
-  assert_equal (-1, *(int *)(dyn_arr_get (xs, 2)));
+  assert_equal (-1, *(s32 *)(dyn_arr_get (xs, 2)));
 
   dyn_arr_delete (xs, 0);
-  assert_equal (7, *(int *)(dyn_arr_get (xs, 0)));
+  assert_equal (7, *(s32 *)(dyn_arr_get (xs, 0)));
 
   dyn_arr_delete (xs, 2);
   dyn_arr_delete (xs, 1);
-  assert_equal (7, *(int *)(dyn_arr_get (xs, 0)));
+  assert_equal (7, *(s32 *)(dyn_arr_get (xs, 0)));
   // -----------------------------------------------------------
 
   // Compound --------------------------------------------------

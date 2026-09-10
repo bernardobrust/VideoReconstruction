@@ -12,8 +12,10 @@
 
 #include "dyn_arr.test.h"
 
-int
-main (int argc, char **argv)
+#include "macros.h"
+
+i32
+main (s32 argc, char **argv)
 {
   // CLI parsing
   // enabled_tests defines a whitelist
@@ -45,7 +47,7 @@ main (int argc, char **argv)
     {
       dyn_arr = false;
 
-      for (long unsigned int i = 0; i < enabled_tests->count; ++i)
+      for (s64 s32 i = 0; i < enabled_tests->count; ++i)
         {
           // We use the bool to short-circuit and avoid doing strcmp every
           // iteration
@@ -59,7 +61,7 @@ main (int argc, char **argv)
     {
       dyn_arr = true;
 
-      for (long unsigned int i = 0; i < disabled_tests->count; ++i)
+      for (s64 s32 i = 0; i < disabled_tests->count; ++i)
         {
           if (dyn_arr == true
               && strcmp (disabled_tests->items[i], "dyn_arr") == 0)

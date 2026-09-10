@@ -8,31 +8,31 @@
 #include "renderer.h"
 
 // The 'a' only affects transparent shapes
-unsigned
-rgba (unsigned r, unsigned g, unsigned b, unsigned a)
+u32
+rgba (u32 r, u32 g, u32 b, u32 a)
 {
   return a << 24 | r << 16 | g << 8 | b;
 }
 
-uint8_t
-blend_channel (uint8_t src, uint8_t dst, uint8_t alpha)
+u8
+blend_channel (u8 src, u8 dst, u8 alpha)
 {
-  int inverse_alpha = 255 - alpha, t = src * alpha + dst * inverse_alpha;
+  s32 inverse_alpha = 255 - alpha, t = src * alpha + dst * inverse_alpha;
   return DIV_255 (t);
 }
 
-unsigned
-blend_rgba_pixel (unsigned src, unsigned dst)
+u32
+blend_rgba_pixel (u32 src, u32 dst)
 {
-  uint8_t a = (src >> 24) & 0xFF;
+  u8 a = (src >> 24) & 0xFF;
   if (a == 0)
     return dst;
   if (a == 255)
     return src;
 
-  uint8_t r = blend_channel ((src >> 16) & 0xFF, (dst >> 16) & 0xFF, a),
-          g = blend_channel ((src >> 8) & 0xFF, (dst >> 8) & 0xFF, a),
-          b = blend_channel (src & 0xFF, dst & 0xFF, a);
+  u8 r = blend_channel ((src >> 16) & 0xFF, (dst >> 16) & 0xFF, a),
+      g = blend_channel ((src >> 8) & 0xFF, (dst >> 8) & 0xFF, a),
+      b = blend_channel (src & 0xFF, dst & 0xFF, a);
 
   return rgba (r, g, b, a);
 }
@@ -40,7 +40,7 @@ blend_rgba_pixel (unsigned src, unsigned dst)
 // For now it's this simple alocation, latter we can check for aspect ratio &&
 // all
 RendererPlex *
-init_renderer (int w, int h)
+init_renderer (s32 w, s32 h)
 {
   RendererPlex *rp = (RendererPlex *)malloc (sizeof (RendererPlex));
   if (!rp)
@@ -51,13 +51,13 @@ init_renderer (int w, int h)
 
   rp->w = w;
   rp->h = h;
-  rp->image_buffer = (unsigned *)malloc (w * h * sizeof (unsigned));
+  rp->image_buffer = (u32 *)malloc (w * h * sizeof (u32));
 
   return rp;
 }
 
 void
-draw_hline (int x0, int x1, int y, unsigned color, RendererPlex *rp)
+draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp)
 {
   if (y < 0 || y >= rp->h)
     return;
@@ -66,16 +66,16 @@ draw_hline (int x0, int x1, int y, unsigned color, RendererPlex *rp)
   if (unlikely (x0 > x1))
     {
       // Trust me it's not worth swapping with XOR
-      int t = x0;
+      s32 t = x0;
       x0 = x1;
       x1 = t;
     }
 
-  x0 = clamp_int (x0, 0, rp->w - 1);
-  x1 = clamp_int (x1, 0, rp->w - 1);
+  x0 = clamp_s32 (x0, 0, rp->w - 1);
+  x1 = clamp_s32 (x1, 0, rp->w - 1);
 
-  unsigned *p = rp->image_buffer + y * rp->w + x0;
-  for (int x = x0; x <= x1; ++x)
+  u32 *p = rp->image_buffer + y * rp->w + x0;
+  for (s32 x = x0; x <= x1; ++x)
     *p++ = color;
 }
 
@@ -86,28 +86,28 @@ draw_hline (int x0, int x1, int y, unsigned color, RendererPlex *rp)
 // decided to use the edge function method, which, being honest, is also easier
 // to reason about.
 void
-draw_triangle (int x1, int y1, int x2, int y2, int x3, int y3, unsigned color,
+draw_triangle (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3, u32 color,
                RendererPlex *rp)
 {
-  int min_x = MIN3 (x1, x2, x3), max_x = MAX3 (x1, x2, x3);
-  int min_y = MIN3 (y1, y2, y3), max_y = MAX3 (y1, y2, y3);
+  s32 min_x = MIN3 (x1, x2, x3), max_x = MAX3 (x1, x2, x3);
+  s32 min_y = MIN3 (y1, y2, y3), max_y = MAX3 (y1, y2, y3);
 
-  min_x = clamp_int (min_x, 0, rp->w - 1);
-  max_x = clamp_int (max_x, 0, rp->w - 1);
-  min_y = clamp_int (min_y, 0, rp->h - 1);
-  max_y = clamp_int (max_y, 0, rp->h - 1);
+  min_x = clamp_s32 (min_x, 0, rp->w - 1);
+  max_x = clamp_s32 (max_x, 0, rp->w - 1);
+  min_y = clamp_s32 (min_y, 0, rp->h - 1);
+  max_y = clamp_s32 (max_y, 0, rp->h - 1);
 
-  int area = determinant_ab_ap_int (x1, y1, x2, y2, x3, y3);
+  s32 area = determinant_ab_ap_s32 (x1, y1, x2, y2, x3, y3);
   if (area == 0)
     return;
 
-  int a0 = y3 - y2, b0 = x2 - x3;
-  int a1 = y1 - y3, b1 = x3 - x1;
-  int a2 = y2 - y1, b2 = x1 - x2;
+  s32 a0 = y3 - y2, b0 = x2 - x3;
+  s32 a1 = y1 - y3, b1 = x3 - x1;
+  s32 a2 = y2 - y1, b2 = x1 - x2;
 
-  int w0_row = determinant_ab_ap_int (x2, y2, x3, y3, min_x, min_y),
-      w1_row = determinant_ab_ap_int (x3, y3, x1, y1, min_x, min_y),
-      w2_row = determinant_ab_ap_int (x1, y1, x2, y2, min_x, min_y);
+  s32 w0_row = determinant_ab_ap_s32 (x2, y2, x3, y3, min_x, min_y),
+      w1_row = determinant_ab_ap_s32 (x3, y3, x1, y1, min_x, min_y),
+      w2_row = determinant_ab_ap_s32 (x1, y1, x2, y2, min_x, min_y);
 
   // Just invert everything
   if (area < 0)
@@ -123,12 +123,12 @@ draw_triangle (int x1, int y1, int x2, int y2, int x3, int y3, unsigned color,
       w2_row = -w2_row;
     }
 
-  for (int y = min_y; y <= max_y; ++y)
+  for (s32 y = min_y; y <= max_y; ++y)
     {
-      int w0 = w0_row, w1 = w1_row, w2 = w2_row;
-      int row_offset = y * rp->w;
+      s32 w0 = w0_row, w1 = w1_row, w2 = w2_row;
+      s32 row_offset = y * rp->w;
 
-      for (int x = min_x; x <= max_x; ++x)
+      for (s32 x = min_x; x <= max_x; ++x)
         {
           if ((w0 | w1 | w2) >= 0)
             rp->image_buffer[row_offset + x] = color;
@@ -145,30 +145,29 @@ draw_triangle (int x1, int y1, int x2, int y2, int x3, int y3, unsigned color,
 }
 
 void
-draw_rectangle (int x1, int y1, int x2, int y2, unsigned color,
-                RendererPlex *rp)
+draw_rectangle (s32 x1, s32 y1, s32 x2, s32 y2, u32 color, RendererPlex *rp)
 {
-  int min_x = MIN (x1, x2), max_x = MAX (x1, x2);
-  int min_y = MIN (y1, y2), max_y = MAX (y1, y2);
+  s32 min_x = MIN (x1, x2), max_x = MAX (x1, x2);
+  s32 min_y = MIN (y1, y2), max_y = MAX (y1, y2);
 
   // Clamp to image buffer
-  min_x = clamp_int (min_x, 0, rp->w - 1);
-  max_x = clamp_int (max_x, 0, rp->w - 1);
-  min_y = clamp_int (min_y, 0, rp->h - 1);
-  max_y = clamp_int (max_y, 0, rp->h - 1);
+  min_x = clamp_s32 (min_x, 0, rp->w - 1);
+  max_x = clamp_s32 (max_x, 0, rp->w - 1);
+  min_y = clamp_s32 (min_y, 0, rp->h - 1);
+  max_y = clamp_s32 (max_y, 0, rp->h - 1);
 
   // No need to render
   if ((max_x - min_x) * (max_y - min_y) == 0)
     return;
 
-  for (int y = min_y; y <= max_y; ++y)
+  for (s32 y = min_y; y <= max_y; ++y)
     draw_hline (min_x, max_x, y, color, rp);
 }
 
 void
-draw_circle (int cx, int cy, int r, unsigned color, RendererPlex *rp)
+draw_circle (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *rp)
 {
-  int x = r, y = 0, err = 1 - r;
+  s32 x = r, y = 0, err = 1 - r;
 
   while (x >= y)
     {
@@ -193,36 +192,36 @@ draw_circle (int cx, int cy, int r, unsigned color, RendererPlex *rp)
 // and angle instead of four points. It's geometrically easier to reason about
 // it this way
 void
-draw_rotated_rectangle (int cx, int cy, int w, int h, float theta,
-                        unsigned color, RendererPlex *rp)
+draw_rotated_rectangle (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
+                        RendererPlex *rp)
 {
-  float c = cosf (theta);
-  float s = sinf (theta);
+  f32 c = cosf (theta);
+  f32 s = sinf (theta);
 
   // Width direction
-  float ux = c, uy = s;
+  f32 ux = c, uy = s;
 
   // Height direction
-  float vx = -s, vy = c;
+  f32 vx = -s, vy = c;
 
-  float hw = w / 2.0f;
-  float hh = h / 2.0f;
+  f32 hw = w / 2.0f;
+  f32 hh = h / 2.0f;
 
   // Top-left
-  float x0 = cx - hw * ux - hh * vx;
-  float y0 = cy - hw * uy - hh * vy;
+  f32 x0 = cx - hw * ux - hh * vx;
+  f32 y0 = cy - hw * uy - hh * vy;
 
   // Top-right
-  float x1 = cx + hw * ux - hh * vx;
-  float y1 = cy + hw * uy - hh * vy;
+  f32 x1 = cx + hw * ux - hh * vx;
+  f32 y1 = cy + hw * uy - hh * vy;
 
   // Bottom-right
-  float x2 = cx + hw * ux + hh * vx;
-  float y2 = cy + hw * uy + hh * vy;
+  f32 x2 = cx + hw * ux + hh * vx;
+  f32 y2 = cy + hw * uy + hh * vy;
 
   // Bottom-left
-  float x3 = cx - hw * ux + hh * vx;
-  float y3 = cy - hw * uy + hh * vy;
+  f32 x3 = cx - hw * ux + hh * vx;
+  f32 y3 = cy - hw * uy + hh * vy;
 
   // Triangle 1 points:
   // (x0, y0), (x1, y1), (x2, y2)
@@ -238,30 +237,30 @@ draw_rotated_rectangle (int cx, int cy, int w, int h, float theta,
 // start -> end vector gives a direction along the center line, this is usefull
 // for the arrow
 void
-draw_rotated_oriented_rectangle (int dx1, int dy1, int dx2, int dy2, int width,
-                                 unsigned color, RendererPlex *rp)
+draw_rotated_oriented_rectangle (s32 dx1, s32 dy1, s32 dx2, s32 dy2, s32 width,
+                                 u32 color, RendererPlex *rp)
 {
-  int dx = dx2 - dx1, dy = dy2 - dy1;
-  float length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
+  s32 dx = dx2 - dx1, dy = dy2 - dy1;
+  f32 length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
 
   if (length == 0.0f)
     return;
 
   // Unit vector along the center line
-  float ux = dx / length, uy = dy / length;
+  f32 ux = dx / length, uy = dy / length;
 
   // Unit vector perpendicular to the center line
-  float nx = -uy, ny = ux;
+  f32 nx = -uy, ny = ux;
 
   // Offset from center line to either edge
-  float hw = width / 2.0f;
-  float ox = nx * hw, oy = ny * hw;
+  f32 hw = width / 2.0f;
+  f32 ox = nx * hw, oy = ny * hw;
 
   // Four corners
-  float x0 = dx1 + ox, y0 = dy1 + oy;
-  float x1 = dx2 + ox, y1 = dy2 + oy;
-  float x2 = dx2 - ox, y2 = dy2 - oy;
-  float x3 = dx1 - ox, y3 = dy1 - oy;
+  f32 x0 = dx1 + ox, y0 = dy1 + oy;
+  f32 x1 = dx2 + ox, y1 = dy2 + oy;
+  f32 x2 = dx2 - ox, y2 = dy2 - oy;
+  f32 x3 = dx1 - ox, y3 = dy1 - oy;
 
   // Triangle 1 points:
   // (x0, y0), (x1, y1), (x2, y2)
@@ -275,30 +274,29 @@ draw_rotated_oriented_rectangle (int dx1, int dy1, int dx2, int dy2, int width,
 
 // It's just a rectangle with a triangle on top
 void
-draw_arrow (int startx, int starty, int endx, int endy, int thickness,
-            unsigned color, RendererPlex *rp)
+draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
+            u32 color, RendererPlex *rp)
 {
   // Same geometry from draw_rotated_oriented_rectangle
-  int dx = endx - startx, dy = endy - starty;
-  float length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
+  s32 dx = endx - startx, dy = endy - starty;
+  f32 length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
 
   if (length == 0.0f)
     return;
 
-  float ux = dx / length, uy = dy / length;
-  float nx = -uy, ny = ux;
+  f32 ux = dx / length, uy = dy / length;
+  f32 nx = -uy, ny = ux;
 
   // Arbitrary scale, it should keep proportions to the shaft
-  float head_thickness = thickness * 1.4f;
+  f32 head_thickness = thickness * 1.4f;
 
-  float basex = endx - ux * head_thickness, basey = endy - uy * head_thickness;
-  float leftx = basex + nx * head_thickness,
-        lefty = basey + ny * head_thickness;
-  float rightx = basex - nx * head_thickness,
-        righty = basey - ny * head_thickness;
+  f32 basex = endx - ux * head_thickness, basey = endy - uy * head_thickness;
+  f32 leftx = basex + nx * head_thickness, lefty = basey + ny * head_thickness;
+  f32 rightx = basex - nx * head_thickness,
+      righty = basey - ny * head_thickness;
 
-  float shaft_end_x = endx - ux * head_thickness,
-        shaft_end_y = endy - uy * head_thickness;
+  f32 shaft_end_x = endx - ux * head_thickness,
+      shaft_end_y = endy - uy * head_thickness;
 
   draw_rotated_oriented_rectangle ((int)startx, (int)starty, (int)shaft_end_x,
                                    (int)shaft_end_y, thickness, color, rp);
@@ -313,28 +311,28 @@ draw_arrow (int startx, int starty, int endx, int endy, int thickness,
 // because the color of each pixel is different, so we have to blend each pixel
 // individually
 void
-draw_triangle_t (int x1, int y1, int x2, int y2, int x3, int y3,
-                 unsigned color, RendererPlex *rp)
+draw_triangle_t (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3, u32 color,
+                 RendererPlex *rp)
 {
-  int min_x = MIN3 (x1, x2, x3), max_x = MAX3 (x1, x2, x3);
-  int min_y = MIN3 (y1, y2, y3), max_y = MAX3 (y1, y2, y3);
+  s32 min_x = MIN3 (x1, x2, x3), max_x = MAX3 (x1, x2, x3);
+  s32 min_y = MIN3 (y1, y2, y3), max_y = MAX3 (y1, y2, y3);
 
-  min_x = clamp_int (min_x, 0, rp->w - 1);
-  max_x = clamp_int (max_x, 0, rp->w - 1);
-  min_y = clamp_int (min_y, 0, rp->h - 1);
-  max_y = clamp_int (max_y, 0, rp->h - 1);
+  min_x = clamp_s32 (min_x, 0, rp->w - 1);
+  max_x = clamp_s32 (max_x, 0, rp->w - 1);
+  min_y = clamp_s32 (min_y, 0, rp->h - 1);
+  max_y = clamp_s32 (max_y, 0, rp->h - 1);
 
-  int area = determinant_ab_ap_int (x1, y1, x2, y2, x3, y3);
+  s32 area = determinant_ab_ap_s32 (x1, y1, x2, y2, x3, y3);
   if (area == 0)
     return;
 
-  int a0 = y3 - y2, b0 = x2 - x3;
-  int a1 = y1 - y3, b1 = x3 - x1;
-  int a2 = y2 - y1, b2 = x1 - x2;
+  s32 a0 = y3 - y2, b0 = x2 - x3;
+  s32 a1 = y1 - y3, b1 = x3 - x1;
+  s32 a2 = y2 - y1, b2 = x1 - x2;
 
-  int w0_row = determinant_ab_ap_int (x2, y2, x3, y3, min_x, min_y),
-      w1_row = determinant_ab_ap_int (x3, y3, x1, y1, min_x, min_y),
-      w2_row = determinant_ab_ap_int (x1, y1, x2, y2, min_x, min_y);
+  s32 w0_row = determinant_ab_ap_s32 (x2, y2, x3, y3, min_x, min_y),
+      w1_row = determinant_ab_ap_s32 (x3, y3, x1, y1, min_x, min_y),
+      w2_row = determinant_ab_ap_s32 (x1, y1, x2, y2, min_x, min_y);
 
   // Just invert everything
   if (area < 0)
@@ -350,12 +348,12 @@ draw_triangle_t (int x1, int y1, int x2, int y2, int x3, int y3,
       w2_row = -w2_row;
     }
 
-  for (int y = min_y; y <= max_y; ++y)
+  for (s32 y = min_y; y <= max_y; ++y)
     {
-      int w0 = w0_row, w1 = w1_row, w2 = w2_row;
-      int row_offset = y * rp->w;
+      s32 w0 = w0_row, w1 = w1_row, w2 = w2_row;
+      s32 row_offset = y * rp->w;
 
-      for (int x = min_x; x <= max_x; ++x)
+      for (s32 x = min_x; x <= max_x; ++x)
         {
           if ((w0 | w1 | w2) >= 0)
             rp->image_buffer[row_offset + x]
@@ -373,39 +371,38 @@ draw_triangle_t (int x1, int y1, int x2, int y2, int x3, int y3,
 }
 
 void
-draw_rectangle_t (int x1, int y1, int x2, int y2, unsigned color,
-                  RendererPlex *rp)
+draw_rectangle_t (s32 x1, s32 y1, s32 x2, s32 y2, u32 color, RendererPlex *rp)
 {
-  int min_x = MIN (x1, x2), max_x = MAX (x1, x2);
-  int min_y = MIN (y1, y2), max_y = MAX (y1, y2);
+  s32 min_x = MIN (x1, x2), max_x = MAX (x1, x2);
+  s32 min_y = MIN (y1, y2), max_y = MAX (y1, y2);
 
   // Clamp to image buffer
-  min_x = clamp_int (min_x, 0, rp->w - 1);
-  max_x = clamp_int (max_x, 0, rp->w - 1);
-  min_y = clamp_int (min_y, 0, rp->h - 1);
-  max_y = clamp_int (max_y, 0, rp->h - 1);
+  min_x = clamp_s32 (min_x, 0, rp->w - 1);
+  max_x = clamp_s32 (max_x, 0, rp->w - 1);
+  min_y = clamp_s32 (min_y, 0, rp->h - 1);
+  max_y = clamp_s32 (max_y, 0, rp->h - 1);
 
   // No need to render
   if ((max_x - min_x) * (max_y - min_y) == 0)
     return;
 
-  for (int y = min_y; y <= max_y; ++y)
-    for (int x = min_x; x <= max_x; ++x)
+  for (s32 y = min_y; y <= max_y; ++y)
+    for (s32 x = min_x; x <= max_x; ++x)
       rp->image_buffer[y * rp->w + x]
           = blend_rgba_pixel (color, rp->image_buffer[y * rp->w + x]);
 }
 
 void
-draw_circle_t (int cx, int cy, int r, unsigned color, RendererPlex *rp)
+draw_circle_t (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *rp)
 {
-  int x = r, y = 0, err = 1 - r;
+  s32 x = r, y = 0, err = 1 - r;
 
   while (x >= y)
     {
       // @TODO, @FIX: This is not the most efficient way to do this, we can do
       // better with a single loop and some math, but for now this is fine. It
       // looks kinda goofy anyway
-      for (int i = cx - x; i <= cx + x; ++i)
+      for (s32 i = cx - x; i <= cx + x; ++i)
         {
           rp->image_buffer[(cy + y) * rp->w + i] = blend_rgba_pixel (
               color, rp->image_buffer[(cy + y) * rp->w + i]);
@@ -413,7 +410,7 @@ draw_circle_t (int cx, int cy, int r, unsigned color, RendererPlex *rp)
               color, rp->image_buffer[(cy - y) * rp->w + i]);
         }
 
-      for (int i = cx - y; i <= cx + y; ++i)
+      for (s32 i = cx - y; i <= cx + y; ++i)
         {
           rp->image_buffer[(cy + x) * rp->w + i] = blend_rgba_pixel (
               color, rp->image_buffer[(cy + x) * rp->w + i]);
@@ -434,36 +431,36 @@ draw_circle_t (int cx, int cy, int r, unsigned color, RendererPlex *rp)
 }
 
 void
-draw_rotated_rectangle_t (int cx, int cy, int w, int h, float theta,
-                          unsigned color, RendererPlex *rp)
+draw_rotated_rectangle_t (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
+                          RendererPlex *rp)
 {
-  float c = cosf (theta);
-  float s = sinf (theta);
+  f32 c = cosf (theta);
+  f32 s = sinf (theta);
 
   // Width direction
-  float ux = c, uy = s;
+  f32 ux = c, uy = s;
 
   // Height direction
-  float vx = -s, vy = c;
+  f32 vx = -s, vy = c;
 
-  float hw = w / 2.0f;
-  float hh = h / 2.0f;
+  f32 hw = w / 2.0f;
+  f32 hh = h / 2.0f;
 
   // Top-left
-  float x0 = cx - hw * ux - hh * vx;
-  float y0 = cy - hw * uy - hh * vy;
+  f32 x0 = cx - hw * ux - hh * vx;
+  f32 y0 = cy - hw * uy - hh * vy;
 
   // Top-right
-  float x1 = cx + hw * ux - hh * vx;
-  float y1 = cy + hw * uy - hh * vy;
+  f32 x1 = cx + hw * ux - hh * vx;
+  f32 y1 = cy + hw * uy - hh * vy;
 
   // Bottom-right
-  float x2 = cx + hw * ux + hh * vx;
-  float y2 = cy + hw * uy + hh * vy;
+  f32 x2 = cx + hw * ux + hh * vx;
+  f32 y2 = cy + hw * uy + hh * vy;
 
   // Bottom-left
-  float x3 = cx - hw * ux + hh * vx;
-  float y3 = cy - hw * uy + hh * vy;
+  f32 x3 = cx - hw * ux + hh * vx;
+  f32 y3 = cy - hw * uy + hh * vy;
 
   // Triangle 1 points:
   // (x0, y0), (x1, y1), (x2, y2)
@@ -476,30 +473,30 @@ draw_rotated_rectangle_t (int cx, int cy, int w, int h, float theta,
 }
 
 void
-draw_rotated_oriented_rectangle_t (int dx1, int dy1, int dx2, int dy2,
-                                   int width, unsigned color, RendererPlex *rp)
+draw_rotated_oriented_rectangle_t (s32 dx1, s32 dy1, s32 dx2, s32 dy2,
+                                   s32 width, u32 color, RendererPlex *rp)
 {
-  int dx = dx2 - dx1, dy = dy2 - dy1;
-  float length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
+  s32 dx = dx2 - dx1, dy = dy2 - dy1;
+  f32 length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
 
   if (length == 0.0f)
     return;
 
   // Unit vector along the center line
-  float ux = dx / length, uy = dy / length;
+  f32 ux = dx / length, uy = dy / length;
 
   // Unit vector perpendicular to the center line
-  float nx = -uy, ny = ux;
+  f32 nx = -uy, ny = ux;
 
   // Offset from center line to either edge
-  float hw = width / 2.0f;
-  float ox = nx * hw, oy = ny * hw;
+  f32 hw = width / 2.0f;
+  f32 ox = nx * hw, oy = ny * hw;
 
   // Four corners
-  float x0 = dx1 + ox, y0 = dy1 + oy;
-  float x1 = dx2 + ox, y1 = dy2 + oy;
-  float x2 = dx2 - ox, y2 = dy2 - oy;
-  float x3 = dx1 - ox, y3 = dy1 - oy;
+  f32 x0 = dx1 + ox, y0 = dy1 + oy;
+  f32 x1 = dx2 + ox, y1 = dy2 + oy;
+  f32 x2 = dx2 - ox, y2 = dy2 - oy;
+  f32 x3 = dx1 - ox, y3 = dy1 - oy;
 
   // Triangle 1 points:
   // (x0, y0), (x1, y1), (x2, y2)
@@ -512,30 +509,29 @@ draw_rotated_oriented_rectangle_t (int dx1, int dy1, int dx2, int dy2,
 }
 
 void
-draw_arrow_t (int startx, int starty, int endx, int endy, int thickness,
-              unsigned color, RendererPlex *rp)
+draw_arrow_t (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
+              u32 color, RendererPlex *rp)
 {
   // Same geometry from draw_rotated_oriented_rectangle
-  int dx = endx - startx, dy = endy - starty;
-  float length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
+  s32 dx = endx - startx, dy = endy - starty;
+  f32 length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
 
   if (length == 0.0f)
     return;
 
-  float ux = dx / length, uy = dy / length;
-  float nx = -uy, ny = ux;
+  f32 ux = dx / length, uy = dy / length;
+  f32 nx = -uy, ny = ux;
 
   // Arbitrary scale, it should keep proportions to the shaft
-  float head_thickness = thickness * 1.4f;
+  f32 head_thickness = thickness * 1.4f;
 
-  float basex = endx - ux * head_thickness, basey = endy - uy * head_thickness;
-  float leftx = basex + nx * head_thickness,
-        lefty = basey + ny * head_thickness;
-  float rightx = basex - nx * head_thickness,
-        righty = basey - ny * head_thickness;
+  f32 basex = endx - ux * head_thickness, basey = endy - uy * head_thickness;
+  f32 leftx = basex + nx * head_thickness, lefty = basey + ny * head_thickness;
+  f32 rightx = basex - nx * head_thickness,
+      righty = basey - ny * head_thickness;
 
-  float shaft_end_x = endx - ux * head_thickness,
-        shaft_end_y = endy - uy * head_thickness;
+  f32 shaft_end_x = endx - ux * head_thickness,
+      shaft_end_y = endy - uy * head_thickness;
 
   draw_rotated_oriented_rectangle_t ((int)startx, (int)starty,
                                      (int)shaft_end_x, (int)shaft_end_y,
@@ -549,5 +545,5 @@ void
 renderer_present (PlatformState *platform_state, RendererPlex *rp)
 {
   platform_present (platform_state);
-  memset (rp->image_buffer, 0, rp->w * rp->h * sizeof (unsigned));
+  memset (rp->image_buffer, 0, rp->w * rp->h * sizeof (u32));
 }

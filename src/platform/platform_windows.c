@@ -28,17 +28,17 @@ typedef struct
 {
   HWND hwnd;
   HDC hdc;
-  int width;
-  int height;
+  s32 width;
+  s32 height;
   char *image_buffer;
   BITMAPINFO bitmap_info;
   bool time_period_set;
 } InternalState;
 
-static LARGE_INTEGER win32_perf_frequency;
-static bool win32_perf_frequency_initialized = false;
+global LARGE_INTEGER win32_perf_frequency;
+global bool win32_perf_frequency_initialized = false;
 
-static void
+local void
 win32_init_perf_frequency (void)
 {
   if (!win32_perf_frequency_initialized)
@@ -48,7 +48,7 @@ win32_init_perf_frequency (void)
     }
 }
 
-static void
+local void
 win32_enable_dpi_awareness (void)
 {
   HMODULE user32 = GetModuleHandleA ("user32.dll");
@@ -79,7 +79,7 @@ win32_enable_dpi_awareness (void)
     }
 }
 
-static LRESULT CALLBACK
+local LRESULT CALLBACK
 win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
 {
   PlatformState *platform_state = NULL;
@@ -129,8 +129,8 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
               {
                 RECT client_rect;
                 GetClientRect (hwnd, &client_rect);
-                int client_w = client_rect.right - client_rect.left;
-                int client_h = client_rect.bottom - client_rect.top;
+                s32 client_w = client_rect.right - client_rect.left;
+                s32 client_h = client_rect.bottom - client_rect.top;
 
                 StretchDIBits (hdc, 0, 0, client_w, client_h, 0, 0,
                                state->width, state->height,
@@ -229,8 +229,8 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
 }
 
 bool
-platform_init (PlatformState *platform_state, const char *window_name, int x,
-               int y, int w, int h, char *image_buffer)
+platform_init (PlatformState *platform_state, const char *window_name, s32 x,
+               s32 y, s32 w, s32 h, char *image_buffer)
 {
   if (platform_state == NULL)
     return false;
@@ -267,14 +267,14 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
   DWORD style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
   AdjustWindowRectEx (&window_rect, style, FALSE, 0);
 
-  int window_w = window_rect.right - window_rect.left;
-  int window_h = window_rect.bottom - window_rect.top;
+  s32 window_w = window_rect.right - window_rect.left;
+  s32 window_h = window_rect.bottom - window_rect.top;
 
-  int screen_w = GetSystemMetrics (SM_CXSCREEN);
-  int screen_h = GetSystemMetrics (SM_CYSCREEN);
+  s32 screen_w = GetSystemMetrics (SM_CXSCREEN);
+  s32 screen_h = GetSystemMetrics (SM_CYSCREEN);
 
-  int pos_x = (x > 0) ? x : (screen_w - window_w) / 2;
-  int pos_y = (y > 0) ? y : (screen_h - window_h) / 2;
+  s32 pos_x = (x > 0) ? x : (screen_w - window_w) / 2;
+  s32 pos_y = (y > 0) ? y : (screen_h - window_h) / 2;
   if (pos_x < 0)
     pos_x = CW_USEDEFAULT;
   if (pos_y < 0)
@@ -371,9 +371,7 @@ platform_update (PlatformState *platform_state)
   while (PeekMessageA (&msg, NULL, 0, 0, PM_REMOVE))
     {
       if (msg.message == WM_QUIT)
-        {
           platform_state->running = false;
-        }
 
       TranslateMessage (&msg);
       DispatchMessageA (&msg);
@@ -396,8 +394,8 @@ platform_present (PlatformState *platform_state)
 
   RECT client_rect;
   GetClientRect (state->hwnd, &client_rect);
-  int client_w = client_rect.right - client_rect.left;
-  int client_h = client_rect.bottom - client_rect.top;
+  s32 client_w = client_rect.right - client_rect.left;
+  s32 client_h = client_rect.bottom - client_rect.top;
 
   StretchDIBits (state->hdc, 0, 0, client_w, client_h, 0, 0, state->width,
                  state->height, state->image_buffer, &state->bitmap_info,
@@ -418,7 +416,7 @@ platform_get_time (void)
 }
 
 void
-platform_sleep (double ms)
+platform_sleep (f64 ms)
 {
   if (ms <= 0.0)
     return;
@@ -429,7 +427,7 @@ platform_sleep (double ms)
   LARGE_INTEGER start, current;
   QueryPerformanceCounter (&start);
 
-  double target_counts = (ms * (double)win32_perf_frequency.QuadPart) / 1000.0;
+  f64 target_counts = (ms * (double)win32_perf_frequency.QuadPart) / 1000.0;
 
   if (ms > 2.0)
     Sleep ((DWORD)(ms - 1.0));
@@ -446,7 +444,7 @@ platform_sleep (double ms)
 // Returns: 0 => OK
 // 1 => wrong path
 // 2 => inaccessible
-int
+s32
 platform_file_exists (char *filepath)
 {
   if (filepath == NULL || filepath[0] == '\0')

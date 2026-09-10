@@ -10,19 +10,21 @@
 
 #pragma once
 
+#include "macros.h"
+
 typedef struct
 {
-  int cap, len, stride;
+  s32 cap, len, stride;
   void *data;
 } DynArr;
 
-DynArr *dyn_arr_init (int initial_cap, int stride);
+DynArr *dyn_arr_init (s32 initial_cap, s32 stride);
 void dyn_arr_free (DynArr *xs);
 
-void *dyn_arr_get (DynArr *xs, int where);
-void dyn_arr_set (DynArr *xs, int where, void *val);
+void *dyn_arr_get (DynArr *xs, s32 where);
+void dyn_arr_set (DynArr *xs, s32 where, void *val);
 
 void dyn_arr_push (DynArr *xs, void *new_elem);
-void dyn_arr_insert (DynArr *xs, void *new_elem, int where);
+void dyn_arr_insert (DynArr *xs, void *new_elem, s32 where);
 void dyn_arr_pop (DynArr *xs);
-void dyn_arr_delete (DynArr *xs, int where);
+void dyn_arr_delete (DynArr *xs, s32 where);

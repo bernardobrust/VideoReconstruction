@@ -8,11 +8,12 @@
 
 #include "decode.h"
 #include "input.h"
+#include "macros.h"
 #include "platform.h"
 #include "renderer.h"
 
-int
-main (int argc, char **argv)
+s32
+main (s32 argc, char **argv)
 {
   // Argument parsing for the video to inspect
   if (argc <= 1)
@@ -24,7 +25,7 @@ main (int argc, char **argv)
 
   char *video_file = argv[1];
 
-  int file_exists = platform_file_exists (video_file);
+  s32 file_exists = platform_file_exists (video_file);
   if (file_exists == 0)
     printf ("Video to inspect: %s.\n", video_file);
   else if (file_exists == 1)
@@ -45,7 +46,7 @@ main (int argc, char **argv)
   if (!vp)
     return EXIT_FAILURE;
 
-  int w = vp->codec->width, h = vp->codec->height;
+  s32 w = vp->codec->width, h = vp->codec->height;
 
   // Initialize the renderer
   RendererPlex *rp = init_renderer (w, h);
@@ -64,15 +65,15 @@ main (int argc, char **argv)
   // Stable framerate at video FPS, we'll have a lot of work latter (?) to fix
   // the fps of the UI
   AVRational fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
-  double frame_time_ms = 1000.0 * fps.den / fps.num,
-         next_frame = platform_get_time (), now, remaining;
+  f64 frame_time_ms = 1000.0 * fps.den / fps.num,
+      next_frame = platform_get_time (), now, remaining;
 
   while (platform_update (&platform_state))
     {
       if (input_is_key_pressed (ESC))
         platform_stop (&platform_state);
 
-      int ret = decode_next_frame (vp, rp->image_buffer);
+      s32 ret = decode_next_frame (vp, rp->image_buffer);
       if (ret < 0)
         return EXIT_FAILURE;
       if (ret == 1)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "macros.h"
+
 #include <stdbool.h>
 
 // We'll just add here some keys we'll likely need latter
@@ -22,7 +24,7 @@ typedef enum
 } Command;
 
 typedef struct {
-    int keys_pressed[5];
+    s32 keys_pressed[5];
     bool ctrl_mod, shift_mod;
 } InputPlex;
 

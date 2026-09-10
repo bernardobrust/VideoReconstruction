@@ -1,7 +1,7 @@
 #include "basic.h"
 
-int
-clamp_int (int v, int min, int max)
+s32
+clamp_s32 (s32 v, s32 min, s32 max)
 {
   if (v < min)
     return min;
@@ -23,8 +23,8 @@ Zero     if A, B, and P are collinear
 
 The result is also 2 * signed area of the triangle ABP
 */
-int
-determinant_ab_ap_int (int ax, int ay, int bx, int by, int px, int py)
+s32
+determinant_ab_ap_s32 (s32 ax, s32 ay, s32 bx, s32 by, s32 px, s32 py)
 {
   return (px - ax) * (by - ay) - (py - ay) * (bx - ax);
 }

@@ -35,31 +35,31 @@ enum WaylandKeyValues
   P = 25,
 };
 
-static unsigned current_id = 1;
+global u32 current_id = 1;
 
-static const unsigned display_object_id = 1;
-static const unsigned short wl_registry_event_global = 0;
-static const unsigned short shm_pool_event_format = 0;
-static const unsigned short wl_buffer_event_release = 0;
-static const unsigned short xdg_wm_base_event_ping = 0;
-static const unsigned short xdg_toplevel_event_configure = 0;
-static const unsigned short xdg_toplevel_event_close = 1;
-static const unsigned short xdg_surface_event_configure = 0;
-static const unsigned short wl_display_get_registry_opcode = 1;
-static const unsigned short wl_registry_bind_opcode = 0;
-static const unsigned short wl_compositor_create_surface_opcode = 0;
-static const unsigned short xdg_wm_base_pong_opcode = 3;
-static const unsigned short xdg_surface_ack_configure_opcode = 4;
-static const unsigned short wl_shm_create_pool_opcode = 0;
-static const unsigned short xdg_wm_base_get_xdg_surface_opcode = 2;
-static const unsigned short wl_shm_pool_create_buffer_opcode = 0;
-static const unsigned short wl_surface_attach_opcode = 1;
-static const unsigned short xdg_surface_get_toplevel_opcode = 1;
-static const unsigned short wl_surface_commit_opcode = 6;
-static const unsigned short wl_display_error_event = 0;
-static const unsigned format_xrgb8888 = 1;
-static const unsigned header_size = 8;
-static const unsigned color_channels = 4;
+global const u32 display_object_id = 1;
+global const u16 wl_registry_event_global = 0;
+global const u16 shm_pool_event_format = 0;
+global const u16 wl_buffer_event_release = 0;
+global const u16 xdg_wm_base_event_ping = 0;
+global const u16 xdg_toplevel_event_configure = 0;
+global const u16 xdg_toplevel_event_close = 1;
+global const u16 xdg_surface_event_configure = 0;
+global const u16 wl_display_get_registry_opcode = 1;
+global const u16 wl_registry_bind_opcode = 0;
+global const u16 wl_compositor_create_surface_opcode = 0;
+global const u16 xdg_wm_base_pong_opcode = 3;
+global const u16 xdg_surface_ack_configure_opcode = 4;
+global const u16 wl_shm_create_pool_opcode = 0;
+global const u16 xdg_wm_base_get_xdg_surface_opcode = 2;
+global const u16 wl_shm_pool_create_buffer_opcode = 0;
+global const u16 wl_surface_attach_opcode = 1;
+global const u16 xdg_surface_get_toplevel_opcode = 1;
+global const u16 wl_surface_commit_opcode = 6;
+global const u16 wl_display_error_event = 0;
+global const u32 format_xrgb8888 = 1;
+global const u32 header_size = 8;
+global const u32 color_channels = 4;
 
 typedef enum
 {
@@ -70,38 +70,38 @@ typedef enum
 
 typedef struct
 {
-  unsigned wl_registry;
-  unsigned wl_shm;
-  unsigned wl_shm_pool;
-  unsigned wl_buffer;
-  unsigned xdg_wm_base;
-  unsigned xdg_surface;
-  unsigned wl_compositor;
-  unsigned wl_surface;
-  unsigned xdg_toplevel;
-  unsigned wl_seat;
-  unsigned wl_keyboard;
-  unsigned stride;
+  u32 wl_registry;
+  u32 wl_shm;
+  u32 wl_shm_pool;
+  u32 wl_buffer;
+  u32 xdg_wm_base;
+  u32 xdg_surface;
+  u32 wl_compositor;
+  u32 wl_surface;
+  u32 xdg_toplevel;
+  u32 wl_seat;
+  u32 wl_keyboard;
+  u32 stride;
 
-  unsigned width;
-  unsigned height;
+  u32 width;
+  u32 height;
 
-  unsigned shm_pool_size;
-  int shm_fd;
-  unsigned char *shm_pool_data;
+  u32 shm_pool_size;
+  s32 shm_fd;
+  u8 *shm_pool_data;
 
   StateState state;
 
-  int fd;
+  s32 fd;
   char *image_buffer;
 
   _Alignas (16) char read_buf[8192];
-  unsigned long read_buf_len;
+  u64 read_buf_len;
 } InternalState;
 
 // Internal functions
 // ----------------------------------------------------------------
-static int
+local s32
 display_connect (void)
 {
   char *xdg_runtime_dir = getenv ("XDG_RUNTIME_DIR");
@@ -112,13 +112,13 @@ display_connect (void)
       return -1;
     }
 
-  unsigned long xdg_runtime_dir_len = strlen (xdg_runtime_dir);
+  u64 xdg_runtime_dir_len = strlen (xdg_runtime_dir);
   struct sockaddr_un addr = { 0 };
   addr.sun_family = AF_UNIX;
 
   assert (xdg_runtime_dir_len <= sizeof (addr.sun_path) - 1);
 
-  unsigned long socket_path_len = 0;
+  u64 socket_path_len = 0;
 
   memcpy (addr.sun_path, xdg_runtime_dir, xdg_runtime_dir_len);
   socket_path_len += xdg_runtime_dir_len;
@@ -128,7 +128,7 @@ display_connect (void)
   if (display == NULL)
     {
       char display_default[] = "wayland-0";
-      unsigned long display_default_len = strlen (display_default);
+      u64 display_default_len = strlen (display_default);
 
       memcpy (addr.sun_path + socket_path_len, display_default,
               display_default_len);
@@ -136,12 +136,12 @@ display_connect (void)
     }
   else
     {
-      unsigned long display_len = strlen (display);
+      u64 display_len = strlen (display);
       memcpy (addr.sun_path + socket_path_len, display, display_len);
       socket_path_len += display_len;
     }
 
-  int fd = socket (AF_UNIX, SOCK_STREAM, 0);
+  s32 fd = socket (AF_UNIX, SOCK_STREAM, 0);
 
   if (fd == -1)
     {
@@ -156,16 +156,16 @@ display_connect (void)
   return fd;
 }
 
-static unsigned
-wl_display_get_registry (int fd)
+local u32
+wl_display_get_registry (s32 fd)
 {
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), display_object_id);
   buf_write_u16 (msg, &msg_size, sizeof (msg), wl_display_get_registry_opcode);
 
-  unsigned short msg_announced_size = header_size + sizeof (current_id);
+  u16 msg_announced_size = header_size + sizeof (current_id);
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
@@ -181,19 +181,19 @@ wl_display_get_registry (int fd)
   return current_id;
 }
 
-static unsigned
-wl_registry_bind (int fd, unsigned registry, unsigned name, char *interface,
-                  unsigned interface_len, unsigned version)
+local u32
+wl_registry_bind (s32 fd, u32 registry, u32 name, char *interface,
+                  u32 interface_len, u32 version)
 {
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[512] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), registry);
   buf_write_u16 (msg, &msg_size, sizeof (msg), wl_registry_bind_opcode);
 
-  unsigned short msg_announced_size
-      = header_size + sizeof (name) + sizeof (interface_len)
-        + ROUNDUP_4 (interface_len) + sizeof (version) + sizeof (current_id);
+  u16 msg_announced_size = header_size + sizeof (name) + sizeof (interface_len)
+                           + ROUNDUP_4 (interface_len) + sizeof (version)
+                           + sizeof (current_id);
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
@@ -216,19 +216,19 @@ wl_registry_bind (int fd, unsigned registry, unsigned name, char *interface,
   return current_id;
 }
 
-static unsigned
-wl_compositor_create_surface (int fd, InternalState *state)
+local u32
+wl_compositor_create_surface (s32 fd, InternalState *state)
 {
   assert (state->wl_compositor > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_compositor);
   buf_write_u16 (msg, &msg_size, sizeof (msg),
                  wl_compositor_create_surface_opcode);
 
-  unsigned short msg_announced_size = header_size + sizeof (current_id);
+  u16 msg_announced_size = header_size + sizeof (current_id);
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
@@ -242,31 +242,30 @@ wl_compositor_create_surface (int fd, InternalState *state)
   return current_id;
 }
 
-static void
-create_shared_memory_file (unsigned long size, InternalState *state)
+local void
+create_shared_memory_file (u64 size, InternalState *state)
 {
   char name[255] = "/";
 
   // Generate unique name
-  for (unsigned long i = 1; i < 16; ++i)
-    {
-      name[i] = ((double)rand ()) / (double)RAND_MAX * 26 + 'a';
-    }
+  for (u64 i = 1; i < 16; ++i)
+    name[i] = ((double)rand ()) / (double)RAND_MAX * 26 + 'a';
+
   name[16] = '\0';
 
-  int fd = shm_open (name, O_RDWR | O_EXCL | O_CREAT, 0600);
+  s32 fd = shm_open (name, O_RDWR | O_EXCL | O_CREAT, 0600);
 
   if (fd == -1)
     exit (errno);
 
-  int shm_ret = shm_unlink (name);
+  s32 shm_ret = shm_unlink (name);
   assert (shm_ret == 0 || errno == ENOENT);
 
   if (ftruncate (fd, size) == -1)
     exit (errno);
 
-  state->shm_pool_data = (unsigned char *)mmap (
-      NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  state->shm_pool_data
+      = (u8 *)mmap (NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
   assert ((void *)-1 != state->shm_pool_data);
   assert (state->shm_pool_data != NULL);
@@ -274,18 +273,18 @@ create_shared_memory_file (unsigned long size, InternalState *state)
   state->shm_fd = fd;
 }
 
-static void
-xdg_wm_base_pong (int fd, InternalState *state, unsigned ping)
+local void
+xdg_wm_base_pong (s32 fd, InternalState *state, u32 ping)
 {
   assert (state->xdg_wm_base > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->xdg_wm_base);
   buf_write_u16 (msg, &msg_size, sizeof (msg), xdg_wm_base_pong_opcode);
 
-  unsigned short msg_announced_size = header_size + sizeof (ping);
+  u16 msg_announced_size = header_size + sizeof (ping);
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
@@ -296,19 +295,19 @@ xdg_wm_base_pong (int fd, InternalState *state, unsigned ping)
     exit (errno);
 }
 
-static void
-xdg_surface_ack_configure (int fd, InternalState *state, unsigned configure)
+local void
+xdg_surface_ack_configure (s32 fd, InternalState *state, u32 configure)
 {
   assert (state->xdg_surface > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->xdg_surface);
   buf_write_u16 (msg, &msg_size, sizeof (msg),
                  xdg_surface_ack_configure_opcode);
 
-  unsigned short msg_announced_size = header_size + sizeof (configure);
+  u16 msg_announced_size = header_size + sizeof (configure);
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
@@ -319,18 +318,18 @@ xdg_surface_ack_configure (int fd, InternalState *state, unsigned configure)
     exit (errno);
 }
 
-static unsigned
-wl_shm_create_pool (int fd, InternalState *state)
+local u32
+wl_shm_create_pool (s32 fd, InternalState *state)
 {
   assert (state->shm_pool_size > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_shm);
   buf_write_u16 (msg, &msg_size, sizeof (msg), wl_shm_create_pool_opcode);
 
-  unsigned short msg_announced_size
+  u16 msg_announced_size
       = header_size + sizeof (current_id) + sizeof (state->shm_pool_size);
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
@@ -358,32 +357,30 @@ wl_shm_create_pool (int fd, InternalState *state)
   cmsg->cmsg_type = SCM_RIGHTS;
   cmsg->cmsg_len = CMSG_LEN (sizeof (state->shm_fd));
 
-  *((int *)CMSG_DATA (cmsg)) = state->shm_fd;
+  *((s32 *)CMSG_DATA (cmsg)) = state->shm_fd;
 
   socket_msg.msg_controllen = CMSG_SPACE (sizeof (state->shm_fd));
 
   if (sendmsg (fd, &socket_msg, 0) == -1)
-    {
-      exit (errno);
-    }
+    exit (errno);
 
   return current_id;
 }
 
-static unsigned
-xdg_wm_base_get_xdg_surface (int fd, InternalState *state)
+local u32
+xdg_wm_base_get_xdg_surface (s32 fd, InternalState *state)
 {
   assert (state->xdg_wm_base > 0);
   assert (state->wl_surface > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->xdg_wm_base);
   buf_write_u16 (msg, &msg_size, sizeof (msg),
                  xdg_wm_base_get_xdg_surface_opcode);
 
-  unsigned short msg_announced_size
+  u16 msg_announced_size
       = header_size + sizeof (current_id) + sizeof (state->wl_surface);
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
@@ -399,20 +396,20 @@ xdg_wm_base_get_xdg_surface (int fd, InternalState *state)
   return current_id;
 }
 
-static unsigned
-wl_shm_pool_create_buffer (int fd, InternalState *state)
+local u32
+wl_shm_pool_create_buffer (s32 fd, InternalState *state)
 {
   assert (state->wl_shm_pool > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_shm_pool);
   buf_write_u16 (msg, &msg_size, sizeof (msg),
                  wl_shm_pool_create_buffer_opcode);
 
-  unsigned short msg_announced_size
-      = header_size + sizeof (current_id) + sizeof (unsigned) * 5;
+  u16 msg_announced_size
+      = header_size + sizeof (current_id) + sizeof (u32) * 5;
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
@@ -420,13 +417,13 @@ wl_shm_pool_create_buffer (int fd, InternalState *state)
   ++current_id;
   buf_write_u32 (msg, &msg_size, sizeof (msg), current_id);
 
-  unsigned offset = 0;
+  u32 offset = 0;
   buf_write_u32 (msg, &msg_size, sizeof (msg), offset);
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->width);
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->height);
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->stride);
 
-  unsigned format = format_xrgb8888;
+  u32 format = format_xrgb8888;
   buf_write_u32 (msg, &msg_size, sizeof (msg), format);
 
   if ((long)msg_size != send (fd, msg, msg_size, 0))
@@ -435,27 +432,27 @@ wl_shm_pool_create_buffer (int fd, InternalState *state)
   return current_id;
 }
 
-static void
-wl_surface_attach (int fd, InternalState *state)
+local void
+wl_surface_attach (s32 fd, InternalState *state)
 {
   assert (state->wl_surface > 0);
   assert (state->wl_buffer > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_surface);
   buf_write_u16 (msg, &msg_size, sizeof (msg), wl_surface_attach_opcode);
 
-  unsigned short msg_announced_size
-      = header_size + sizeof (state->wl_buffer) + sizeof (unsigned) * 2;
+  u16 msg_announced_size
+      = header_size + sizeof (state->wl_buffer) + sizeof (u32) * 2;
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
   buf_write_u16 (msg, &msg_size, sizeof (msg), msg_announced_size);
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_buffer);
 
-  unsigned x = 0, y = 0;
+  u32 x = 0, y = 0;
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), x);
   buf_write_u32 (msg, &msg_size, sizeof (msg), y);
@@ -464,18 +461,18 @@ wl_surface_attach (int fd, InternalState *state)
     exit (errno);
 }
 
-static void
-wl_surface_damage (int fd, InternalState *state)
+local void
+wl_surface_damage (s32 fd, InternalState *state)
 {
   assert (state->wl_surface > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_surface);
   buf_write_u16 (msg, &msg_size, sizeof (msg), 2);
 
-  unsigned short msg_announced_size = header_size + sizeof (unsigned) * 4;
+  u16 msg_announced_size = header_size + sizeof (u32) * 4;
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
@@ -489,19 +486,19 @@ wl_surface_damage (int fd, InternalState *state)
     exit (errno);
 }
 
-static unsigned
-xdg_surface_get_toplevel (int fd, InternalState *state)
+local u32
+xdg_surface_get_toplevel (s32 fd, InternalState *state)
 {
   assert (state->xdg_surface > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->xdg_surface);
   buf_write_u16 (msg, &msg_size, sizeof (msg),
                  xdg_surface_get_toplevel_opcode);
 
-  unsigned short msg_announced_size = header_size + sizeof (current_id);
+  u16 msg_announced_size = header_size + sizeof (current_id);
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
@@ -515,42 +512,40 @@ xdg_surface_get_toplevel (int fd, InternalState *state)
   return current_id;
 }
 
-static void
-wl_surface_commit (int fd, InternalState *state)
+local void
+wl_surface_commit (s32 fd, InternalState *state)
 {
   assert (state->wl_surface > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_surface);
   buf_write_u16 (msg, &msg_size, sizeof (msg), wl_surface_commit_opcode);
 
-  unsigned short msg_announced_size = header_size;
+  u16 msg_announced_size = header_size;
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
   buf_write_u16 (msg, &msg_size, sizeof (msg), msg_announced_size);
 
   if ((long)msg_size != send (fd, msg, msg_size, 0))
-    {
       exit (errno);
-    }
 }
 
-static void
-xdg_toplevel_set_title (int fd, InternalState *state, const char *title)
+local void
+xdg_toplevel_set_title (s32 fd, InternalState *state, const char *title)
 {
   assert (state->xdg_toplevel > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[512] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->xdg_toplevel);
   buf_write_u16 (msg, &msg_size, sizeof (msg), 2);
 
-  unsigned title_len = strlen (title) + 1;
-  unsigned short msg_announced_size
+  u32 title_len = strlen (title) + 1;
+  u16 msg_announced_size
       = header_size + sizeof (title_len) + ROUNDUP_4 (title_len);
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
@@ -562,18 +557,18 @@ xdg_toplevel_set_title (int fd, InternalState *state, const char *title)
     exit (errno);
 }
 
-static unsigned
-wl_seat_get_keyboard (int fd, InternalState *state)
+local u32
+wl_seat_get_keyboard (s32 fd, InternalState *state)
 {
   assert (state->wl_seat > 0);
 
-  unsigned long msg_size = 0;
+  u64 msg_size = 0;
   char msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_seat);
   buf_write_u16 (msg, &msg_size, sizeof (msg), 1);
 
-  unsigned short msg_announced_size = header_size + sizeof (current_id);
+  u16 msg_announced_size = header_size + sizeof (current_id);
 
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
@@ -587,33 +582,33 @@ wl_seat_get_keyboard (int fd, InternalState *state)
   return current_id;
 }
 
-static void
-handle_message (int fd, PlatformState *platform_state, char **msg,
-                unsigned long *msg_len)
+local void
+handle_message (s32 fd, PlatformState *platform_state, char **msg,
+                u64 *msg_len)
 {
   InternalState *state = (InternalState *)platform_state->internal_state;
 
   assert (*msg_len >= 8);
 
-  unsigned object_id = buf_read_u32 (msg, msg_len);
+  u32 object_id = buf_read_u32 (msg, msg_len);
 
   assert (object_id <= current_id);
 
-  unsigned short opcode = buf_read_u16 (msg, msg_len);
-  unsigned short announced_size = buf_read_u16 (msg, msg_len);
+  u16 opcode = buf_read_u16 (msg, msg_len);
+  u16 announced_size = buf_read_u16 (msg, msg_len);
 
   assert (ROUNDUP_4 (announced_size) <= announced_size);
 
-  unsigned message_header_size
+  u32 message_header_size
       = sizeof (object_id) + sizeof (opcode) + sizeof (announced_size);
 
   assert (announced_size <= message_header_size + *msg_len);
 
   if (object_id == state->wl_registry && opcode == wl_registry_event_global)
     {
-      unsigned name = buf_read_u32 (msg, msg_len);
-      unsigned interface_len = buf_read_u32 (msg, msg_len);
-      unsigned padded_interface_len = ROUNDUP_4 (interface_len);
+      u32 name = buf_read_u32 (msg, msg_len);
+      u32 interface_len = buf_read_u32 (msg, msg_len);
+      u32 padded_interface_len = ROUNDUP_4 (interface_len);
       char interface[512] = "";
 
       assert (padded_interface_len <= sizeof (interface));
@@ -622,7 +617,7 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
 
       assert (interface[interface_len - 1] == 0);
 
-      unsigned version = buf_read_u32 (msg, msg_len);
+      u32 version = buf_read_u32 (msg, msg_len);
 
       assert (announced_size
               == sizeof (object_id) + sizeof (announced_size) + sizeof (opcode)
@@ -657,10 +652,10 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
     }
   else if (object_id == display_object_id && opcode == wl_display_error_event)
     {
-      unsigned target_object_id = buf_read_u32 (msg, msg_len);
-      unsigned code = buf_read_u32 (msg, msg_len);
+      u32 target_object_id = buf_read_u32 (msg, msg_len);
+      u32 code = buf_read_u32 (msg, msg_len);
       char error[512] = "";
-      unsigned error_len = buf_read_u32 (msg, msg_len);
+      u32 error_len = buf_read_u32 (msg, msg_len);
 
       buf_read_n (msg, msg_len, error, ROUNDUP_4 (error_len));
 
@@ -671,7 +666,7 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
     }
   else if (object_id == state->wl_shm && opcode == shm_pool_event_format)
     {
-      // unsigned format = buf_read_u32(msg, msg_len);
+      // u32 format = buf_read_u32(msg, msg_len);
 
       return;
     }
@@ -681,7 +676,7 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
     }
   else if (object_id == state->xdg_wm_base && opcode == xdg_wm_base_event_ping)
     {
-      unsigned ping = buf_read_u32 (msg, msg_len);
+      u32 ping = buf_read_u32 (msg, msg_len);
 
       xdg_wm_base_pong (fd, state, ping);
 
@@ -691,9 +686,9 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
     {
       if (opcode == xdg_toplevel_event_configure)
         {
-          __attribute__ ((unused)) unsigned w = buf_read_u32 (msg, msg_len);
-          __attribute__ ((unused)) unsigned h = buf_read_u32 (msg, msg_len);
-          unsigned len = buf_read_u32 (msg, msg_len);
+          __attribute__ ((unused)) u32 w = buf_read_u32 (msg, msg_len);
+          __attribute__ ((unused)) u32 h = buf_read_u32 (msg, msg_len);
+          u32 len = buf_read_u32 (msg, msg_len);
           char buf[256] = "";
 
           assert (len <= sizeof (buf));
@@ -706,8 +701,8 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
         }
       else if (opcode == 3)
         {
-          unsigned array_len = buf_read_u32 (msg, msg_len);
-          unsigned padded_len = ROUNDUP_4 (array_len);
+          u32 array_len = buf_read_u32 (msg, msg_len);
+          u32 padded_len = ROUNDUP_4 (array_len);
           *msg += padded_len;
           *msg_len -= padded_len;
         }
@@ -716,7 +711,7 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
   else if (object_id == state->xdg_surface
            && opcode == xdg_surface_event_configure)
     {
-      unsigned configure = buf_read_u32 (msg, msg_len);
+      u32 configure = buf_read_u32 (msg, msg_len);
 
       xdg_surface_ack_configure (fd, state, configure);
 
@@ -728,7 +723,7 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
     {
       if (opcode == 0)
         {
-          unsigned capabilities = buf_read_u32 (msg, msg_len);
+          u32 capabilities = buf_read_u32 (msg, msg_len);
 
           if (capabilities & 2)
             {
@@ -740,8 +735,8 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
         }
       else if (opcode == 1)
         {
-          unsigned name_len = buf_read_u32 (msg, msg_len);
-          unsigned padded_len = ROUNDUP_4 (name_len);
+          u32 name_len = buf_read_u32 (msg, msg_len);
+          u32 padded_len = ROUNDUP_4 (name_len);
           *msg += padded_len;
           *msg_len -= padded_len;
         }
@@ -753,7 +748,7 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
         {
           buf_read_u32 (msg, msg_len);
           buf_read_u32 (msg, msg_len);
-          unsigned keys_len = buf_read_u32 (msg, msg_len);
+          u32 keys_len = buf_read_u32 (msg, msg_len);
           *msg += ROUNDUP_4 (keys_len);
           *msg_len -= ROUNDUP_4 (keys_len);
         }
@@ -766,8 +761,8 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
         {
           buf_read_u32 (msg, msg_len);
           buf_read_u32 (msg, msg_len);
-          unsigned key = buf_read_u32 (msg, msg_len);
-          unsigned key_state = buf_read_u32 (msg, msg_len);
+          u32 key = buf_read_u32 (msg, msg_len);
+          u32 key_state = buf_read_u32 (msg, msg_len);
 
           EventType ev;
           bool valid = true;
@@ -834,7 +829,7 @@ handle_message (int fd, PlatformState *platform_state, char **msg,
   assert (0 && "Unimplemented message received");
 }
 
-static void
+local void
 read_and_dispatch (PlatformState *platform_state, bool block)
 {
   InternalState *state = (InternalState *)platform_state->internal_state;
@@ -875,7 +870,7 @@ read_and_dispatch (PlatformState *platform_state, bool block)
 
   while (state->read_buf_len >= 8)
     {
-      unsigned short announced_size = *(unsigned short *)(state->read_buf + 6);
+      u16 announced_size = *(u16 *)(state->read_buf + 6);
       if (announced_size < 8)
         {
           fprintf (stderr, "Invalid Wayland message size: %d\n",
@@ -889,7 +884,7 @@ read_and_dispatch (PlatformState *platform_state, bool block)
         }
 
       char *msg_ptr = state->read_buf;
-      unsigned long msg_len = announced_size;
+      u64 msg_len = announced_size;
       handle_message (state->fd, platform_state, &msg_ptr, &msg_len);
 
       memmove (state->read_buf, state->read_buf + announced_size,
@@ -901,8 +896,8 @@ read_and_dispatch (PlatformState *platform_state, bool block)
 
 // Platform layer
 bool
-platform_init (PlatformState *platform_state, const char *window_name, int x,
-               int y, int w, int h, char *image_buffer)
+platform_init (PlatformState *platform_state, const char *window_name, s32 x,
+               s32 y, s32 w, s32 h, char *image_buffer)
 {
   // x and y not used
   (void)x;
@@ -921,12 +916,12 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
   tv.tv_sec = 0;
   tv.tv_usec = 0;
 
-  int time_ret = gettimeofday (&tv, NULL);
+  s32 time_ret = gettimeofday (&tv, NULL);
   assert (time_ret != -1);
 
   srand (tv.tv_sec * 1000 * 1000 + tv.tv_usec);
 
-  int fd = display_connect ();
+  s32 fd = display_connect ();
   if (fd == -1)
     {
       return false;

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "dyn_arr.h"
+#include "macros.h"
 
 #include <stdbool.h>
 
@@ -36,15 +37,15 @@ typedef enum
 extern DynArr event_queue;
 
 bool platform_init (PlatformState *platform_state, const char *window_name,
-                    int x, int y, int w, int h, char *image_buffer);
+                    s32 x, s32 y, s32 w, s32 h, char *image_buffer);
 void platform_shutdown (PlatformState *platform_state);
 
 bool platform_update (PlatformState *platform_state);
 void platform_dispatch_events (void);
 void platform_present (PlatformState *platform_state);
 
-double platform_get_time (void);
-void platform_sleep (double ms);
-int platform_file_exists (char *filepath);
+f64 platform_get_time (void);
+void platform_sleep (f64 ms);
+s32 platform_file_exists (char *filepath);
 
 void platform_stop (PlatformState *platform_state);

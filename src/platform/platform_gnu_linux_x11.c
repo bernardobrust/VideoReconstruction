@@ -71,40 +71,40 @@ enum
 
 typedef struct
 {
-  int fd;
-  unsigned root;
-  unsigned root_visual;
-  unsigned window;
-  unsigned gc;
-  unsigned resource_base;
-  unsigned resource_mask;
-  unsigned resource_counter;
-  unsigned wm_protocols;
-  unsigned wm_delete_window;
-  unsigned short max_request_words;
-  unsigned width;
-  unsigned height;
-  unsigned depth;
-  unsigned bits_per_pixel;
-  unsigned scanline_pad;
-  unsigned char *image_buffer;
-  unsigned char read_buf[8192];
-  size_t read_len;
-  unsigned char shm_opcode;
-  unsigned shmseg;
-  int shmid;
-  unsigned char *shm_data;
-  size_t shm_size;
+  s32 fd;
+  u32 root;
+  u32 root_visual;
+  u32 window;
+  u32 gc;
+  u32 resource_base;
+  u32 resource_mask;
+  u32 resource_counter;
+  u32 wm_protocols;
+  u32 wm_delete_window;
+  u16 max_request_words;
+  u32 width;
+  u32 height;
+  u32 depth;
+  u32 bits_per_pixel;
+  u32 scanline_pad;
+  u8 *image_buffer;
+  u8read_buf[8192];
+  u64 read_len;
+  u8shm_opcode;
+  u32 shmseg;
+  s32 shmid;
+  u8 *shm_data;
+  u64 shm_size;
   bool has_shm;
 } InternalState;
 
-static bool
-send_all (int fd, const void *data, size_t size)
+local bool
+send_all (s32 fd, const void *data, u64 size)
 {
-  const unsigned char *p = data;
+  const u8 *p = data;
   while (size > 0)
     {
-      ssize_t written = send (fd, p, size, 0);
+      su64 written = send (fd, p, size, 0);
 
       if (written < 0 && errno == EINTR)
         continue;
@@ -119,13 +119,13 @@ send_all (int fd, const void *data, size_t size)
   return true;
 }
 
-static bool
-read_all (int fd, void *data, size_t size)
+local bool
+read_all (s32 fd, void *data, u64 size)
 {
-  unsigned char *p = data;
+  u8 *p = data;
   while (size > 0)
     {
-      ssize_t received = recv (fd, p, size, 0);
+      su64 received = recv (fd, p, size, 0);
 
       if (received < 0 && errno == EINTR)
         continue;
@@ -140,8 +140,8 @@ read_all (int fd, void *data, size_t size)
   return true;
 }
 
-static bool
-read_xauthority (unsigned char token[16])
+local bool
+read_xauthority (u8token[16])
 {
   const char *path = getenv ("XAUTHORITY");
   char default_path[PATH_MAX];
@@ -165,17 +165,17 @@ read_xauthority (unsigned char token[16])
     return false;
 
   bool found = false;
-  unsigned char length_buf[2];
+  u8length_buf[2];
   while (fread (length_buf, 1, sizeof (length_buf), file)
          == sizeof (length_buf))
     {
-      unsigned short family = read_u16_be (length_buf);
+      u16 family = read_u16_be (length_buf);
       // An Xauthority entry is family, address, display number, auth name,
       // and auth data; all fields after family are length-prefixed.
-      unsigned char *fields[4] = { NULL, NULL, NULL, NULL };
-      unsigned short lengths[4] = { 0, 0, 0, 0 };
+      u8 *fields[4] = { NULL, NULL, NULL, NULL };
+      u16 lengths[4] = { 0, 0, 0, 0 };
       bool valid = true;
-      for (unsigned i = 0; i < 4; ++i)
+      for (u32 i = 0; i < 4; ++i)
         {
           if (fread (length_buf, 1, sizeof (length_buf), file)
               != sizeof (length_buf))
@@ -206,7 +206,7 @@ read_xauthority (unsigned char token[16])
           found = true;
         }
 
-      for (unsigned i = 0; i < 4; ++i)
+      for (u32 i = 0; i < 4; ++i)
         free (fields[i]);
 
       if (!valid || found)
@@ -218,7 +218,7 @@ read_xauthority (unsigned char token[16])
   return found;
 }
 
-static int
+local s32
 display_connect (void)
 {
   const char *display = getenv ("DISPLAY");
@@ -246,7 +246,7 @@ display_connect (void)
       >= (int)sizeof (address.sun_path))
     return -1;
 
-  int fd = socket (AF_UNIX, SOCK_STREAM, 0);
+  s32 fd = socket (AF_UNIX, SOCK_STREAM, 0);
   if (fd < 0
       || connect (fd, (struct sockaddr *)&address, sizeof (address)) < 0)
     {
@@ -261,13 +261,13 @@ display_connect (void)
   return fd;
 }
 
-static unsigned
+local u32
 next_resource_id (InternalState *state)
 {
-  unsigned id = state->resource_base;
-  unsigned value = ++state->resource_counter;
+  u32 id = state->resource_base;
+  u32 value = ++state->resource_counter;
 
-  for (unsigned bit = 0; bit < 32; ++bit)
+  for (u32 bit = 0; bit < 32; ++bit)
     if (state->resource_mask & (1u << bit))
       {
         id |= (value & 1u) << bit;
@@ -277,16 +277,16 @@ next_resource_id (InternalState *state)
   return id;
 }
 
-static bool
-send_request (InternalState *state, unsigned char opcode, unsigned char detail,
-              const unsigned char *body, size_t body_size)
+local bool
+send_request (InternalState *state, u8opcode, u8detail, const u8 *body,
+              u64 body_size)
 {
-  size_t size = 4 + body_size;
+  u64 size = 4 + body_size;
 
   if (size % 4 != 0 || size / 4 > state->max_request_words)
     return false;
 
-  unsigned char *request = calloc (1, size);
+  u8 *request = calloc (1, size);
 
   if (request == NULL)
     return false;
@@ -294,7 +294,7 @@ send_request (InternalState *state, unsigned char opcode, unsigned char detail,
   request[0] = opcode;
   request[1] = detail;
 
-  write_u16_le (request + 2, (unsigned short)(size / 4));
+  write_u16_le (request + 2, (u32 short)(size / 4));
 
   memcpy (request + 4, body, body_size);
   bool result = send_all (state->fd, request, size);
@@ -304,24 +304,23 @@ send_request (InternalState *state, unsigned char opcode, unsigned char detail,
   return result;
 }
 
-static bool
-read_reply (InternalState *state, unsigned char reply[32])
+local bool
+read_reply (InternalState *state, u8reply[32])
 {
   if (!read_all (state->fd, reply, 32))
     return false;
 
-  unsigned long_words = read_u32_le (reply + 4);
+  u32 long_words = read_u32_le (reply + 4);
   if (reply[0] != X11_REPLY || long_words != 0)
     {
       if (long_words > 0)
         {
-          size_t extra = (size_t)long_words * 4;
-          unsigned char discard[256];
+          u64 extra = (size_t)long_words * 4;
+          u8discard[256];
 
           while (extra > 0)
             {
-              size_t chunk
-                  = extra < sizeof (discard) ? extra : sizeof (discard);
+              u64 chunk = extra < sizeof (discard) ? extra : sizeof (discard);
 
               if (!read_all (state->fd, discard, chunk))
                 break;
@@ -337,23 +336,23 @@ read_reply (InternalState *state, unsigned char reply[32])
   return true;
 }
 
-static bool
-intern_atom (InternalState *state, const char *name, unsigned *atom)
+local bool
+intern_atom (InternalState *state, const char *name, u32 *atom)
 {
-  size_t name_length = strlen (name);
-  size_t body_size = 4 + round_up ((unsigned)name_length, 4);
-  unsigned char *body = calloc (1, body_size);
+  u64 name_length = strlen (name);
+  u64 body_size = 4 + round_up ((u32)name_length, 4);
+  u8 *body = calloc (1, body_size);
 
   if (body == NULL)
     return false;
 
-  write_u16_le (body, (unsigned short)name_length);
+  write_u16_le (body, (u32 short)name_length);
 
   memcpy (body + 4, name, name_length);
   bool result = send_request (state, 16, 0, body, body_size);
   free (body);
 
-  unsigned char reply[32];
+  u8reply[32];
 
   if (!result || !read_reply (state, reply))
     return false;
@@ -363,24 +362,23 @@ intern_atom (InternalState *state, const char *name, unsigned *atom)
   return true;
 }
 
-static bool
-query_extension (InternalState *state, const char *name,
-                 unsigned char *major_opcode)
+local bool
+query_extension (InternalState *state, const char *name, u8 *major_opcode)
 {
-  size_t name_length = strlen (name);
-  size_t body_size = 4 + round_up ((unsigned)name_length, 4);
-  unsigned char *body = calloc (1, body_size);
+  u64 name_length = strlen (name);
+  u64 body_size = 4 + round_up ((u32)name_length, 4);
+  u8 *body = calloc (1, body_size);
 
   if (body == NULL)
     return false;
 
-  write_u16_le (body, (unsigned short)name_length);
+  write_u16_le (body, (u32 short)name_length);
 
   memcpy (body + 4, name, name_length);
   bool result = send_request (state, X11_QUERY_EXTENSION, 0, body, body_size);
   free (body);
 
-  unsigned char reply[32];
+  u8reply[32];
 
   if (!result || !read_reply (state, reply))
     return false;
@@ -394,12 +392,12 @@ query_extension (InternalState *state, const char *name,
   return true;
 }
 
-static bool
+local bool
 set_title (InternalState *state, const char *title)
 {
-  size_t title_length = strlen (title);
-  size_t body_size = 20 + round_up ((unsigned)title_length, 4);
-  unsigned char *body = calloc (1, body_size);
+  u64 title_length = strlen (title);
+  u64 body_size = 20 + round_up ((u32)title_length, 4);
+  u8 *body = calloc (1, body_size);
 
   if (body == NULL)
     return false;
@@ -410,7 +408,7 @@ set_title (InternalState *state, const char *title)
 
   body[12] = 8;
 
-  write_u32_le (body + 16, (unsigned)title_length);
+  write_u32_le (body + 16, (u32)title_length);
 
   memcpy (body + 20, title, title_length);
   bool result = send_request (state, 18, 0, body, body_size);
@@ -420,18 +418,18 @@ set_title (InternalState *state, const char *title)
   return result;
 }
 
-static bool
-create_window (InternalState *state, int x, int y, int w, int h)
+local bool
+create_window (InternalState *state, s32 x, s32 y, s32 w, s32 h)
 {
-  unsigned char body[36] = { 0 };
+  u8body[36] = { 0 };
   state->window = next_resource_id (state);
 
   write_u32_le (body, state->window);
   write_u32_le (body + 4, state->root);
-  write_u16_le (body + 8, (unsigned short)x);
-  write_u16_le (body + 10, (unsigned short)y);
-  write_u16_le (body + 12, (unsigned short)w);
-  write_u16_le (body + 14, (unsigned short)h);
+  write_u16_le (body + 8, (u32 short)x);
+  write_u16_le (body + 10, (u32 short)y);
+  write_u16_le (body + 12, (u32 short)w);
+  write_u16_le (body + 14, (u32 short)h);
   write_u16_le (body + 18, X11_INPUT_OUTPUT);
   write_u32_le (body + 24, X11_CW_BACK_PIXEL | X11_CW_EVENT_MASK);
   write_u32_le (body + 32,
@@ -439,14 +437,13 @@ create_window (InternalState *state, int x, int y, int w, int h)
                     | X11_EVENT_MASK_KEY_PRESS | X11_EVENT_MASK_KEY_RELEASE);
   write_u32_le (body + 20, state->root_visual);
 
-  return send_request (state, 1, (unsigned char)state->depth, body,
-                       sizeof (body));
+  return send_request (state, 1, (u32 char)state->depth, body, sizeof (body));
 }
 
-static bool
+local bool
 create_gc (InternalState *state)
 {
-  unsigned char body[16] = { 0 };
+  u8body[16] = { 0 };
   state->gc = next_resource_id (state);
   write_u32_le (body, state->gc);
   write_u32_le (body + 4, state->root);
@@ -456,11 +453,11 @@ create_gc (InternalState *state)
   return send_request (state, 55, 0, body, sizeof (body));
 }
 
-static void
-dispatch_event (PlatformState *platform_state, const unsigned char event[32])
+local void
+dispatch_event (PlatformState *platform_state, const u8event[32])
 {
   InternalState *state = platform_state->internal_state;
-  unsigned char type = event[0] & 0x7f;
+  u8type = event[0] & 0x7f;
 
   if (type == X11_ERROR)
     {
@@ -481,7 +478,7 @@ dispatch_event (PlatformState *platform_state, const unsigned char event[32])
 
   else if (type == 2 || type == 3)
     {
-      unsigned char keycode = event[1];
+      u8keycode = event[1];
       bool is_press = (type == 2);
       EventType ev;
       bool valid = true;
@@ -522,8 +519,8 @@ dispatch_event (PlatformState *platform_state, const unsigned char event[32])
 // ----------------------------------------------------------------
 // Platform layer
 bool
-platform_init (PlatformState *platform_state, const char *window_name, int x,
-               int y, int w, int h, char *image_buffer)
+platform_init (PlatformState *platform_state, const char *window_name, s32 x,
+               s32 y, s32 w, s32 h, char *image_buffer)
 {
   if (w <= 0 || h <= 0 || w > USHRT_MAX || h > USHRT_MAX)
     return false;
@@ -542,14 +539,14 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
       return false;
     }
 
-  unsigned char token[16] = { 0 };
+  u8token[16] = { 0 };
   bool has_token = read_xauthority (token);
   const char *auth_name = has_token ? "MIT-MAGIC-COOKIE-1" : "";
-  unsigned auth_name_length = (unsigned)strlen (auth_name);
-  unsigned auth_data_length = has_token ? sizeof (token) : 0;
-  size_t setup_size
+  u32 auth_name_length = (u32)strlen (auth_name);
+  u32 auth_data_length = has_token ? sizeof (token) : 0;
+  u64 setup_size
       = 12 + round_up (auth_name_length, 4) + round_up (auth_data_length, 4);
-  unsigned char *setup = calloc (1, setup_size);
+  u8 *setup = calloc (1, setup_size);
 
   if (setup == NULL)
     goto fail;
@@ -558,8 +555,8 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
 
   write_u16_le (setup + 2, X11_PROTOCOL_MAJOR);
   write_u16_le (setup + 4, X11_PROTOCOL_MINOR);
-  write_u16_le (setup + 6, (unsigned short)auth_name_length);
-  write_u16_le (setup + 8, (unsigned short)auth_data_length);
+  write_u16_le (setup + 6, (u32 short)auth_name_length);
+  write_u16_le (setup + 8, (u32 short)auth_data_length);
 
   memcpy (setup + 12, auth_name, auth_name_length);
   memcpy (setup + 12 + round_up (auth_name_length, 4), token,
@@ -571,13 +568,13 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
   if (!setup_sent)
     goto fail;
 
-  unsigned char prefix[8];
+  u8prefix[8];
 
   if (!read_all (state->fd, prefix, sizeof (prefix)))
     goto fail;
 
-  size_t additional_size = (size_t)read_u16_le (prefix + 6) * 4;
-  unsigned char *additional = malloc (additional_size);
+  u64 additional_size = (size_t)read_u16_le (prefix + 6) * 4;
+  u8 *additional = malloc (additional_size);
 
   if (prefix[0] != 1 || additional == NULL
       || !read_all (state->fd, additional, additional_size))
@@ -599,11 +596,11 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
   state->resource_mask = read_u32_le (additional + 8);
   state->max_request_words = read_u16_le (additional + 18);
 
-  unsigned vendor_length = read_u16_le (additional + 16);
-  unsigned root_count = additional[20];
-  unsigned format_count = additional[21];
+  u32 vendor_length = read_u16_le (additional + 16);
+  u32 root_count = additional[20];
+  u32 format_count = additional[21];
 
-  size_t offset = 32 + round_up (vendor_length, 4);
+  u64 offset = 32 + round_up (vendor_length, 4);
 
   if (root_count == 0 || offset + (size_t)format_count * 8 > additional_size)
     {
@@ -625,7 +622,7 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
   state->bits_per_pixel = 32;
   state->scanline_pad = 32;
 
-  for (unsigned i = 0; i < format_count; ++i)
+  for (u32 i = 0; i < format_count; ++i)
     if (additional[32 + round_up (vendor_length, 4) + i * 8] == state->depth)
       {
         state->bits_per_pixel
@@ -636,28 +633,28 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
 
   free (additional);
 
-  state->width = (unsigned)w;
-  state->height = (unsigned)h;
-  state->image_buffer = (unsigned char *)image_buffer;
+  state->width = (u32)w;
+  state->height = (u32)h;
+  state->image_buffer = (u8 *)image_buffer;
   state->shmid = -1;
 
   if (query_extension (state, "MIT-SHM", &state->shm_opcode))
     {
-      unsigned row_bytes = round_up (state->width * state->bits_per_pixel,
-                                     state->scanline_pad)
-                           / 8;
+      u32 row_bytes = round_up (state->width * state->bits_per_pixel,
+                                state->scanline_pad)
+                      / 8;
       state->shm_size = (size_t)row_bytes * state->height;
       state->shmid = shmget (IPC_PRIVATE, state->shm_size, IPC_CREAT | 0600);
 
       if (state->shmid >= 0)
         {
-          state->shm_data = (unsigned char *)shmat (state->shmid, NULL, 0);
+          state->shm_data = (u8 *)shmat (state->shmid, NULL, 0);
           if (state->shm_data != (void *)-1)
             {
               state->shmseg = next_resource_id (state);
-              unsigned char attach_body[12] = { 0 };
+              u8attach_body[12] = { 0 };
               write_u32_le (attach_body, state->shmseg);
-              write_u32_le (attach_body + 4, (unsigned)state->shmid);
+              write_u32_le (attach_body + 4, (u32)state->shmid);
               attach_body[8] = 0;
 
               if (send_request (state, state->shm_opcode, X11_SHM_ATTACH,
@@ -682,7 +679,7 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
   if (state->has_shm && state->shmid >= 0)
     shmctl (state->shmid, IPC_RMID, NULL);
 
-  unsigned char protocols[24] = { 0 };
+  u8protocols[24] = { 0 };
   write_u32_le (protocols, state->window);
   write_u32_le (protocols + 4, state->wm_protocols);
   write_u32_le (protocols + 8, 4);
@@ -694,13 +691,12 @@ platform_init (PlatformState *platform_state, const char *window_name, int x,
 
   if (!send_request (state, 18, 0, protocols, sizeof (protocols))
       || !create_gc (state)
-      || !send_request (
-          state, 8, 0,
-          (unsigned char[]){ (unsigned char)state->window,
-                             (unsigned char)(state->window >> 8),
-                             (unsigned char)(state->window >> 16),
-                             (unsigned char)(state->window >> 24) },
-          4))
+      || !send_request (state, 8, 0,
+                        (u32 char[]){ (u32 char)state->window,
+                                      (u32 char)(state->window >> 8),
+                                      (u32 char)(state->window >> 16),
+                                      (u32 char)(state->window >> 24) },
+                        4))
     goto fail_with_state;
   return true;
 
@@ -726,7 +722,7 @@ platform_shutdown (PlatformState *platform_state)
 
   if (state->has_shm && state->shmseg != 0 && state->shm_opcode != 0)
     {
-      unsigned char body[4] = { 0 };
+      u8body[4] = { 0 };
       write_u32_le (body, state->shmseg);
       send_request (state, state->shm_opcode, X11_SHM_DETACH, body,
                     sizeof (body));
@@ -740,7 +736,7 @@ platform_shutdown (PlatformState *platform_state)
 
   if (state->window != 0)
     {
-      unsigned char body[4];
+      u8body[4];
       write_u32_le (body, state->window);
       send_request (state, 4, 0, body, sizeof (body));
     }
@@ -761,7 +757,7 @@ platform_update (PlatformState *platform_state)
 
   while (true)
     {
-      ssize_t received
+      su64 received
           = recv (state->fd, state->read_buf + state->read_len,
                   sizeof (state->read_buf) - state->read_len, MSG_DONTWAIT);
       if (received > 0)
@@ -808,30 +804,30 @@ platform_present (PlatformState *platform_state)
   if (state == NULL || !platform_state->running)
     return;
 
-  unsigned bytes_per_pixel = (state->bits_per_pixel + 7) / 8;
-  unsigned row_bytes
+  u32 bytes_per_pixel = (state->bits_per_pixel + 7) / 8;
+  u32 row_bytes
       = round_up (state->width * state->bits_per_pixel, state->scanline_pad)
         / 8;
 
   if (state->has_shm && state->shm_data != NULL)
     {
-      for (unsigned row = 0; row < state->height; ++row)
+      for (u32 row = 0; row < state->height; ++row)
         memcpy (state->shm_data + (size_t)row * row_bytes,
                 state->image_buffer + (size_t)row * state->width * 4,
                 state->width * (bytes_per_pixel < 4 ? bytes_per_pixel : 4));
 
-      unsigned char body[36] = { 0 };
+      u8body[36] = { 0 };
       write_u32_le (body, state->window);
       write_u32_le (body + 4, state->gc);
-      write_u16_le (body + 8, (unsigned short)state->width);
-      write_u16_le (body + 10, (unsigned short)state->height);
+      write_u16_le (body + 8, (u32 short)state->width);
+      write_u16_le (body + 10, (u32 short)state->height);
       write_u16_le (body + 12, 0);
       write_u16_le (body + 14, 0);
-      write_u16_le (body + 16, (unsigned short)state->width);
-      write_u16_le (body + 18, (unsigned short)state->height);
+      write_u16_le (body + 16, (u32 short)state->width);
+      write_u16_le (body + 18, (u32 short)state->height);
       write_u16_le (body + 20, 0);
       write_u16_le (body + 22, 0);
-      body[24] = (unsigned char)state->depth;
+      body[24] = (u32 char)state->depth;
       body[25] = X11_Z_PIXMAP;
       body[26] = 0;
       body[27] = 0;
@@ -846,30 +842,29 @@ platform_present (PlatformState *platform_state)
       return;
     }
 
-  unsigned max_data = state->max_request_words * 4 - 24;
-  unsigned rows = max_data / row_bytes;
+  u32 max_data = state->max_request_words * 4 - 24;
+  u32 rows = max_data / row_bytes;
 
   if (rows == 0)
     return;
 
-  for (unsigned y = 0; y < state->height; y += rows)
+  for (u32 y = 0; y < state->height; y += rows)
     {
-      unsigned chunk_height
-          = state->height - y < rows ? state->height - y : rows;
-      size_t image_size = (size_t)row_bytes * chunk_height;
-      unsigned char *body = calloc (1, 20 + image_size);
+      u32 chunk_height = state->height - y < rows ? state->height - y : rows;
+      u64 image_size = (size_t)row_bytes * chunk_height;
+      u8 *body = calloc (1, 20 + image_size);
 
       if (body == NULL)
         return;
 
       write_u32_le (body, state->window);
       write_u32_le (body + 4, state->gc);
-      write_u16_le (body + 8, (unsigned short)state->width);
-      write_u16_le (body + 10, (unsigned short)chunk_height);
-      write_u16_le (body + 14, (unsigned short)y);
-      body[17] = (unsigned char)state->depth;
+      write_u16_le (body + 8, (u32 short)state->width);
+      write_u16_le (body + 10, (u32 short)chunk_height);
+      write_u16_le (body + 14, (u32 short)y);
+      body[17] = (u32 char)state->depth;
 
-      for (unsigned row = 0; row < chunk_height; ++row)
+      for (u32 row = 0; row < chunk_height; ++row)
         memcpy (body + 20 + (size_t)row * row_bytes,
                 state->image_buffer + ((size_t)y + row) * state->width * 4,
                 state->width * (bytes_per_pixel < 4 ? bytes_per_pixel : 4));

@@ -3,48 +3,49 @@
 #include <stdint.h>
 
 #include "platform.h"
+#include "macros.h"
 
-typedef struct
-{
-  int w, h;
-  unsigned *image_buffer;
+//typedef struct
+typedef struct {
+  s32 w, h;
+  u32 *image_buffer;
 } RendererPlex;
 
-RendererPlex *init_renderer (int w, int h);
+RendererPlex *init_renderer (s32 w, s32 h);
 
 // Utility
-unsigned rgba (unsigned r, unsigned g, unsigned b, unsigned a);
-uint8_t blend_channel (uint8_t src, uint8_t dst, uint8_t alpha);
-unsigned blend_rgba_pixel (unsigned src, unsigned dst);
+u32 rgba (u32 r, u32 g, u32 b, u32 a);
+u8 blend_channel (u8 src, u8 dst, u8 alpha);
+u32 blend_rgba_pixel (u32 src, u32 dst);
 
-void draw_hline (int x0, int x1, int y, unsigned color, RendererPlex *rp);
+void draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp);
 
 // Normal shapes
-void draw_triangle (int x1, int y1, int x2, int y2, int x3, int y3,
-                    unsigned color, RendererPlex *rp);
-void draw_rectangle (int x1, int y1, int x2, int y2, unsigned color,
+void draw_triangle (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3,
+                    u32 color, RendererPlex *rp);
+void draw_rectangle (s32 x1, s32 y1, s32 x2, s32 y2, u32 color,
                      RendererPlex *rp);
-void draw_circle (int cx, int cy, int r, unsigned color, RendererPlex *rp);
-void draw_rotated_rectangle (int cx, int cy, int w, int h, float theta,
-                             unsigned color, RendererPlex *rp);
-void draw_rotated_oriented_rectangle (int dx1, int dy1, int dx2, int dy2,
-                                      int width, unsigned color,
+void draw_circle (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *rp);
+void draw_rotated_rectangle (s32 cx, s32 cy, s32 w, s32 h, f32 theta,
+                             u32 color, RendererPlex *rp);
+void draw_rotated_oriented_rectangle (s32 dx1, s32 dy1, s32 dx2, s32 dy2,
+                                      s32 width, u32 color,
                                       RendererPlex *rp);
-void draw_arrow (int startx, int starty, int endx, int endy, int thickness,
-                 unsigned color, RendererPlex *rp);
+void draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
+                 u32 color, RendererPlex *rp);
 
 // Transparent shapes
-void draw_triangle_t (int x1, int y1, int x2, int y2, int x3, int y3,
-                    unsigned color, RendererPlex *rp);
-void draw_rectangle_t (int x1, int y1, int x2, int y2, unsigned color,
+void draw_triangle_t (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3,
+                    u32 color, RendererPlex *rp);
+void draw_rectangle_t (s32 x1, s32 y1, s32 x2, s32 y2, u32 color,
                      RendererPlex *rp);
-void draw_circle_t (int cx, int cy, int r, unsigned color, RendererPlex *rp);
-void draw_rotated_rectangle_t (int cx, int cy, int w, int h, float theta,
-                             unsigned color, RendererPlex *rp);
-void draw_rotated_oriented_rectangle_t (int dx1, int dy1, int dx2, int dy2,
-                                      int width, unsigned color,
+void draw_circle_t (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *rp);
+void draw_rotated_rectangle_t (s32 cx, s32 cy, s32 w, s32 h, f32 theta,
+                             u32 color, RendererPlex *rp);
+void draw_rotated_oriented_rectangle_t (s32 dx1, s32 dy1, s32 dx2, s32 dy2,
+                                      s32 width, u32 color,
                                       RendererPlex *rp);
-void draw_arrow_t (int startx, int starty, int endx, int endy, int thickness,
-                 unsigned color, RendererPlex *rp);
+void draw_arrow_t (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
+                 u32 color, RendererPlex *rp);
 
 void renderer_present (PlatformState *platform_state, RendererPlex *rp);

@@ -5,32 +5,30 @@
 #include "utility.h"
 
 void
-buf_write_u32 (char *buf, unsigned long *buf_size, unsigned long buf_cap,
-               unsigned x)
+buf_write_u32 (char *buf, u64 *buf_size, u64 buf_cap, u32 x)
 {
   assert (*buf_size + sizeof (x) <= buf_cap);
-  assert (((size_t)buf + *buf_size) % sizeof (x) == 0);
+  assert (((u64)buf + *buf_size) % sizeof (x) == 0);
 
-  memcpy(buf + *buf_size, &x, sizeof x);
+  memcpy (buf + *buf_size, &x, sizeof x);
   *buf_size += sizeof (x);
 }
 
 void
-buf_write_u16 (char *buf, unsigned long *buf_size, unsigned long buf_cap,
-               unsigned short x)
+buf_write_u16 (char *buf, u64 *buf_size, u64 buf_cap, u16 x)
 {
   assert (*buf_size + sizeof (x) <= buf_cap);
-  assert (((size_t)buf + *buf_size) % sizeof (x) == 0);
+  assert (((u64)buf + *buf_size) % sizeof (x) == 0);
 
-  *(unsigned short *)(buf + *buf_size) = x;
+  *(u16 *)(buf + *buf_size) = x;
   *buf_size += sizeof (x);
 }
 
 void
-buf_write_string (char *buf, unsigned long *buf_size, unsigned long buf_cap,
-                  char *src, unsigned src_len)
+buf_write_string (char *buf, u64 *buf_size, u64 buf_cap, char *src,
+                  u32 src_len)
 {
-  unsigned padded_len = ROUNDUP_4 (src_len);
+  u32 padded_len = ROUNDUP_4 (src_len);
   assert (*buf_size + padded_len <= buf_cap);
 
   buf_write_u32 (buf, buf_size, buf_cap, src_len);
@@ -40,26 +38,26 @@ buf_write_string (char *buf, unsigned long *buf_size, unsigned long buf_cap,
   *buf_size += ROUNDUP_4 (src_len);
 }
 
-unsigned
-buf_read_u32 (char **buf, unsigned long *buf_size)
+u32
+buf_read_u32 (char **buf, u64 *buf_size)
 {
-  assert (*buf_size >= sizeof (unsigned));
-  assert ((size_t)*buf % sizeof (unsigned) == 0);
+  assert (*buf_size >= sizeof (u32));
+  assert ((u64)*buf % sizeof (u32) == 0);
 
-  unsigned res = *(unsigned *)(*buf);
+  u32 res = *(u32 *)(*buf);
   *buf += sizeof (res);
   *buf_size -= sizeof (res);
 
   return res;
 }
 
-unsigned short
-buf_read_u16 (char **buf, unsigned long *buf_size)
+u16
+buf_read_u16 (char **buf, u64 *buf_size)
 {
-  assert (*buf_size >= sizeof (unsigned short));
-  assert ((size_t)*buf % sizeof (unsigned short) == 0);
+  assert (*buf_size >= sizeof (u16));
+  assert ((u64)*buf % sizeof (u16) == 0);
 
-  unsigned short res = *(unsigned short *)(*buf);
+  u16 res = *(u16 *)(*buf);
   *buf += sizeof (res);
   *buf_size -= sizeof (res);
 
@@ -67,7 +65,7 @@ buf_read_u16 (char **buf, unsigned long *buf_size)
 }
 
 void
-buf_read_n (char **buf, unsigned long *buf_size, char *dst, unsigned long n)
+buf_read_n (char **buf, u64 *buf_size, char *dst, u64 n)
 {
   assert (*buf_size >= n);
 
@@ -76,43 +74,43 @@ buf_read_n (char **buf, unsigned long *buf_size, char *dst, unsigned long n)
   *buf_size -= n;
 }
 
-inline unsigned
-round_up (unsigned value, unsigned alignment)
+inline u32
+round_up (u32 value, u32 alignment)
 {
   return (value + alignment - 1) / alignment * alignment;
 }
 
-inline unsigned short
-read_u16_le (const unsigned char *buf)
+inline u16
+read_u16_le (const u8 *buf)
 {
-  return (unsigned short)(buf[0] | ((unsigned short)buf[1] << 8));
+  return (u16)(buf[0] | ((u16)buf[1] << 8));
 }
 
-inline unsigned
-read_u32_le (const unsigned char *buf)
+inline u32
+read_u32_le (const u8 *buf)
 {
-  return (unsigned)buf[0] | ((unsigned)buf[1] << 8) | ((unsigned)buf[2] << 16)
-         | ((unsigned)buf[3] << 24);
+  return (u32)buf[0] | ((u32)buf[1] << 8) | ((u32)buf[2] << 16)
+         | ((u32)buf[3] << 24);
 }
 
-inline unsigned short
-read_u16_be (const unsigned char *buf)
+inline u16
+read_u16_be (const u8 *buf)
 {
-  return (unsigned short)(((unsigned short)buf[0] << 8) | buf[1]);
-}
-
-void
-write_u16_le (unsigned char *buf, unsigned short value)
-{
-  buf[0] = (unsigned char)value;
-  buf[1] = (unsigned char)(value >> 8);
+  return (u16)(((u16)buf[0] << 8) | buf[1]);
 }
 
 void
-write_u32_le (unsigned char *buf, unsigned value)
+write_u16_le (u8 *buf, u16 value)
 {
-  buf[0] = (unsigned char)value;
-  buf[1] = (unsigned char)(value >> 8);
-  buf[2] = (unsigned char)(value >> 16);
-  buf[3] = (unsigned char)(value >> 24);
+  buf[0] = (u8)value;
+  buf[1] = (u8)(value >> 8);
+}
+
+void
+write_u32_le (u8 *buf, u32 value)
+{
+  buf[0] = (u8)value;
+  buf[1] = (u8)(value >> 8);
+  buf[2] = (u8)(value >> 16);
+  buf[3] = (u8)(value >> 24);
 }

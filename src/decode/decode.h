@@ -3,9 +3,11 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
+#include "macros.h"
+
 typedef struct
 {
-  int video_stream;
+  s32 video_stream;
   char *video_file;
   AVFormatContext *fmt;
   AVStream *stream;
@@ -16,4 +18,4 @@ typedef struct
 } VideoPlex;
 
 VideoPlex *init_video (char *video_file);
-int decode_next_frame (VideoPlex *vp, unsigned *image);
+s32 decode_next_frame (VideoPlex *vp, u32 *image);

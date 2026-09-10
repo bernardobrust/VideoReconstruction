@@ -9,24 +9,24 @@
 
 #include "platform.h"
 
-inline double
+inline f64
 platform_get_time (void)
 {
   struct timeval time;
 
   gettimeofday (&time, NULL);
-  return (double)time.tv_sec * 1000.0 + (double)time.tv_usec / 1000.0;
+  return (f64)time.tv_sec * 1000.0 + (f64)time.tv_usec / 1000.0;
 }
 
 void
-platform_sleep (double ms)
+platform_sleep (f64 ms)
 {
   if (ms <= 0.0)
     return;
 
   struct timespec time
       = { .tv_sec = (time_t)(ms / 1000.0),
-          .tv_nsec = (long)((ms - (double)(time_t)(ms / 1000.0) * 1000.0)
+          .tv_nsec = (long)((ms - (f64)(time_t)(ms / 1000.0) * 1000.0)
                             * 1000000.0) };
 
   while (nanosleep (&time, &time) == -1 && errno == EINTR)
@@ -37,7 +37,7 @@ platform_sleep (double ms)
 // Returns: 0 => OK
 // 1 => wrong path
 // 2 => inaccessible
-inline int
+inline s32
 platform_file_exists (char *filepath)
 {
   if (access (filepath, F_OK) != 0)

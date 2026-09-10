@@ -1,6 +1,6 @@
 #include "input.h"
 
-static InputPlex input_state = { 0 };
+global InputPlex input_state = { 0 };
 
 void
 input_set_key_pressed (KeyValue k)

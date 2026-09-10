@@ -8,7 +8,7 @@ DynArr event_queue;
 void
 platform_dispatch_events (void)
 {
-  for (int i = 0; i < event_queue.len; ++i)
+  for (s32 i = 0; i < event_queue.len; ++i)
     {
       EventType ev = *(EventType *)dyn_arr_get (&event_queue, i);
 

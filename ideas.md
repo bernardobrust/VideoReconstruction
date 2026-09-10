@@ -71,7 +71,7 @@ While motion vectors are not unique to AV1, the codec provides a rich source of 
 - Feature selection and correspondence generation
 - Camera pose estimation
 - Triangulation of scene points
-- Point cloud generation and refinement
+- Pos32 cloud generation and refinement
 
 ### 4. Reconstruction of Low-Texture Scenes
 - Challenges posed by feature-poor surfaces
@@ -96,7 +96,7 @@ While motion vectors are not unique to AV1, the codec provides a rich source of 
 - Motion estimation accuracy
 - Tracking robustness
 - Reconstruction quality
-- Point cloud density
+- Pos32 cloud density
 - Line and curve accuracy
 - Computational efficiency
 

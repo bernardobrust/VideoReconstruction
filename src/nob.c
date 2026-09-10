@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "platform/macros.h"
+
 #define NOB_IMPLEMENTATION
 #include "lib/nob.h"
 
@@ -30,7 +32,7 @@ is_windows_platform (const char *platform)
 }
 
 int
-main (int argc, char **argv)
+main (s32 argc, char **argv)
 {
   NOB_GO_REBUILD_URSELF (argc, argv);
 

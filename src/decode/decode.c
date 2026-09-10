@@ -11,7 +11,7 @@
 #include <libswscale/swscale.h>
 
 // For debugging
-static void
+local void
 print_motion_vectors (const AVFrame *frame)
 {
   AVFrameSideData *sd
@@ -28,11 +28,11 @@ print_motion_vectors (const AVFrame *frame)
 
   const AVMotionVector *mvs = (const AVMotionVector *)sd->data;
 
-  int nb_mvs = (int)(sd->size / sizeof (*mvs));
+  s32 nb_mvs = (s32)(sd->size / sizeof (*mvs));
 
   printf ("Motion vectors: %d\n", nb_mvs);
 
-  for (int i = 0; i < nb_mvs; i++)
+  for (s32 i = 0; i < nb_mvs; i++)
     {
       const AVMotionVector *mv = &mvs[i];
 
@@ -74,7 +74,7 @@ init_video (char *video_file)
     }
 
   vp->video_stream = -1;
-  for (unsigned i = 0; i < vp->fmt->nb_streams; ++i)
+  for (u32 i = 0; i < vp->fmt->nb_streams; ++i)
     {
       if (vp->fmt->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
         {
@@ -154,13 +154,13 @@ init_video (char *video_file)
 // negative = error
 // 0 = ok
 // 1 = end
-int
-decode_next_frame (VideoPlex *vp, unsigned *image)
+s32
+decode_next_frame (VideoPlex *vp, u32 *image)
 {
   bool got_frame = false;
   while (!got_frame)
     {
-      int ret = av_read_frame (vp->fmt, vp->packet);
+      s32 ret = av_read_frame (vp->fmt, vp->packet);
 
       if (ret < 0)
         {
@@ -242,7 +242,7 @@ decode_next_frame (VideoPlex *vp, unsigned *image)
     }
 
   // Convert the decoded frame. We may want to factor this out
-  int w = vp->codec->width, h = vp->codec->height, format = vp->frame->format;
+  s32 w = vp->codec->width, h = vp->codec->height, format = vp->frame->format;
 
   // Using RGBA was swapping the colors, so we use BGRA instead.
   struct SwsContext *sws = sws_getContext (w, h, format, w, h, AV_PIX_FMT_BGRA,
@@ -254,11 +254,11 @@ decode_next_frame (VideoPlex *vp, unsigned *image)
       return -2;
     }
 
-  uint8_t *dst_data[4] = { (uint8_t *)image, NULL, NULL, NULL };
-  int dst_linesize[4] = { w * 4, 0, 0, 0 };
+  u8 *dst_data[4] = { (u8 *)image, NULL, NULL, NULL };
+  s32 dst_linesize[4] = { w * 4, 0, 0, 0 };
 
-  sws_scale (sws, (const uint8_t *const *)vp->frame->data, vp->frame->linesize,
-             0, h, dst_data, dst_linesize);
+  sws_scale (sws, (const u8 *const *)vp->frame->data, vp->frame->linesize, 0,
+             h, dst_data, dst_linesize);
 
   sws_freeContext (sws);
 
