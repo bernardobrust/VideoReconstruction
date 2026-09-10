@@ -15,7 +15,7 @@
 #include "macros.h"
 
 i32
-main (s32 argc, char **argv)
+main (s32 argc, byte **argv)
 {
   // CLI parsing
   // enabled_tests defines a whitelist

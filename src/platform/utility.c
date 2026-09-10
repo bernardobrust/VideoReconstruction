@@ -5,7 +5,7 @@
 #include "utility.h"
 
 void
-buf_write_u32 (char *buf, u64 *buf_size, u64 buf_cap, u32 x)
+buf_write_u32 (byte *buf, u64 *buf_size, u64 buf_cap, u32 x)
 {
   assert (*buf_size + sizeof (x) <= buf_cap);
   assert (((u64)buf + *buf_size) % sizeof (x) == 0);
@@ -15,7 +15,7 @@ buf_write_u32 (char *buf, u64 *buf_size, u64 buf_cap, u32 x)
 }
 
 void
-buf_write_u16 (char *buf, u64 *buf_size, u64 buf_cap, u16 x)
+buf_write_u16 (byte *buf, u64 *buf_size, u64 buf_cap, u16 x)
 {
   assert (*buf_size + sizeof (x) <= buf_cap);
   assert (((u64)buf + *buf_size) % sizeof (x) == 0);
@@ -25,7 +25,7 @@ buf_write_u16 (char *buf, u64 *buf_size, u64 buf_cap, u16 x)
 }
 
 void
-buf_write_string (char *buf, u64 *buf_size, u64 buf_cap, char *src,
+buf_write_string (byte *buf, u64 *buf_size, u64 buf_cap, byte *src,
                   u32 src_len)
 {
   u32 padded_len = ROUNDUP_4 (src_len);
@@ -39,7 +39,7 @@ buf_write_string (char *buf, u64 *buf_size, u64 buf_cap, char *src,
 }
 
 u32
-buf_read_u32 (char **buf, u64 *buf_size)
+buf_read_u32 (byte **buf, u64 *buf_size)
 {
   assert (*buf_size >= sizeof (u32));
   assert ((u64)*buf % sizeof (u32) == 0);
@@ -52,7 +52,7 @@ buf_read_u32 (char **buf, u64 *buf_size)
 }
 
 u16
-buf_read_u16 (char **buf, u64 *buf_size)
+buf_read_u16 (byte **buf, u64 *buf_size)
 {
   assert (*buf_size >= sizeof (u16));
   assert ((u64)*buf % sizeof (u16) == 0);
@@ -65,7 +65,7 @@ buf_read_u16 (char **buf, u64 *buf_size)
 }
 
 void
-buf_read_n (char **buf, u64 *buf_size, char *dst, u64 n)
+buf_read_n (byte **buf, u64 *buf_size, byte *dst, u64 n)
 {
   assert (*buf_size >= n);
 

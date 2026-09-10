@@ -30,7 +30,7 @@ typedef struct
   HDC hdc;
   s32 width;
   s32 height;
-  char *image_buffer;
+  byte *image_buffer;
   BITMAPINFO bitmap_info;
   bool time_period_set;
 } InternalState;
@@ -229,8 +229,8 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
 }
 
 bool
-platform_init (PlatformState *platform_state, const char *window_name, s32 x,
-               s32 y, s32 w, s32 h, char *image_buffer)
+platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
+               s32 y, s32 w, s32 h, byte *image_buffer)
 {
   if (platform_state == NULL)
     return false;
@@ -251,7 +251,7 @@ platform_init (PlatformState *platform_state, const char *window_name, s32 x,
     state->time_period_set = true;
 
   HINSTANCE instance = GetModuleHandleA (NULL);
-  const char *class_name = "VideoReconstructionWindowClass";
+  const byte *class_name = "VideoReconstructionWindowClass";
 
   WNDCLASSEXA wc = { 0 };
   wc.cbSize = sizeof (wc);
@@ -445,7 +445,7 @@ platform_sleep (f64 ms)
 // 1 => wrong path
 // 2 => inaccessible
 s32
-platform_file_exists (char *filepath)
+platform_file_exists (byte *filepath)
 {
   if (filepath == NULL || filepath[0] == '\0')
     return 1;

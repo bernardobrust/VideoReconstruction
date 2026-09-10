@@ -8,7 +8,7 @@
 typedef struct
 {
   s32 video_stream;
-  char *video_file;
+  byte *video_file;
   AVFormatContext *fmt;
   AVStream *stream;
   const AVCodec *decoder;
@@ -17,5 +17,5 @@ typedef struct
   AVPacket *packet;
 } VideoPlex;
 
-VideoPlex *init_video (char *video_file);
+VideoPlex *init_video (byte *video_file);
 s32 decode_next_frame (VideoPlex *vp, u32 *image);

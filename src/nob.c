@@ -13,26 +13,26 @@
 
 // Helper functions
 static bool
-str_eq (const char *a, const char *b)
+str_eq (const byte *a, const byte *b)
 {
   return strcmp (a, b) == 0;
 }
 
 static bool
-is_linux_platform (const char *platform)
+is_linux_platform (const byte *platform)
 {
   return str_eq (platform, "gnu_linux_x11")
          || str_eq (platform, "gnu_linux_wayland");
 }
 
 static bool
-is_windows_platform (const char *platform)
+is_windows_platform (const byte *platform)
 {
   return str_eq (platform, "windows");
 }
 
 int
-main (s32 argc, char **argv)
+main (s32 argc, byte **argv)
 {
   NOB_GO_REBUILD_URSELF (argc, argv);
 
@@ -40,9 +40,9 @@ main (s32 argc, char **argv)
     return EXIT_FAILURE;
 
   // CLI parsing
-  char **target = flag_str ("target", "", "Target to build");
-  char **platform = flag_str ("platform", "", "Platform to build");
-  char **build_type
+  byte **target = flag_str ("target", "", "Target to build");
+  byte **platform = flag_str ("platform", "", "Platform to build");
+  byte **build_type
       = flag_str ("build_type", "", "What kind of binary to generate");
 
   if (!flag_parse (argc, argv))
@@ -99,7 +99,7 @@ main (s32 argc, char **argv)
     nob_cmd_append (&cmd, "gcc");
 
   // Output binary
-  char bin_name[256] = { 0 };
+  byte bin_name[256] = { 0 };
 
   strcat (bin_name, BUILD_DIR);
   strcat (bin_name, *target);
@@ -126,7 +126,7 @@ main (s32 argc, char **argv)
         nob_cmd_append (&cmd, "/O2", "/GL", "/DNDEBUG");
 
       // MSVC output executable
-      char output_option[64] = { 0 };
+      byte output_option[64] = { 0 };
       snprintf (output_option, sizeof (output_option), "/Fe:%s", bin_name);
 
       nob_cmd_append (&cmd, output_option);
@@ -145,7 +145,7 @@ main (s32 argc, char **argv)
     }
 
   // Entry point
-  char entry_point[256] = { 0 };
+  byte entry_point[256] = { 0 };
 
   strcat (entry_point, *target);
   strcat (entry_point, "/main.c");
@@ -170,7 +170,7 @@ main (s32 argc, char **argv)
     nob_cmd_append (&cmd, "platform/platform_gnu_linux.c");
 
   // Platform layer
-  char platform_layer[256] = { 0 };
+  byte platform_layer[256] = { 0 };
 
   strcat (platform_layer, "platform/platform_");
   strcat (platform_layer, *platform);
@@ -203,7 +203,7 @@ main (s32 argc, char **argv)
     {
       // Mine is at:
       // C:\Users\berna\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg.Shared_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build-shared\include\libavcodec\avcodec.h
-      char *ffmpeg_dir = getenv ("FFMPEG_DIR");
+      byte *ffmpeg_dir = getenv ("FFMPEG_DIR");
       if (ffmpeg_dir == NULL)
         {
           nob_log (ERROR,
@@ -212,8 +212,8 @@ main (s32 argc, char **argv)
           return EXIT_FAILURE;
         }
 
-      char ffmpeg_include[1024];
-      char ffmpeg_lib[1024];
+      byte ffmpeg_include[1024];
+      byte ffmpeg_lib[1024];
 
       snprintf (ffmpeg_include, sizeof (ffmpeg_include), "/I%s/include",
                 ffmpeg_dir);

@@ -93,9 +93,9 @@ typedef struct
   StateState state;
 
   s32 fd;
-  char *image_buffer;
+  byte *image_buffer;
 
-  _Alignas (16) char read_buf[8192];
+  _Alignas (16) byte read_buf[8192];
   u64 read_buf_len;
 } InternalState;
 
@@ -104,7 +104,7 @@ typedef struct
 local s32
 display_connect (void)
 {
-  char *xdg_runtime_dir = getenv ("XDG_RUNTIME_DIR");
+  byte *xdg_runtime_dir = getenv ("XDG_RUNTIME_DIR");
 
   if (xdg_runtime_dir == NULL)
     {
@@ -123,11 +123,11 @@ display_connect (void)
   memcpy (addr.sun_path, xdg_runtime_dir, xdg_runtime_dir_len);
   socket_path_len += xdg_runtime_dir_len;
   addr.sun_path[socket_path_len++] = '/';
-  char *display = getenv ("WAYLAND_DISPLAY");
+  byte *display = getenv ("WAYLAND_DISPLAY");
 
   if (display == NULL)
     {
-      char display_default[] = "wayland-0";
+      byte display_default[] = "wayland-0";
       u64 display_default_len = strlen (display_default);
 
       memcpy (addr.sun_path + socket_path_len, display_default,
@@ -160,7 +160,7 @@ local u32
 wl_display_get_registry (s32 fd)
 {
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), display_object_id);
   buf_write_u16 (msg, &msg_size, sizeof (msg), wl_display_get_registry_opcode);
@@ -182,11 +182,11 @@ wl_display_get_registry (s32 fd)
 }
 
 local u32
-wl_registry_bind (s32 fd, u32 registry, u32 name, char *interface,
+wl_registry_bind (s32 fd, u32 registry, u32 name, byte *interface,
                   u32 interface_len, u32 version)
 {
   u64 msg_size = 0;
-  char msg[512] = "";
+  byte msg[512] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), registry);
   buf_write_u16 (msg, &msg_size, sizeof (msg), wl_registry_bind_opcode);
@@ -222,7 +222,7 @@ wl_compositor_create_surface (s32 fd, InternalState *state)
   assert (state->wl_compositor > 0);
 
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_compositor);
   buf_write_u16 (msg, &msg_size, sizeof (msg),
@@ -245,7 +245,7 @@ wl_compositor_create_surface (s32 fd, InternalState *state)
 local void
 create_shared_memory_file (u64 size, InternalState *state)
 {
-  char name[255] = "/";
+  byte name[255] = "/";
 
   // Generate unique name
   for (u64 i = 1; i < 16; ++i)
@@ -279,7 +279,7 @@ xdg_wm_base_pong (s32 fd, InternalState *state, u32 ping)
   assert (state->xdg_wm_base > 0);
 
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->xdg_wm_base);
   buf_write_u16 (msg, &msg_size, sizeof (msg), xdg_wm_base_pong_opcode);
@@ -301,7 +301,7 @@ xdg_surface_ack_configure (s32 fd, InternalState *state, u32 configure)
   assert (state->xdg_surface > 0);
 
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->xdg_surface);
   buf_write_u16 (msg, &msg_size, sizeof (msg),
@@ -324,7 +324,7 @@ wl_shm_create_pool (s32 fd, InternalState *state)
   assert (state->shm_pool_size > 0);
 
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_shm);
   buf_write_u16 (msg, &msg_size, sizeof (msg), wl_shm_create_pool_opcode);
@@ -341,7 +341,7 @@ wl_shm_create_pool (s32 fd, InternalState *state)
 
   assert (ROUNDUP_4 (msg_size) == msg_size);
 
-  char buf[CMSG_SPACE (sizeof (state->shm_fd))] = "";
+  byte buf[CMSG_SPACE (sizeof (state->shm_fd))] = "";
 
   struct iovec io = { .iov_base = msg, .iov_len = msg_size };
   struct msghdr socket_msg = { .msg_name = NULL,
@@ -374,7 +374,7 @@ xdg_wm_base_get_xdg_surface (s32 fd, InternalState *state)
   assert (state->wl_surface > 0);
 
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->xdg_wm_base);
   buf_write_u16 (msg, &msg_size, sizeof (msg),
@@ -402,7 +402,7 @@ wl_shm_pool_create_buffer (s32 fd, InternalState *state)
   assert (state->wl_shm_pool > 0);
 
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_shm_pool);
   buf_write_u16 (msg, &msg_size, sizeof (msg),
@@ -439,7 +439,7 @@ wl_surface_attach (s32 fd, InternalState *state)
   assert (state->wl_buffer > 0);
 
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_surface);
   buf_write_u16 (msg, &msg_size, sizeof (msg), wl_surface_attach_opcode);
@@ -467,7 +467,7 @@ wl_surface_damage (s32 fd, InternalState *state)
   assert (state->wl_surface > 0);
 
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_surface);
   buf_write_u16 (msg, &msg_size, sizeof (msg), 2);
@@ -492,7 +492,7 @@ xdg_surface_get_toplevel (s32 fd, InternalState *state)
   assert (state->xdg_surface > 0);
 
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->xdg_surface);
   buf_write_u16 (msg, &msg_size, sizeof (msg),
@@ -518,7 +518,7 @@ wl_surface_commit (s32 fd, InternalState *state)
   assert (state->wl_surface > 0);
 
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_surface);
   buf_write_u16 (msg, &msg_size, sizeof (msg), wl_surface_commit_opcode);
@@ -534,12 +534,12 @@ wl_surface_commit (s32 fd, InternalState *state)
 }
 
 local void
-xdg_toplevel_set_title (s32 fd, InternalState *state, const char *title)
+xdg_toplevel_set_title (s32 fd, InternalState *state, const byte *title)
 {
   assert (state->xdg_toplevel > 0);
 
   u64 msg_size = 0;
-  char msg[512] = "";
+  byte msg[512] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->xdg_toplevel);
   buf_write_u16 (msg, &msg_size, sizeof (msg), 2);
@@ -551,7 +551,7 @@ xdg_toplevel_set_title (s32 fd, InternalState *state, const char *title)
   assert (ROUNDUP_4 (msg_announced_size) == msg_announced_size);
 
   buf_write_u16 (msg, &msg_size, sizeof (msg), msg_announced_size);
-  buf_write_string (msg, &msg_size, sizeof (msg), (char *)title, title_len);
+  buf_write_string (msg, &msg_size, sizeof (msg), (byte *)title, title_len);
 
   if ((long)msg_size != send (fd, msg, msg_size, 0))
     exit (errno);
@@ -563,7 +563,7 @@ wl_seat_get_keyboard (s32 fd, InternalState *state)
   assert (state->wl_seat > 0);
 
   u64 msg_size = 0;
-  char msg[128] = "";
+  byte msg[128] = "";
 
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_seat);
   buf_write_u16 (msg, &msg_size, sizeof (msg), 1);
@@ -583,7 +583,7 @@ wl_seat_get_keyboard (s32 fd, InternalState *state)
 }
 
 local void
-handle_message (s32 fd, PlatformState *platform_state, char **msg,
+handle_message (s32 fd, PlatformState *platform_state, byte **msg,
                 u64 *msg_len)
 {
   InternalState *state = (InternalState *)platform_state->internal_state;
@@ -609,7 +609,7 @@ handle_message (s32 fd, PlatformState *platform_state, char **msg,
       u32 name = buf_read_u32 (msg, msg_len);
       u32 interface_len = buf_read_u32 (msg, msg_len);
       u32 padded_interface_len = ROUNDUP_4 (interface_len);
-      char interface[512] = "";
+      byte interface[512] = "";
 
       assert (padded_interface_len <= sizeof (interface));
 
@@ -624,25 +624,25 @@ handle_message (s32 fd, PlatformState *platform_state, char **msg,
                      + sizeof (name) + sizeof (interface_len)
                      + padded_interface_len + sizeof (version));
 
-      char wl_shm_interface[] = "wl_shm";
+      byte wl_shm_interface[] = "wl_shm";
 
       if (strcmp (wl_shm_interface, interface) == 0)
         state->wl_shm = wl_registry_bind (fd, state->wl_registry, name,
                                           interface, interface_len, version);
 
-      char xdg_wm_base_interface[] = "xdg_wm_base";
+      byte xdg_wm_base_interface[] = "xdg_wm_base";
 
       if (strcmp (xdg_wm_base_interface, interface) == 0)
         state->xdg_wm_base = wl_registry_bind (
             fd, state->wl_registry, name, interface, interface_len, version);
 
-      char wl_compositor_interface[] = "wl_compositor";
+      byte wl_compositor_interface[] = "wl_compositor";
 
       if (strcmp (wl_compositor_interface, interface) == 0)
         state->wl_compositor = wl_registry_bind (
             fd, state->wl_registry, name, interface, interface_len, version);
 
-      char wl_seat_interface[] = "wl_seat";
+      byte wl_seat_interface[] = "wl_seat";
 
       if (strcmp (wl_seat_interface, interface) == 0)
         state->wl_seat = wl_registry_bind (fd, state->wl_registry, name,
@@ -654,7 +654,7 @@ handle_message (s32 fd, PlatformState *platform_state, char **msg,
     {
       u32 target_object_id = buf_read_u32 (msg, msg_len);
       u32 code = buf_read_u32 (msg, msg_len);
-      char error[512] = "";
+      byte error[512] = "";
       u32 error_len = buf_read_u32 (msg, msg_len);
 
       buf_read_n (msg, msg_len, error, ROUNDUP_4 (error_len));
@@ -689,7 +689,7 @@ handle_message (s32 fd, PlatformState *platform_state, char **msg,
           __attribute__ ((unused)) u32 w = buf_read_u32 (msg, msg_len);
           __attribute__ ((unused)) u32 h = buf_read_u32 (msg, msg_len);
           u32 len = buf_read_u32 (msg, msg_len);
-          char buf[256] = "";
+          byte buf[256] = "";
 
           assert (len <= sizeof (buf));
 
@@ -883,7 +883,7 @@ read_and_dispatch (PlatformState *platform_state, bool block)
           break; // Incomplete message
         }
 
-      char *msg_ptr = state->read_buf;
+      byte *msg_ptr = state->read_buf;
       u64 msg_len = announced_size;
       handle_message (state->fd, platform_state, &msg_ptr, &msg_len);
 
@@ -896,8 +896,8 @@ read_and_dispatch (PlatformState *platform_state, bool block)
 
 // Platform layer
 bool
-platform_init (PlatformState *platform_state, const char *window_name, s32 x,
-               s32 y, s32 w, s32 h, char *image_buffer)
+platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
+               s32 y, s32 w, s32 h, byte *image_buffer)
 {
   // x and y not used
   (void)x;

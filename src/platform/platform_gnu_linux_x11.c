@@ -143,12 +143,12 @@ read_all (s32 fd, void *data, u64 size)
 local bool
 read_xauthority (u8token[16])
 {
-  const char *path = getenv ("XAUTHORITY");
-  char default_path[PATH_MAX];
+  const byte *path = getenv ("XAUTHORITY");
+  byte default_path[PATH_MAX];
 
   if (path == NULL || path[0] == '\0')
     {
-      const char *home = getenv ("HOME");
+      const byte *home = getenv ("HOME");
 
       if (home == NULL
           || snprintf (default_path, sizeof (default_path), "%s/.Xauthority",
@@ -221,7 +221,7 @@ read_xauthority (u8token[16])
 local s32
 display_connect (void)
 {
-  const char *display = getenv ("DISPLAY");
+  const byte *display = getenv ("DISPLAY");
 
   if (display == NULL || display[0] != ':')
     {
@@ -229,7 +229,7 @@ display_connect (void)
       return -1;
     }
 
-  char *end = NULL;
+  byte *end = NULL;
   long number = strtol (display + 1, &end, 10);
   if (end == display + 1 || number < 0 || number > INT_MAX
       || (*end != '\0' && *end != '.'))
@@ -337,7 +337,7 @@ read_reply (InternalState *state, u8reply[32])
 }
 
 local bool
-intern_atom (InternalState *state, const char *name, u32 *atom)
+intern_atom (InternalState *state, const byte *name, u32 *atom)
 {
   u64 name_length = strlen (name);
   u64 body_size = 4 + round_up ((u32)name_length, 4);
@@ -363,7 +363,7 @@ intern_atom (InternalState *state, const char *name, u32 *atom)
 }
 
 local bool
-query_extension (InternalState *state, const char *name, u8 *major_opcode)
+query_extension (InternalState *state, const byte *name, u8 *major_opcode)
 {
   u64 name_length = strlen (name);
   u64 body_size = 4 + round_up ((u32)name_length, 4);
@@ -393,7 +393,7 @@ query_extension (InternalState *state, const char *name, u8 *major_opcode)
 }
 
 local bool
-set_title (InternalState *state, const char *title)
+set_title (InternalState *state, const byte *title)
 {
   u64 title_length = strlen (title);
   u64 body_size = 20 + round_up ((u32)title_length, 4);
@@ -437,7 +437,7 @@ create_window (InternalState *state, s32 x, s32 y, s32 w, s32 h)
                     | X11_EVENT_MASK_KEY_PRESS | X11_EVENT_MASK_KEY_RELEASE);
   write_u32_le (body + 20, state->root_visual);
 
-  return send_request (state, 1, (u32 char)state->depth, body, sizeof (body));
+  return send_request (state, 1, (u32 byte)state->depth, body, sizeof (body));
 }
 
 local bool
@@ -519,8 +519,8 @@ dispatch_event (PlatformState *platform_state, const u8event[32])
 // ----------------------------------------------------------------
 // Platform layer
 bool
-platform_init (PlatformState *platform_state, const char *window_name, s32 x,
-               s32 y, s32 w, s32 h, char *image_buffer)
+platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
+               s32 y, s32 w, s32 h, byte *image_buffer)
 {
   if (w <= 0 || h <= 0 || w > USHRT_MAX || h > USHRT_MAX)
     return false;
@@ -541,7 +541,7 @@ platform_init (PlatformState *platform_state, const char *window_name, s32 x,
 
   u8token[16] = { 0 };
   bool has_token = read_xauthority (token);
-  const char *auth_name = has_token ? "MIT-MAGIC-COOKIE-1" : "";
+  const byte *auth_name = has_token ? "MIT-MAGIC-COOKIE-1" : "";
   u32 auth_name_length = (u32)strlen (auth_name);
   u32 auth_data_length = has_token ? sizeof (token) : 0;
   u64 setup_size
@@ -581,7 +581,7 @@ platform_init (PlatformState *platform_state, const char *window_name, s32 x,
     {
       if (prefix[0] != 1)
         fprintf (stderr, "X11 setup failed: %.*s\n", (int)prefix[1],
-                 additional == NULL ? "" : (char *)additional);
+                 additional == NULL ? "" : (byte *)additional);
       free (additional);
       goto fail;
     }
@@ -692,10 +692,10 @@ platform_init (PlatformState *platform_state, const char *window_name, s32 x,
   if (!send_request (state, 18, 0, protocols, sizeof (protocols))
       || !create_gc (state)
       || !send_request (state, 8, 0,
-                        (u32 char[]){ (u32 char)state->window,
-                                      (u32 char)(state->window >> 8),
-                                      (u32 char)(state->window >> 16),
-                                      (u32 char)(state->window >> 24) },
+                        (u32 byte[]){ (u32 byte)state->window,
+                                      (u32 byte)(state->window >> 8),
+                                      (u32 byte)(state->window >> 16),
+                                      (u32 byte)(state->window >> 24) },
                         4))
     goto fail_with_state;
   return true;
@@ -827,7 +827,7 @@ platform_present (PlatformState *platform_state)
       write_u16_le (body + 18, (u32 short)state->height);
       write_u16_le (body + 20, 0);
       write_u16_le (body + 22, 0);
-      body[24] = (u32 char)state->depth;
+      body[24] = (u32 byte)state->depth;
       body[25] = X11_Z_PIXMAP;
       body[26] = 0;
       body[27] = 0;
@@ -862,7 +862,7 @@ platform_present (PlatformState *platform_state)
       write_u16_le (body + 8, (u32 short)state->width);
       write_u16_le (body + 10, (u32 short)chunk_height);
       write_u16_le (body + 14, (u32 short)y);
-      body[17] = (u32 char)state->depth;
+      body[17] = (u32 byte)state->depth;
 
       for (u32 row = 0; row < chunk_height; ++row)
         memcpy (body + 20 + (size_t)row * row_bytes,

@@ -36,8 +36,8 @@ typedef enum
 // input_set_key_pressed)
 extern DynArr event_queue;
 
-bool platform_init (PlatformState *platform_state, const char *window_name,
-                    s32 x, s32 y, s32 w, s32 h, char *image_buffer);
+bool platform_init (PlatformState *platform_state, const byte *window_name,
+                    s32 x, s32 y, s32 w, s32 h, byte *image_buffer);
 void platform_shutdown (PlatformState *platform_state);
 
 bool platform_update (PlatformState *platform_state);
@@ -46,6 +46,6 @@ void platform_present (PlatformState *platform_state);
 
 f64 platform_get_time (void);
 void platform_sleep (f64 ms);
-s32 platform_file_exists (char *filepath);
+s32 platform_file_exists (byte *filepath);
 
 void platform_stop (PlatformState *platform_state);

@@ -13,7 +13,7 @@
 #include "renderer.h"
 
 s32
-main (s32 argc, char **argv)
+main (s32 argc, byte **argv)
 {
   // Argument parsing for the video to inspect
   if (argc <= 1)
@@ -23,7 +23,7 @@ main (s32 argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  char *video_file = argv[1];
+  byte *video_file = argv[1];
 
   s32 file_exists = platform_file_exists (video_file);
   if (file_exists == 0)
@@ -60,7 +60,7 @@ main (s32 argc, char **argv)
   // Initialize platform
   PlatformState platform_state = { 0 };
   platform_init (&platform_state, "Inspector", 0, 0, rp->w, rp->h,
-                 (char *)rp->image_buffer);
+                 (byte *)rp->image_buffer);
 
   // Stable framerate at video FPS, we'll have a lot of work latter (?) to fix
   // the fps of the UI

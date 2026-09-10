@@ -50,7 +50,7 @@ print_motion_vectors (const AVFrame *frame)
 }
 
 VideoPlex *
-init_video (char *video_file)
+init_video (byte *video_file)
 {
   VideoPlex *vp = (VideoPlex *)malloc (sizeof (VideoPlex));
   if (!vp)

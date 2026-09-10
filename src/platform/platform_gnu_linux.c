@@ -38,7 +38,7 @@ platform_sleep (f64 ms)
 // 1 => wrong path
 // 2 => inaccessible
 inline s32
-platform_file_exists (char *filepath)
+platform_file_exists (byte *filepath)
 {
   if (access (filepath, F_OK) != 0)
     {

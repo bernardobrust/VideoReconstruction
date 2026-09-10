@@ -13,7 +13,7 @@ typedef struct
 {
   f64 a;
   s32 b;
-  char c;
+  byte c;
 } St;
 
 void

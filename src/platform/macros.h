@@ -18,6 +18,8 @@
 #define get(xs, i) (*(xs + i))
 
 // Fixed data types without weird names
+#define byte char
+
 #define s8 int8_t
 #define u8 uint8_t
 #define s16 int16_t
