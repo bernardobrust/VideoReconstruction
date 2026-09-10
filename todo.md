@@ -15,13 +15,14 @@ As it turns out libdav1d does not export motion vectors in FFmpeg the same way H
 - @PERFORMANCE The transparent shape drawing is a massive performance bottleneck, we need to optimize it. Maybe we can use a different approach for this, like using a separate buffer for the transparent shapes and then blending it with the video frame
 
 ### Detour (top priority)
-- [ ] Hack libdav1d to export motion vectors in a way that we can use them in the inspector. This will require some research and experimentation, but it should be doable.
-- [ ] Statically link the modified version into this repo
-- [ ] Change the decoder to use the modified version of libdav1d and use the motion vectors to render them on top of the video frame
+- [ ] Hack libdav1d (and FFmpeg as a consequence) to export compression data (MVs, channels, intra, transforms) in a way that we can use them in the inspector. This will require some research and experimentation, but it should be doable
+- [ ] Statically link the modified versions into this repo (add the compiled libs to GH releases and addapt nob to pull them)
+- [ ] Change the decoder to use the modified versions of the libs and use the motion vectors to render them on top of the video frame
 
 ### General
 - [x] Update this TODO list with a more concrete plan
 - [x] Add non-online sources (like books) to [sources](sources.md)
+- [ ] Check if the macros for data types broke builds for other platforms. Also check if any doc file was changed.
 
 ### Research
 We'll add a lot more stuff here as the project advances
