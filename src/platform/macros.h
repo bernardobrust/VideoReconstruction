@@ -14,9 +14,6 @@
 #define persist static
 #define global static
 
-// Just pointer arithmetic, xs[i] was probably a design mistake anyway
-#define get(xs, i) (*(xs + i))
-
 // Fixed data types without weird names
 #define byte char
 
