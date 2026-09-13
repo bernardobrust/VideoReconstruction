@@ -91,8 +91,8 @@ The following are present in `lib/` (the `.h` files are in there):
 ### Inspector
 The inspector is a tool to visualize compression data of the videos, such as color channels, chroma channels and inter prediction. See more [here](inspector/)
 
-### Reconstructor
-The reconstructor is a tool to reconstruct 3d models from video data using computer vision. See more [here](reconstructor/)
+### Reconstructor (way latter)
+The reconstructor is a tool to reconstruct 3d models from video data using computer vision. See more on the ideas file [here](../ideas.md)
 
 # Profiling
 In this project we use both `perf` and "Intel VTune Profiler" (check [sources](../sources.md)). Profiling data is not uploaded to GitHub as it's hardware dependent and can be extracted with ease.

@@ -8,6 +8,7 @@ As it turns out libdav1d does not export motion vectors in FFmpeg the same way H
 - tests/main.c : @IMPROVEMENT check if this strategy for argument handling is good
 - platform.h : @FEATURE add a function to get monitor resolution (or maybe a function to get the monitor size and position)
 - renderer.c : @FIX, @OPTIMIZATION the circle looks weird, it likelly has to do with the loops tho i'm not certain
+- renderer.c : @IMPROVEMENT maybe there's a way to unify normal and transparen shapes without losing performance
 
 ### Performance
 - @PERFORMANCE For now the main bottleneck is the decode -> send image buffer to display loop, which is not paralelized. We can improve this latter by using a queue of decoded frames and a separate thread for the renderer

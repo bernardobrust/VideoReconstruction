@@ -12,26 +12,26 @@
 #define BUILD_DIR "build/"
 
 // Helper functions
-static bool
+local bool
 str_eq (const byte *a, const byte *b)
 {
   return strcmp (a, b) == 0;
 }
 
-static bool
+local bool
 is_linux_platform (const byte *platform)
 {
   return str_eq (platform, "gnu_linux_x11")
          || str_eq (platform, "gnu_linux_wayland");
 }
 
-static bool
+local bool
 is_windows_platform (const byte *platform)
 {
   return str_eq (platform, "windows");
 }
 
-int
+s32
 main (s32 argc, byte **argv)
 {
   NOB_GO_REBUILD_URSELF (argc, argv);
@@ -90,13 +90,13 @@ main (s32 argc, byte **argv)
   nob_log (INFO, "Building target: %s, for platform: %s", *target, *platform);
   nob_log (INFO, "Build mode: %s", *build_type);
 
-  Nob_Cmd cmd = { 0 };
+  Nob_Cmd compile_cmd = { 0 };
 
   // Compiler selection
   if (is_windows_platform (*platform))
-    nob_cmd_append (&cmd, "cl");
+    nob_cmd_append (&compile_cmd, "cl");
   else
-    nob_cmd_append (&cmd, "gcc");
+    nob_cmd_append (&compile_cmd, "gcc");
 
   // Output binary
   byte bin_name[256] = { 0 };
@@ -114,95 +114,89 @@ main (s32 argc, byte **argv)
   // Compiler options
   if (is_windows_platform (*platform))
     {
-      nob_cmd_append (&cmd, "/nologo", "/std:c11");
+      nob_cmd_append (&compile_cmd, "/nologo", "/std:c11");
 
-      /*if (str_eq (*build_type, "debug"))
-        nob_cmd_append (&cmd, "/W4", "/WX", "/external:W0",
-                        "/external:anglebrackets", "/Zi", "/Od");*/
       if (str_eq (*build_type, "debug"))
-        nob_cmd_append (&cmd, "/W4", "/external:W0", "/external:anglebrackets",
+        nob_cmd_append (&compile_cmd, "/W4", "/external:W0", "/external:anglebrackets",
                         "/Zi", "/Od");
       else
-        nob_cmd_append (&cmd, "/O2", "/GL", "/DNDEBUG");
+        nob_cmd_append (&compile_cmd, "/O2", "/GL", "/DNDEBUG");
 
       // MSVC output executable
       byte output_option[64] = { 0 };
       snprintf (output_option, sizeof (output_option), "/Fe:%s", bin_name);
 
-      nob_cmd_append (&cmd, output_option);
+      nob_cmd_append (&compile_cmd, output_option);
     }
   else
     {
-      nob_cmd_append (&cmd, "--std=c11");
+      nob_cmd_append (&compile_cmd, "--std=c11");
 
       if (str_eq (*build_type, "debug"))
-        nob_cmd_append (&cmd, "-Wall", "-Wextra", "-Werror", "-Wpedantic",
+        nob_cmd_append (&compile_cmd, "-Wall", "-Wextra", "-Werror", "-Wpedantic",
                         "-ggdb", "-Og");
       else
-        nob_cmd_append (&cmd, "-Ofast", "-march=native", "-flto", "-DNDEBUG");
+        nob_cmd_append (&compile_cmd, "-Ofast", "-march=native", "-flto", "-DNDEBUG");
 
-      nob_cmd_append (&cmd, "-o", bin_name);
+      nob_cmd_append (&compile_cmd, "-o", bin_name);
     }
 
   // Entry point
   byte entry_point[256] = { 0 };
-
   strcat (entry_point, *target);
   strcat (entry_point, "/main.c");
-
-  nob_cmd_append (&cmd, entry_point);
+  nob_cmd_append (&compile_cmd, entry_point);
 
   // Math
-  nob_cmd_append (&cmd, "math/basic.c");
+  nob_cmd_append (&compile_cmd, "math/basic.c");
 
   // Data structures
   // Tests include the implementations directly.
   if (str_eq (*target, "tests"))
-    nob_cmd_append (&cmd, "tests/dyn_arr.test.c");
+    nob_cmd_append (&compile_cmd, "tests/dyn_arr.test.c");
   else
-    nob_cmd_append (&cmd, "ds/dyn_arr.c");
+    nob_cmd_append (&compile_cmd, "ds/dyn_arr.c");
 
   // Platform utilities
-  nob_cmd_append (&cmd, "platform/utility.c");
+  nob_cmd_append (&compile_cmd, "platform/utility.c");
 
   // Platform layer common code
   if (is_linux_platform (*platform))
-    nob_cmd_append (&cmd, "platform/platform_gnu_linux.c");
+    nob_cmd_append (&compile_cmd, "platform/platform_gnu_linux.c");
 
   // Platform layer
   byte platform_layer[256] = { 0 };
-
   strcat (platform_layer, "platform/platform_");
   strcat (platform_layer, *platform);
   strcat (platform_layer, ".c");
-
-  nob_cmd_append (&cmd, platform_layer);
+  nob_cmd_append (&compile_cmd, platform_layer);
 
   // Event dispatcher
-  nob_cmd_append (&cmd, "platform/event_dispatcher.c");
+  nob_cmd_append (&compile_cmd, "platform/event_dispatcher.c");
 
   // Input
-  nob_cmd_append (&cmd, "input/input.c");
+  nob_cmd_append (&compile_cmd, "input/input.c");
 
   // Renderer
-  nob_cmd_append (&cmd, "renderer/renderer.c");
+  nob_cmd_append (&compile_cmd, "renderer/renderer.c");
 
   // Decoder
-  nob_cmd_append (&cmd, "decode/decode.c");
+  nob_cmd_append (&compile_cmd, "decode/decode.c");
 
   // Includes
   if (is_windows_platform (*platform))
-    nob_cmd_append (&cmd, "/Ilib", "/Ids", "/Iplatform", "/Imath",
+    nob_cmd_append (&compile_cmd, "/Ilib", "/Ids", "/Iplatform", "/Imath",
                     "/Irenderer", "/Iinput", "/Idecode");
   else
-    nob_cmd_append (&cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath",
+    nob_cmd_append (&compile_cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath",
                     "-Irenderer", "-Iinput", "-Idecode");
 
   // Libraries
   if (is_windows_platform (*platform))
     {
-      // Mine is at:
+      // Mine is here for example:
       // C:\Users\berna\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg.Shared_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build-shared\include\libavcodec\avcodec.h
+      // Winget has some weird install places
       byte *ffmpeg_dir = getenv ("FFMPEG_DIR");
       if (ffmpeg_dir == NULL)
         {
@@ -215,21 +209,21 @@ main (s32 argc, byte **argv)
       byte ffmpeg_include[1024];
       byte ffmpeg_lib[1024];
 
+      // We have to count here as we don't know the max size of the string
       snprintf (ffmpeg_include, sizeof (ffmpeg_include), "/I%s/include",
                 ffmpeg_dir);
-
       snprintf (ffmpeg_lib, sizeof (ffmpeg_lib), "/LIBPATH:%s/lib",
                 ffmpeg_dir);
 
-      nob_cmd_append (&cmd, ffmpeg_include);
-      nob_cmd_append (&cmd, "/link", ffmpeg_lib, "avformat.lib", "avcodec.lib",
+      nob_cmd_append (&compile_cmd, ffmpeg_include);
+      nob_cmd_append (&compile_cmd, "/link", ffmpeg_lib, "avformat.lib", "avcodec.lib",
                       "swscale.lib", "avutil.lib", "shell32.lib");
 
       if (str_eq (*build_type, "release"))
-        nob_cmd_append (&cmd, "/LTCG");
+        nob_cmd_append (&compile_cmd, "/LTCG");
     }
   else
-    nob_cmd_append (&cmd, "-lm", "-lavformat", "-lavcodec", "-lswscale",
+    nob_cmd_append (&compile_cmd, "-lm", "-lavformat", "-lavcodec", "-lswscale",
                     "-lavutil");
 
 #ifdef __clang__
@@ -238,7 +232,7 @@ main (s32 argc, byte **argv)
 #pragma clang diagnostic ignored "-Wvariadic-macro-arguments-omitted"
 #endif
 
-  if (!nob_cmd_run (&cmd))
+  if (!nob_cmd_run (&compile_cmd))
     return EXIT_FAILURE;
 
 #ifdef __clang__

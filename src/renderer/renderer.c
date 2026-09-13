@@ -7,6 +7,8 @@
 #include "performance.h"
 #include "renderer.h"
 
+// SIMD this entire file for optimization
+
 // The 'a' only affects transparent shapes
 u32
 rgba (u32 r, u32 g, u32 b, u32 a)
@@ -62,7 +64,7 @@ draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp)
   if (y < 0 || y >= rp->h)
     return;
 
-  // Wrong order
+  // Wrong order, may actually never happen
   if (unlikely (x0 > x1))
     {
       // Trust me it's not worth swapping with XOR
