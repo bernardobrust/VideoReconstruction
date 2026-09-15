@@ -17,7 +17,9 @@ As it turns out libdav1d does not export motion vectors in FFmpeg the same way H
 
 ### Detour (top priority)
 - [ ] Hack libdav1d (and FFmpeg as a consequence) to export compression data (MVs, channels, intra, transforms) in a way that we can use them in the inspector. This will require some research and experimentation, but it should be doable
+- [ ] Build a sample program to check that, likelly a test file
 - [ ] Statically link the modified versions into this repo (add the compiled libs to GH releases and addapt nob to pull them). This is harder than it sounds: compiling and pulling with the build system in a way that is easy to use can be tricky: OS, arch, dependencies, etc.
+- [ ] Generate the patches for the changes made and add them to a `lib/patches` dir in order to keep modifications explicit
 - [ ] Change the decoder to use the modified versions of the libs and use the motion vectors to render them on top of the video frame
 
 ### General
