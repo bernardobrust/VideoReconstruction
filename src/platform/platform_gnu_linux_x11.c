@@ -141,7 +141,7 @@ read_all (s32 fd, void *data, u64 size)
 }
 
 local bool
-read_xauthority (u8token[16])
+read_xauthority (u8 token[16])
 {
   const byte *path = getenv ("XAUTHORITY");
   byte default_path[PATH_MAX];
@@ -278,7 +278,7 @@ next_resource_id (InternalState *state)
 }
 
 local bool
-send_request (InternalState *state, u8opcode, u8detail, const u8 *body,
+send_request (InternalState *state, u8 opcode, u8 detail, const u8 *body,
               u64 body_size)
 {
   u64 size = 4 + body_size;
@@ -305,7 +305,7 @@ send_request (InternalState *state, u8opcode, u8detail, const u8 *body,
 }
 
 local bool
-read_reply (InternalState *state, u8reply[32])
+read_reply (InternalState *state, u8 reply[32])
 {
   if (!read_all (state->fd, reply, 32))
     return false;
@@ -316,7 +316,7 @@ read_reply (InternalState *state, u8reply[32])
       if (long_words > 0)
         {
           u64 extra = (size_t)long_words * 4;
-          u8discard[256];
+          u8 discard[256];
 
           while (extra > 0)
             {
@@ -421,7 +421,7 @@ set_title (InternalState *state, const byte *title)
 local bool
 create_window (InternalState *state, s32 x, s32 y, s32 w, s32 h)
 {
-  u8body[36] = { 0 };
+  u8 body[36] = { 0 };
   state->window = next_resource_id (state);
 
   write_u32_le (body, state->window);
@@ -437,13 +437,13 @@ create_window (InternalState *state, s32 x, s32 y, s32 w, s32 h)
                     | X11_EVENT_MASK_KEY_PRESS | X11_EVENT_MASK_KEY_RELEASE);
   write_u32_le (body + 20, state->root_visual);
 
-  return send_request (state, 1, (u32 byte)state->depth, body, sizeof (body));
+  return send_request (state, 1, (ubyte)state->depth, body, sizeof (body));
 }
 
 local bool
 create_gc (InternalState *state)
 {
-  u8body[16] = { 0 };
+  u8 body[16] = { 0 };
   state->gc = next_resource_id (state);
   write_u32_le (body, state->gc);
   write_u32_le (body + 4, state->root);
@@ -454,10 +454,10 @@ create_gc (InternalState *state)
 }
 
 local void
-dispatch_event (PlatformState *platform_state, const u8event[32])
+dispatch_event (PlatformState *platform_state, const u8 event[32])
 {
   InternalState *state = platform_state->internal_state;
-  u8type = event[0] & 0x7f;
+  u8 type = event[0] & 0x7f;
 
   if (type == X11_ERROR)
     {
@@ -538,7 +538,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
       return false;
     }
 
-  u8token[16] = { 0 };
+  u8 token[16] = { 0 };
   bool has_token = read_xauthority (token);
   const byte *auth_name = has_token ? "MIT-MAGIC-COOKIE-1" : "";
   u32 auth_name_length = (u32)strlen (auth_name);
@@ -567,7 +567,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   if (!setup_sent)
     goto fail;
 
-  u8prefix[8];
+  u8 prefix[8];
 
   if (!read_all (state->fd, prefix, sizeof (prefix)))
     goto fail;
@@ -650,7 +650,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
           if (state->shm_data != (void *)-1)
             {
               state->shmseg = next_resource_id (state);
-              u8attach_body[12] = { 0 };
+              u8 attach_body[12] = { 0 };
               write_u32_le (attach_body, state->shmseg);
               write_u32_le (attach_body + 4, (u32)state->shmid);
               attach_body[8] = 0;
@@ -858,7 +858,7 @@ platform_present (PlatformState *platform_state)
       write_u16_le (body + 8, (u8)state->width);
       write_u16_le (body + 10, (u8)chunk_height);
       write_u16_le (body + 14, (u8)y);
-      body[17] = (u32 byte)state->depth;
+      body[17] = (ubyte)state->depth;
 
       for (u32 row = 0; row < chunk_height; ++row)
         memcpy (body + 20 + (size_t)row * row_bytes,
