@@ -104,7 +104,7 @@ send_all (s32 fd, const void *data, u64 size)
   const u8 *p = data;
   while (size > 0)
     {
-      s64 written = send (fd, p, size, 0);
+      size_t written = send (fd, p, size, 0);
 
       if (written < 0 && errno == EINTR)
         continue;
@@ -125,7 +125,7 @@ read_all (s32 fd, void *data, u64 size)
   u8 *p = data;
   while (size > 0)
     {
-      s64 received = recv (fd, p, size, 0);
+      size_t received = recv (fd, p, size, 0);
 
       if (received < 0 && errno == EINTR)
         continue;
@@ -230,7 +230,7 @@ display_connect (void)
     }
 
   byte *end = NULL;
-  long number = strtol (display + 1, &end, 10);
+  s64 number = strtol (display + 1, &end, 10);
   if (end == display + 1 || number < 0 || number > INT_MAX
       || (*end != '\0' && *end != '.'))
     {
@@ -753,7 +753,7 @@ platform_update (PlatformState *platform_state)
 
   while (true)
     {
-      s64 received
+      size_t received
           = recv (state->fd, state->read_buf + state->read_len,
                   sizeof (state->read_buf) - state->read_len, MSG_DONTWAIT);
       if (received > 0)
@@ -812,15 +812,15 @@ platform_present (PlatformState *platform_state)
                 state->image_buffer + (size_t)row * state->width * 4,
                 state->width * (bytes_per_pixel < 4 ? bytes_per_pixel : 4));
 
-      u8 body[36] = { 0 };
+      u32 body[36] = { 0 };
       write_u32_le (body, state->window);
       write_u32_le (body + 4, state->gc);
-      write_u16_le (body + 8, (u8)state->width);
-      write_u16_le (body + 10, (u8)state->height);
+      write_u16_le (body + 8, (u16)state->width);
+      write_u16_le (body + 10, (u16)state->height);
       write_u16_le (body + 12, 0);
       write_u16_le (body + 14, 0);
-      write_u16_le (body + 16, (u8)state->width);
-      write_u16_le (body + 18, (u8)state->height);
+      write_u16_le (body + 16, (u16)state->width);
+      write_u16_le (body + 18, (u16)state->height);
       write_u16_le (body + 20, 0);
       write_u16_le (body + 22, 0);
       body[24] = (ubyte)state->depth;
@@ -855,9 +855,9 @@ platform_present (PlatformState *platform_state)
 
       write_u32_le (body, state->window);
       write_u32_le (body + 4, state->gc);
-      write_u16_le (body + 8, (u8)state->width);
-      write_u16_le (body + 10, (u8)chunk_height);
-      write_u16_le (body + 14, (u8)y);
+      write_u16_le (body + 8, (u16)state->width);
+      write_u16_le (body + 10, (u16)chunk_height);
+      write_u16_le (body + 14, (u16)y);
       body[17] = (ubyte)state->depth;
 
       for (u32 row = 0; row < chunk_height; ++row)
