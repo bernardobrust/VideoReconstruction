@@ -340,7 +340,7 @@ local bool
 intern_atom (InternalState *state, const byte *name, u32 *atom)
 {
   u64 name_length = strlen (name),
-      u64 body_size = 4 + round_up ((u32)name_length, 4);
+      body_size = 4 + round_up ((u32)name_length, 4);
   u8 *body = calloc (1, body_size);
 
   if (body == NULL)
