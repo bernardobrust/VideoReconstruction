@@ -212,7 +212,6 @@ LambdaBodyIndentation: Signature
 LineEnding:      DeriveLF
 MacroBlockBegin: ''
 MacroBlockEnd:   ''
-MainIncludebyte: Quote
 MaxEmptyLinesToKeep: 1
 NamespaceIndentation: None
 NumericLiteralCase:
@@ -236,7 +235,6 @@ PenaltyBreakOpenParenthesis: 0
 PenaltyBreakScopeResolution: 500
 PenaltyBreakString: 1000
 PenaltyBreakTemplateDeclaration: 10
-PenaltyExcessbyteacter: 1000000
 PenaltyIndentedWhitespace: 0
 PenaltyReturnTypeOnItsOwnLine: 60
 PointerAlignment: Right

@@ -144,14 +144,10 @@ display_connect (void)
   s32 fd = socket (AF_UNIX, SOCK_STREAM, 0);
 
   if (fd == -1)
-    {
-      exit (errno);
-    }
+    exit (errno);
 
   if (connect (fd, (struct sockaddr *)&addr, sizeof (addr)) == -1)
-    {
-      exit (errno);
-    }
+    exit (errno);
 
   return fd;
 }
@@ -173,7 +169,7 @@ wl_display_get_registry (s32 fd)
   ++current_id;
   buf_write_u32 (msg, &msg_size, sizeof (msg), current_id);
 
-  if ((long)msg_size != send (fd, msg, msg_size, MSG_DONTWAIT))
+  if ((s64)msg_size != send (fd, msg, msg_size, MSG_DONTWAIT))
     {
       exit (errno);
     }
@@ -183,7 +179,7 @@ wl_display_get_registry (s32 fd)
 
 local u32
 wl_registry_bind (s32 fd, u32 registry, u32 name, byte *interface,
-                  u32 interface_len, u32 version)
+                  u32erface_len, u32 version)
 {
   u64 msg_size = 0;
   byte msg[512] = "";
@@ -208,10 +204,8 @@ wl_registry_bind (s32 fd, u32 registry, u32 name, byte *interface,
 
   assert (msg_size == ROUNDUP_4 (msg_size));
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
-    {
-      exit (errno);
-    }
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
+    exit (errno);
 
   return current_id;
 }
@@ -236,7 +230,7 @@ wl_compositor_create_surface (s32 fd, InternalState *state)
   ++current_id;
   buf_write_u32 (msg, &msg_size, sizeof (msg), current_id);
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
     exit (errno);
 
   return current_id;
@@ -248,7 +242,7 @@ create_shared_memory_file (u64 size, InternalState *state)
   byte name[255] = "/";
 
   // Generate unique name
-  for (u64 i = 1; i < 16; ++i)
+  for (s32 i = 1; i < 16; ++i)
     name[i] = ((double)rand ()) / (double)RAND_MAX * 26 + 'a';
 
   name[16] = '\0';
@@ -291,7 +285,7 @@ xdg_wm_base_pong (s32 fd, InternalState *state, u32 ping)
   buf_write_u16 (msg, &msg_size, sizeof (msg), msg_announced_size);
   buf_write_u32 (msg, &msg_size, sizeof (msg), ping);
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
     exit (errno);
 }
 
@@ -314,7 +308,7 @@ xdg_surface_ack_configure (s32 fd, InternalState *state, u32 configure)
   buf_write_u16 (msg, &msg_size, sizeof (msg), msg_announced_size);
   buf_write_u32 (msg, &msg_size, sizeof (msg), configure);
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
     exit (errno);
 }
 
@@ -390,7 +384,7 @@ xdg_wm_base_get_xdg_surface (s32 fd, InternalState *state)
   buf_write_u32 (msg, &msg_size, sizeof (msg), current_id);
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_surface);
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
     exit (errno);
 
   return current_id;
@@ -426,7 +420,7 @@ wl_shm_pool_create_buffer (s32 fd, InternalState *state)
   u32 format = format_xrgb8888;
   buf_write_u32 (msg, &msg_size, sizeof (msg), format);
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
     exit (errno);
 
   return current_id;
@@ -457,7 +451,7 @@ wl_surface_attach (s32 fd, InternalState *state)
   buf_write_u32 (msg, &msg_size, sizeof (msg), x);
   buf_write_u32 (msg, &msg_size, sizeof (msg), y);
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
     exit (errno);
 }
 
@@ -482,7 +476,7 @@ wl_surface_damage (s32 fd, InternalState *state)
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->width);
   buf_write_u32 (msg, &msg_size, sizeof (msg), state->height);
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
     exit (errno);
 }
 
@@ -506,7 +500,7 @@ xdg_surface_get_toplevel (s32 fd, InternalState *state)
   ++current_id;
   buf_write_u32 (msg, &msg_size, sizeof (msg), current_id);
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
     exit (errno);
 
   return current_id;
@@ -529,8 +523,8 @@ wl_surface_commit (s32 fd, InternalState *state)
 
   buf_write_u16 (msg, &msg_size, sizeof (msg), msg_announced_size);
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
-      exit (errno);
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
+    exit (errno);
 }
 
 local void
@@ -553,7 +547,7 @@ xdg_toplevel_set_title (s32 fd, InternalState *state, const byte *title)
   buf_write_u16 (msg, &msg_size, sizeof (msg), msg_announced_size);
   buf_write_string (msg, &msg_size, sizeof (msg), (byte *)title, title_len);
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
     exit (errno);
 }
 
@@ -576,7 +570,7 @@ wl_seat_get_keyboard (s32 fd, InternalState *state)
   ++current_id;
   buf_write_u32 (msg, &msg_size, sizeof (msg), current_id);
 
-  if ((long)msg_size != send (fd, msg, msg_size, 0))
+  if ((s64)msg_size != send (fd, msg, msg_size, 0))
     exit (errno);
 
   return current_id;
@@ -594,8 +588,8 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
 
   assert (object_id <= current_id);
 
-  u16 opcode = buf_read_u16 (msg, msg_len);
-  u16 announced_size = buf_read_u16 (msg, msg_len);
+  u16 opcode = buf_read_u16 (msg, msg_len),
+      announced_size = buf_read_u16 (msg, msg_len);
 
   assert (ROUNDUP_4 (announced_size) <= announced_size);
 
@@ -606,9 +600,9 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
 
   if (object_id == state->wl_registry && opcode == wl_registry_event_global)
     {
-      u32 name = buf_read_u32 (msg, msg_len);
-      u32 interface_len = buf_read_u32 (msg, msg_len);
-      u32 padded_interface_len = ROUNDUP_4 (interface_len);
+      u32 name = buf_read_u32 (msg, msg_len),
+          interface_len = buf_read_u32 (msg, msg_len),
+          padded_interface_len = ROUNDUP_4 (interface_len);
       byte interface[512] = "";
 
       assert (padded_interface_len <= sizeof (interface));
@@ -652,10 +646,10 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
     }
   else if (object_id == display_object_id && opcode == wl_display_error_event)
     {
-      u32 target_object_id = buf_read_u32 (msg, msg_len);
-      u32 code = buf_read_u32 (msg, msg_len);
+      u32 target_object_id = buf_read_u32 (msg, msg_len),
+          code = buf_read_u32 (msg, msg_len),
+          error_len = buf_read_u32 (msg, msg_len);
       byte error[512] = "";
-      u32 error_len = buf_read_u32 (msg, msg_len);
 
       buf_read_n (msg, msg_len, error, ROUNDUP_4 (error_len));
 
@@ -696,13 +690,11 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
           buf_read_n (msg, msg_len, buf, len);
         }
       else if (opcode == xdg_toplevel_event_close)
-        {
-          platform_state->running = false;
-        }
+        platform_state->running = false;
       else if (opcode == 3)
         {
-          u32 array_len = buf_read_u32 (msg, msg_len);
-          u32 padded_len = ROUNDUP_4 (array_len);
+          u32 array_len = buf_read_u32 (msg, msg_len),
+              padded_len = ROUNDUP_4 (array_len);
           *msg += padded_len;
           *msg_len -= padded_len;
         }
@@ -735,8 +727,8 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
         }
       else if (opcode == 1)
         {
-          u32 name_len = buf_read_u32 (msg, msg_len);
-          u32 padded_len = ROUNDUP_4 (name_len);
+          u32 name_len = buf_read_u32 (msg, msg_len),
+              padded_len = ROUNDUP_4 (name_len);
           *msg += padded_len;
           *msg_len -= padded_len;
         }
@@ -748,7 +740,9 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
         {
           buf_read_u32 (msg, msg_len);
           buf_read_u32 (msg, msg_len);
+
           u32 keys_len = buf_read_u32 (msg, msg_len);
+
           *msg += ROUNDUP_4 (keys_len);
           *msg_len -= ROUNDUP_4 (keys_len);
         }
@@ -761,12 +755,12 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
         {
           buf_read_u32 (msg, msg_len);
           buf_read_u32 (msg, msg_len);
-          u32 key = buf_read_u32 (msg, msg_len);
-          u32 key_state = buf_read_u32 (msg, msg_len);
+
+          u32 key = buf_read_u32 (msg, msg_len),
+              key_state = buf_read_u32 (msg, msg_len);
 
           EventType ev;
-          bool valid = true;
-          bool is_press = (key_state != 0);
+          bool valid = true, is_press = (key_state != 0);
 
           switch (key)
             {
@@ -817,9 +811,8 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
   else if (state->wl_surface != 0 && object_id == state->wl_surface)
     {
       if (opcode == 0 || opcode == 1)
-        {
-          buf_read_u32 (msg, msg_len);
-        }
+        buf_read_u32 (msg, msg_len);
+
       return;
     }
 
@@ -836,24 +829,19 @@ read_and_dispatch (PlatformState *platform_state, bool block)
 
   while (true)
     {
-      long bytes_received
+      s64 bytes_received
           = recv (state->fd, state->read_buf + state->read_buf_len,
                   sizeof (state->read_buf) - state->read_buf_len,
                   block ? 0 : MSG_DONTWAIT);
       if (bytes_received < 0)
         {
           if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
-              break;
-            }
+            break;
           else if (errno == EINTR)
-            {
-              continue;
-            }
+            continue;
           else
             {
               fprintf (stderr, "recv failed: %s\n", strerror (errno));
-
               exit (errno);
             }
         }
@@ -879,12 +867,11 @@ read_and_dispatch (PlatformState *platform_state, bool block)
           exit (EINVAL);
         }
       if (state->read_buf_len < announced_size)
-        {
-          break; // Incomplete message
-        }
+        break; // Incomplete message
 
       byte *msg_ptr = state->read_buf;
       u64 msg_len = announced_size;
+
       handle_message (state->fd, platform_state, &msg_ptr, &msg_len);
 
       memmove (state->read_buf, state->read_buf + announced_size,
@@ -923,9 +910,8 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   s32 fd = display_connect ();
   if (fd == -1)
-    {
-      return false;
-    }
+    return false;
+
   state->fd = fd;
   state->image_buffer = image_buffer;
 
@@ -942,9 +928,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   while (state->wl_compositor == 0 || state->wl_shm == 0
          || state->xdg_wm_base == 0)
-    {
-      read_and_dispatch (platform_state, true);
-    }
+    read_and_dispatch (platform_state, true);
 
   state->wl_surface = wl_compositor_create_surface (fd, state);
   state->wl_shm_pool = wl_shm_create_pool (fd, state);
@@ -957,9 +941,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   wl_surface_commit (fd, state);
 
   while (state->state != STATE_SURFACE_ACKED_CONFIGURE)
-    {
-      read_and_dispatch (platform_state, true);
-    }
+    read_and_dispatch (platform_state, true);
 
   return true;
 }

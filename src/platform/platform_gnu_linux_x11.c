@@ -88,9 +88,9 @@ typedef struct
   u32 bits_per_pixel;
   u32 scanline_pad;
   u8 *image_buffer;
-  u8read_buf[8192];
+  u8 read_buf[8192];
   u64 read_len;
-  u8shm_opcode;
+  u8 shm_opcode;
   u32 shmseg;
   s32 shmid;
   u8 *shm_data;
@@ -165,7 +165,7 @@ read_xauthority (u8token[16])
     return false;
 
   bool found = false;
-  u8length_buf[2];
+  u8 length_buf[2];
   while (fread (length_buf, 1, sizeof (length_buf), file)
          == sizeof (length_buf))
     {
@@ -294,7 +294,7 @@ send_request (InternalState *state, u8opcode, u8detail, const u8 *body,
   request[0] = opcode;
   request[1] = detail;
 
-  write_u16_le (request + 2, (u32 short)(size / 4));
+  write_u16_le (request + 2, (u8)(size / 4));
 
   memcpy (request + 4, body, body_size);
   bool result = send_all (state->fd, request, size);
@@ -339,20 +339,20 @@ read_reply (InternalState *state, u8reply[32])
 local bool
 intern_atom (InternalState *state, const byte *name, u32 *atom)
 {
-  u64 name_length = strlen (name);
-  u64 body_size = 4 + round_up ((u32)name_length, 4);
+  u64 name_length = strlen (name),
+      u64 body_size = 4 + round_up ((u32)name_length, 4);
   u8 *body = calloc (1, body_size);
 
   if (body == NULL)
     return false;
 
-  write_u16_le (body, (u32 short)name_length);
+  write_u16_le (body, (u8)name_length);
 
   memcpy (body + 4, name, name_length);
   bool result = send_request (state, 16, 0, body, body_size);
   free (body);
 
-  u8reply[32];
+  u8 reply[32];
 
   if (!result || !read_reply (state, reply))
     return false;
@@ -365,20 +365,20 @@ intern_atom (InternalState *state, const byte *name, u32 *atom)
 local bool
 query_extension (InternalState *state, const byte *name, u8 *major_opcode)
 {
-  u64 name_length = strlen (name);
-  u64 body_size = 4 + round_up ((u32)name_length, 4);
+  u64 name_length = strlen (name),
+      body_size = 4 + round_up ((u32)name_length, 4);
   u8 *body = calloc (1, body_size);
 
   if (body == NULL)
     return false;
 
-  write_u16_le (body, (u32 short)name_length);
+  write_u16_le (body, (u8)name_length);
 
   memcpy (body + 4, name, name_length);
   bool result = send_request (state, X11_QUERY_EXTENSION, 0, body, body_size);
   free (body);
 
-  u8reply[32];
+  u8 reply[32];
 
   if (!result || !read_reply (state, reply))
     return false;
@@ -395,8 +395,8 @@ query_extension (InternalState *state, const byte *name, u8 *major_opcode)
 local bool
 set_title (InternalState *state, const byte *title)
 {
-  u64 title_length = strlen (title);
-  u64 body_size = 20 + round_up ((u32)title_length, 4);
+  u64 title_length = strlen (title),
+      body_size = 20 + round_up ((u32)title_length, 4);
   u8 *body = calloc (1, body_size);
 
   if (body == NULL)
@@ -426,10 +426,10 @@ create_window (InternalState *state, s32 x, s32 y, s32 w, s32 h)
 
   write_u32_le (body, state->window);
   write_u32_le (body + 4, state->root);
-  write_u16_le (body + 8, (u32 short)x);
-  write_u16_le (body + 10, (u32 short)y);
-  write_u16_le (body + 12, (u32 short)w);
-  write_u16_le (body + 14, (u32 short)h);
+  write_u16_le (body + 8, (u8)x);
+  write_u16_le (body + 10, (u8)y);
+  write_u16_le (body + 12, (u8)w);
+  write_u16_le (body + 14, (u8)h);
   write_u16_le (body + 18, X11_INPUT_OUTPUT);
   write_u32_le (body + 24, X11_CW_BACK_PIXEL | X11_CW_EVENT_MASK);
   write_u32_le (body + 32,
@@ -478,7 +478,7 @@ dispatch_event (PlatformState *platform_state, const u8event[32])
 
   else if (type == 2 || type == 3)
     {
-      u8keycode = event[1];
+      u8 keycode = event[1];
       bool is_press = (type == 2);
       EventType ev;
       bool valid = true;
@@ -529,8 +529,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   if (state == NULL)
     return false;
 
-  event_queue = *dyn_arr_init (16, sizeof (int));
-
+  event_queue = *dyn_arr_init (16, sizeof (s32));
   state->fd = display_connect ();
 
   if (state->fd < 0)
@@ -555,8 +554,8 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   write_u16_le (setup + 2, X11_PROTOCOL_MAJOR);
   write_u16_le (setup + 4, X11_PROTOCOL_MINOR);
-  write_u16_le (setup + 6, (u32 short)auth_name_length);
-  write_u16_le (setup + 8, (u32 short)auth_data_length);
+  write_u16_le (setup + 6, (u8)auth_name_length);
+  write_u16_le (setup + 8, (u8)auth_data_length);
 
   memcpy (setup + 12, auth_name, auth_name_length);
   memcpy (setup + 12 + round_up (auth_name_length, 4), token,
@@ -596,9 +595,8 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   state->resource_mask = read_u32_le (additional + 8);
   state->max_request_words = read_u16_le (additional + 18);
 
-  u32 vendor_length = read_u16_le (additional + 16);
-  u32 root_count = additional[20];
-  u32 format_count = additional[21];
+  u32 vendor_length = read_u16_le (additional + 16),
+      root_count = additional[20], format_count = additional[21];
 
   u64 offset = 32 + round_up (vendor_length, 4);
 
@@ -659,9 +657,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
               if (send_request (state, state->shm_opcode, X11_SHM_ATTACH,
                                 attach_body, sizeof (attach_body)))
-                {
-                  state->has_shm = true;
-                }
+                state->has_shm = true;
             }
           else
             state->shm_data = NULL;
@@ -679,7 +675,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   if (state->has_shm && state->shmid >= 0)
     shmctl (state->shmid, IPC_RMID, NULL);
 
-  u8protocols[24] = { 0 };
+  u8 protocols[24] = { 0 };
   write_u32_le (protocols, state->window);
   write_u32_le (protocols + 4, state->wm_protocols);
   write_u32_le (protocols + 8, 4);
@@ -692,10 +688,10 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   if (!send_request (state, 18, 0, protocols, sizeof (protocols))
       || !create_gc (state)
       || !send_request (state, 8, 0,
-                        (u32 byte[]){ (u32 byte)state->window,
-                                      (u32 byte)(state->window >> 8),
-                                      (u32 byte)(state->window >> 16),
-                                      (u32 byte)(state->window >> 24) },
+                        (ubyte[]){ (ubyte)state->window,
+                                   (ubyte)(state->window >> 8),
+                                   (ubyte)(state->window >> 16),
+                                   (ubyte)(state->window >> 24) },
                         4))
     goto fail_with_state;
   return true;
@@ -722,7 +718,7 @@ platform_shutdown (PlatformState *platform_state)
 
   if (state->has_shm && state->shmseg != 0 && state->shm_opcode != 0)
     {
-      u8body[4] = { 0 };
+      u8 body[4] = { 0 };
       write_u32_le (body, state->shmseg);
       send_request (state, state->shm_opcode, X11_SHM_DETACH, body,
                     sizeof (body));
@@ -736,7 +732,7 @@ platform_shutdown (PlatformState *platform_state)
 
   if (state->window != 0)
     {
-      u8body[4];
+      u8 body[4];
       write_u32_le (body, state->window);
       send_request (state, 4, 0, body, sizeof (body));
     }
@@ -757,7 +753,7 @@ platform_update (PlatformState *platform_state)
 
   while (true)
     {
-      su64 received
+      s64 received
           = recv (state->fd, state->read_buf + state->read_len,
                   sizeof (state->read_buf) - state->read_len, MSG_DONTWAIT);
       if (received > 0)
@@ -804,8 +800,8 @@ platform_present (PlatformState *platform_state)
   if (state == NULL || !platform_state->running)
     return;
 
-  u32 bytes_per_pixel = (state->bits_per_pixel + 7) / 8;
-  u32 row_bytes
+  u32 bytes_per_pixel = (state->bits_per_pixel + 7) / 8,
+      row_bytes
       = round_up (state->width * state->bits_per_pixel, state->scanline_pad)
         / 8;
 
@@ -816,18 +812,18 @@ platform_present (PlatformState *platform_state)
                 state->image_buffer + (size_t)row * state->width * 4,
                 state->width * (bytes_per_pixel < 4 ? bytes_per_pixel : 4));
 
-      u8body[36] = { 0 };
+      u8 body[36] = { 0 };
       write_u32_le (body, state->window);
       write_u32_le (body + 4, state->gc);
-      write_u16_le (body + 8, (u32 short)state->width);
-      write_u16_le (body + 10, (u32 short)state->height);
+      write_u16_le (body + 8, (u8)state->width);
+      write_u16_le (body + 10, (u8)state->height);
       write_u16_le (body + 12, 0);
       write_u16_le (body + 14, 0);
-      write_u16_le (body + 16, (u32 short)state->width);
-      write_u16_le (body + 18, (u32 short)state->height);
+      write_u16_le (body + 16, (u8)state->width);
+      write_u16_le (body + 18, (u8)state->height);
       write_u16_le (body + 20, 0);
       write_u16_le (body + 22, 0);
-      body[24] = (u32 byte)state->depth;
+      body[24] = (ubyte)state->depth;
       body[25] = X11_Z_PIXMAP;
       body[26] = 0;
       body[27] = 0;
@@ -842,8 +838,8 @@ platform_present (PlatformState *platform_state)
       return;
     }
 
-  u32 max_data = state->max_request_words * 4 - 24;
-  u32 rows = max_data / row_bytes;
+  u32 max_data = state->max_request_words * 4 - 24,
+      rows = max_data / row_bytes;
 
   if (rows == 0)
     return;
@@ -859,9 +855,9 @@ platform_present (PlatformState *platform_state)
 
       write_u32_le (body, state->window);
       write_u32_le (body + 4, state->gc);
-      write_u16_le (body + 8, (u32 short)state->width);
-      write_u16_le (body + 10, (u32 short)chunk_height);
-      write_u16_le (body + 14, (u32 short)y);
+      write_u16_le (body + 8, (u8)state->width);
+      write_u16_le (body + 10, (u8)chunk_height);
+      write_u16_le (body + 14, (u8)y);
       body[17] = (u32 byte)state->depth;
 
       for (u32 row = 0; row < chunk_height; ++row)

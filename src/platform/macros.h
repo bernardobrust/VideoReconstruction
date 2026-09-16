@@ -16,6 +16,7 @@
 
 // Fixed data types without weird names
 #define byte char
+#define ubyte unsigned byte
 
 #define s8 int8_t
 #define u8 uint8_t
