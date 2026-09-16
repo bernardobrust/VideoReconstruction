@@ -812,7 +812,7 @@ platform_present (PlatformState *platform_state)
                 state->image_buffer + (size_t)row * state->width * 4,
                 state->width * (bytes_per_pixel < 4 ? bytes_per_pixel : 4));
 
-      u32 body[36] = { 0 };
+      ubyte body[36] = { 0 };
       write_u32_le (body, state->window);
       write_u32_le (body + 4, state->gc);
       write_u16_le (body + 8, (u16)state->width);
