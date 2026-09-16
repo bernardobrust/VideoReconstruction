@@ -106,7 +106,7 @@ send_all (s32 fd, const void *data, u64 size)
     {
       size_t written = send (fd, p, size, 0);
 
-      if (written < 0 && errno == EINTR)
+      if (errno == EINTR)
         continue;
 
       if (written <= 0)
@@ -127,7 +127,7 @@ read_all (s32 fd, void *data, u64 size)
     {
       size_t received = recv (fd, p, size, 0);
 
-      if (received < 0 && errno == EINTR)
+      if (errno == EINTR)
         continue;
 
       if (received <= 0)
