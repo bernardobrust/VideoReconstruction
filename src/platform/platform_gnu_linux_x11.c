@@ -104,7 +104,7 @@ send_all (s32 fd, const void *data, u64 size)
   const u8 *p = data;
   while (size > 0)
     {
-      su64 written = send (fd, p, size, 0);
+      s64 written = send (fd, p, size, 0);
 
       if (written < 0 && errno == EINTR)
         continue;
@@ -125,7 +125,7 @@ read_all (s32 fd, void *data, u64 size)
   u8 *p = data;
   while (size > 0)
     {
-      su64 received = recv (fd, p, size, 0);
+      s64 received = recv (fd, p, size, 0);
 
       if (received < 0 && errno == EINTR)
         continue;
