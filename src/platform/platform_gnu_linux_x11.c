@@ -1,6 +1,6 @@
 // I have to say that Platform Layers are the most Copy-Pastey Ever invented
 
-// Use these definitions if and only if we're on GNU + Linux and Wayland
+// Use these definitions if and only if we're on GNU + Linux and X11
 
 // Note: this is some of the worst code I've ever written. It has gotos,
 // bithacks and I honestly do not understand a massive part of the code here
@@ -104,15 +104,15 @@ send_all (s32 fd, const void *data, u64 size)
   const u8 *p = data;
   while (size > 0)
     {
-      size_t written = send (fd, p, size, 0);
+      ssize_t written = send (fd, p, size, 0);
 
-      if (errno == EINTR)
+      if (written < 0 && errno == EINTR)
         continue;
 
       if (written <= 0)
         return false;
 
-      p += written;
+      p += (size_t)written;
       size -= (size_t)written;
     }
 
@@ -125,15 +125,15 @@ read_all (s32 fd, void *data, u64 size)
   u8 *p = data;
   while (size > 0)
     {
-      size_t received = recv (fd, p, size, 0);
+      ssize_t received = recv (fd, p, size, 0);
 
-      if (errno == EINTR)
+      if (received < 0 && errno == EINTR)
         continue;
 
       if (received <= 0)
         return false;
 
-      p += received;
+      p += (size_t)received;
       size -= (size_t)received;
     }
 
@@ -294,7 +294,7 @@ send_request (InternalState *state, u8 opcode, u8 detail, const u8 *body,
   request[0] = opcode;
   request[1] = detail;
 
-  write_u16_le (request + 2, (u8)(size / 4));
+  write_u16_le (request + 2, (u16)(size / 4));
 
   memcpy (request + 4, body, body_size);
   bool result = send_all (state->fd, request, size);
@@ -346,7 +346,7 @@ intern_atom (InternalState *state, const byte *name, u32 *atom)
   if (body == NULL)
     return false;
 
-  write_u16_le (body, (u8)name_length);
+  write_u16_le (body, (u16)name_length);
 
   memcpy (body + 4, name, name_length);
   bool result = send_request (state, 16, 0, body, body_size);
@@ -372,7 +372,7 @@ query_extension (InternalState *state, const byte *name, u8 *major_opcode)
   if (body == NULL)
     return false;
 
-  write_u16_le (body, (u8)name_length);
+  write_u16_le (body, (u16)name_length);
 
   memcpy (body + 4, name, name_length);
   bool result = send_request (state, X11_QUERY_EXTENSION, 0, body, body_size);
@@ -426,10 +426,10 @@ create_window (InternalState *state, s32 x, s32 y, s32 w, s32 h)
 
   write_u32_le (body, state->window);
   write_u32_le (body + 4, state->root);
-  write_u16_le (body + 8, (u8)x);
-  write_u16_le (body + 10, (u8)y);
-  write_u16_le (body + 12, (u8)w);
-  write_u16_le (body + 14, (u8)h);
+  write_u16_le (body + 8, (u16)x);
+  write_u16_le (body + 10, (u16)y);
+  write_u16_le (body + 12, (u16)w);
+  write_u16_le (body + 14, (u16)h);
   write_u16_le (body + 18, X11_INPUT_OUTPUT);
   write_u32_le (body + 24, X11_CW_BACK_PIXEL | X11_CW_EVENT_MASK);
   write_u32_le (body + 32,
@@ -437,7 +437,7 @@ create_window (InternalState *state, s32 x, s32 y, s32 w, s32 h)
                     | X11_EVENT_MASK_KEY_PRESS | X11_EVENT_MASK_KEY_RELEASE);
   write_u32_le (body + 20, state->root_visual);
 
-  return send_request (state, 1, (ubyte)state->depth, body, sizeof (body));
+  return send_request (state, 1, (u8)state->depth, body, sizeof (body));
 }
 
 local bool
@@ -554,8 +554,8 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   write_u16_le (setup + 2, X11_PROTOCOL_MAJOR);
   write_u16_le (setup + 4, X11_PROTOCOL_MINOR);
-  write_u16_le (setup + 6, (u8)auth_name_length);
-  write_u16_le (setup + 8, (u8)auth_data_length);
+  write_u16_le (setup + 6, (u16)auth_name_length);
+  write_u16_le (setup + 8, (u16)auth_data_length);
 
   memcpy (setup + 12, auth_name, auth_name_length);
   memcpy (setup + 12 + round_up (auth_name_length, 4), token,
@@ -688,10 +688,10 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   if (!send_request (state, 18, 0, protocols, sizeof (protocols))
       || !create_gc (state)
       || !send_request (state, 8, 0,
-                        (ubyte[]){ (ubyte)state->window,
-                                   (ubyte)(state->window >> 8),
-                                   (ubyte)(state->window >> 16),
-                                   (ubyte)(state->window >> 24) },
+                        (u8[]){ (u8)state->window,
+                                (u8)(state->window >> 8),
+                                (u8)(state->window >> 16),
+                                (u8)(state->window >> 24) },
                         4))
     goto fail_with_state;
   return true;
@@ -741,6 +741,7 @@ platform_shutdown (PlatformState *platform_state)
   free (state);
 
   platform_state->internal_state = NULL;
+  platform_state->running = false;
 }
 
 bool
@@ -753,7 +754,7 @@ platform_update (PlatformState *platform_state)
 
   while (true)
     {
-      size_t received
+      ssize_t received
           = recv (state->fd, state->read_buf + state->read_len,
                   sizeof (state->read_buf) - state->read_len, MSG_DONTWAIT);
       if (received > 0)
@@ -765,7 +766,9 @@ platform_update (PlatformState *platform_state)
         }
       else if (errno == EAGAIN || errno == EWOULDBLOCK)
         break;
-      else if (errno != EINTR)
+      else if (errno == EINTR)
+        continue;
+      else
         {
           platform_state->running = false;
           break;

@@ -25,7 +25,7 @@ As it turns out libdav1d does not export motion vectors in FFmpeg the same way H
 ### General
 - [x] Update this TODO list with a more concrete plan
 - [x] Add non-online sources (like books) to [sources](sources.md)
-- [ ] Check if the macros for data types broke builds for other platforms. Also check if any doc file was changed.
+- [x] Check if the macros for data types broke builds for other platforms. Also check if any doc file was changed.
 
 ### Research
 We'll add a lot more stuff here as the project advances
