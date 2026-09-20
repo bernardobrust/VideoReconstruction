@@ -31,8 +31,9 @@ is_windows_platform (const byte *platform)
   return str_eq (platform, "windows");
 }
 
-#define WINDOWS_MOD_LIBS_URL \
-  "https://github.com/bernardobrust/VideoReconstruction/releases/download/Experimental/windows_mod_libs.zip"
+#define WINDOWS_MOD_LIBS_URL                                                  \
+  "https://github.com/bernardobrust/VideoReconstruction/releases/download/"   \
+  "Experimental/windows_mod_libs.zip"
 
 local bool
 windows_mod_libs_exist (void)
@@ -48,10 +49,15 @@ local bool
 pull_windows_mod_libs (void)
 {
   const byte *zip_path = BUILD_DIR "windows_mod_libs.zip";
-  nob_log (NOB_INFO, "Pulling modified libraries from %s", WINDOWS_MOD_LIBS_URL);
+
+  // If this does not work as expected check if the macro is pointing to the
+  // latest version and that the file was zipped corectly
+  nob_log (NOB_INFO, "Pulling modified libraries from %s",
+           WINDOWS_MOD_LIBS_URL);
 
   Nob_Cmd cmd = { 0 };
-  nob_cmd_append (&cmd, "curl", "-f", "-L", "-o", zip_path, WINDOWS_MOD_LIBS_URL);
+  nob_cmd_append (&cmd, "curl", "-f", "-L", "-o", zip_path,
+                  WINDOWS_MOD_LIBS_URL);
   if (!nob_cmd_run (&cmd))
     {
       nob_log (NOB_ERROR, "Failed to download modified libraries from %s",
@@ -75,7 +81,7 @@ pull_windows_mod_libs (void)
   nob_cmd_free (cmd);
 
   nob_delete_file (zip_path);
-  nob_log (NOB_INFO, "Successfully pulled and extracted modified libraries");
+  nob_log (NOB_INFO, "Successfully pulled and extracted modified libraries!");
   return true;
 }
 
@@ -87,9 +93,9 @@ main (s32 argc, byte **argv)
   if (!nob_mkdir_if_not_exists (BUILD_DIR))
     return EXIT_FAILURE;
 
-  if (argc > 1 && (str_eq (argv[1], "pull")
-                   || str_eq (argv[1], "pull-libs")
-                   || str_eq (argv[1], "pull_libs")))
+  if (argc > 1
+      && (str_eq (argv[1], "pull") || str_eq (argv[1], "pull-libs")
+          || str_eq (argv[1], "pull_libs")))
     {
       if (!pull_windows_mod_libs ())
         return EXIT_FAILURE;
@@ -111,8 +117,7 @@ main (s32 argc, byte **argv)
   argc = flag_rest_argc ();
   argv = flag_rest_argv ();
 
-  if (str_eq (*target, "pull")
-      || str_eq (*target, "pull-libs")
+  if (str_eq (*target, "pull") || str_eq (*target, "pull-libs")
       || str_eq (*target, "pull_libs"))
     {
       if (!pull_windows_mod_libs ())
@@ -127,8 +132,9 @@ main (s32 argc, byte **argv)
 
   if (!valid_target)
     {
-      nob_log (NOB_ERROR, "Invalid target, use one of "
-                          "'inspector', 'reconstructor', 'tests' or 'pull-libs'");
+      nob_log (NOB_ERROR,
+               "Invalid target, use one of "
+               "'inspector', 'reconstructor', 'tests' or 'pull_libs'");
       return EXIT_FAILURE;
     }
 
@@ -183,8 +189,8 @@ main (s32 argc, byte **argv)
       nob_cmd_append (&compile_cmd, "/nologo", "/std:c11");
 
       if (str_eq (*build_type, "debug"))
-        nob_cmd_append (&compile_cmd, "/W4", "/external:W0", "/external:anglebrackets",
-                        "/Zi", "/Od");
+        nob_cmd_append (&compile_cmd, "/W4", "/external:W0",
+                        "/external:anglebrackets", "/Zi", "/Od");
       else
         nob_cmd_append (&compile_cmd, "/O2", "/GL", "/DNDEBUG");
 
@@ -199,10 +205,11 @@ main (s32 argc, byte **argv)
       nob_cmd_append (&compile_cmd, "--std=c11");
 
       if (str_eq (*build_type, "debug"))
-        nob_cmd_append (&compile_cmd, "-Wall", "-Wextra", "-Werror", "-Wpedantic",
-                        "-ggdb", "-Og");
+        nob_cmd_append (&compile_cmd, "-Wall", "-Wextra", "-Werror",
+                        "-Wpedantic", "-ggdb", "-Og");
       else
-        nob_cmd_append (&compile_cmd, "-Ofast", "-march=native", "-flto", "-DNDEBUG");
+        nob_cmd_append (&compile_cmd, "-Ofast", "-march=native", "-flto",
+                        "-DNDEBUG");
 
       nob_cmd_append (&compile_cmd, "-o", bin_name);
     }
@@ -266,33 +273,36 @@ main (s32 argc, byte **argv)
           nob_log (NOB_WARNING,
                    "Modified FFmpeg libraries not found in lib/windows/");
           printf ("They can be pulled from: %s\n", WINDOWS_MOD_LIBS_URL);
-          printf ("Do you want to download and extract them now? [y/N]: ");
+          printf ("Do you want to download and extract them now? [Y/n]: ");
           fflush (stdout);
 
-          byte response[32] = { 0 };
-          if (fgets (response, sizeof (response), stdin) == NULL
-              || (response[0] != 'y' && response[0] != 'Y'))
+          s32 response = getchar ();
+          if (response == 'y' || response == 'Y' || response == '\n'
+              || response == '\r')
+            {
+              if (!pull_windows_mod_libs ())
+                return EXIT_FAILURE;
+            }
+          else
             {
               nob_log (NOB_ERROR,
                        "Modified libraries are required to build on Windows");
               return EXIT_FAILURE;
             }
-
-          if (!pull_windows_mod_libs ())
-            return EXIT_FAILURE;
         }
 
       nob_cmd_append (&compile_cmd, "/Ilib/windows/include");
       nob_cmd_append (&compile_cmd, "/link", "/LIBPATH:lib/windows/lib",
-                      "avformat.lib", "avcodec.lib", "swscale.lib", "avutil.lib",
-                      "libdav1d.a", "bcrypt.lib", "shell32.lib");
+                      "avformat.lib", "avcodec.lib", "swscale.lib",
+                      "avutil.lib", "libdav1d.a", "bcrypt.lib", "shell32.lib");
 
       if (str_eq (*build_type, "release"))
         nob_cmd_append (&compile_cmd, "/LTCG");
     }
   else
-    nob_cmd_append (&compile_cmd, "-lm", "-lavformat", "-lavcodec", "-lswscale",
-                    "-lavutil");
+    // For now we do not pull anything on GNU + Linux
+    nob_cmd_append (&compile_cmd, "-lm", "-lavformat", "-lavcodec",
+                    "-lswscale", "-lavutil");
 
 #ifdef __clang__
 #pragma clang diagnostic push

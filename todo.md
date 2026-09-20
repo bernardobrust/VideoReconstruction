@@ -16,11 +16,10 @@ As it turns out libdav1d does not export motion vectors in FFmpeg the same way H
 - @PERFORMANCE The transparent shape drawing is a massive performance bottleneck, we need to optimize it. Maybe we can use a different approach for this, like using a separate buffer for the transparent shapes and then blending it with the video frame
 
 ### Detour (top priority)
-- [ ] Statically link the modified versions into this repo (add the compiled libs to GH releases and addapt nob to pull them). Windows works, pending for linux
 - [ ] Hack libdav1d (and FFmpeg as a consequence) to export compression data (MVs, channels, intra, transforms) in a way that we can use them in the inspector. This will require some research and experimentation, but it should be doable
 - [ ] Build a sample program to check that, likelly a test file
 - [ ] Generate the patches for the changes made and add them to a `lib/patches` dir in order to keep modifications explicit
-- [ ] Change the decoder to use the modified versions of the libs and use the motion vectors to render them on top of the video frame
+- [x] Change the decoder to use the modified versions of the libs
 
 ### General
 - [x] Update this TODO list with a more concrete plan
@@ -41,6 +40,9 @@ We'll add a lot more stuff here as the project advances
 - [x] Setup release build
 - [x] Setup test build
 - [x] FFmpeg integration
+- [x] Modified library integration for Windows
+- [ ] Modified library integration for GNU + Linux (I'll likely do this from a native machine to make sure every step works)
+- [ ] Auto updates?
 - [ ] Get testing data (I have some mock videos but we'll need more latter)
 - [ ] Translation units of `shared` and individual projects via inclusion of `.c` files
 
@@ -74,7 +76,7 @@ Should we test the rendering primitives?
 - [x] Draw rotated rectangle (with angle and with orientation)
 - [x] Draw arrow
 - [x] Framerate stability on video framerate
-- [ ] UI fixed framerate
+- [ ] UI fixed framerate (right now we syncronize to the video's frame rate)
 - [ ] Draw text
 - [x] Draw frame of a video
 - [x] Draw transparent rectangle on top of frame (and arrow)
