@@ -194,30 +194,12 @@ main (s32 argc, byte **argv)
   // Libraries
   if (is_windows_platform (*platform))
     {
-      // Mine is here for example:
-      // C:\Users\berna\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg.Shared_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build-shared\include\libavcodec\avcodec.h
-      // Winget has some weird install places
-      byte *ffmpeg_dir = getenv ("FFMPEG_DIR");
-      if (ffmpeg_dir == NULL)
-        {
-          nob_log (ERROR,
-                   "FFMPEG_DIR is not set, please define where you installed "
-                   "your FFmpeg libraries on this environment variable");
-          return EXIT_FAILURE;
-        }
-
-      byte ffmpeg_include[1024];
-      byte ffmpeg_lib[1024];
-
-      // We have to count here as we don't know the max size of the string
-      snprintf (ffmpeg_include, sizeof (ffmpeg_include), "/I%s/include",
-                ffmpeg_dir);
-      snprintf (ffmpeg_lib, sizeof (ffmpeg_lib), "/LIBPATH:%s/lib",
-                ffmpeg_dir);
-
-      nob_cmd_append (&compile_cmd, ffmpeg_include);
-      nob_cmd_append (&compile_cmd, "/link", ffmpeg_lib, "avformat.lib", "avcodec.lib",
-                      "swscale.lib", "avutil.lib", "shell32.lib");
+      // Modified libraries should be pulled from: https://github.com/bernardobrust/VideoReconstruction/releases/download/Experimental/windows_mod_libs.zip
+      // Extraction yields: windows/include and windows/lib
+      nob_cmd_append (&compile_cmd, "/Ilib/modified_temp/include");
+      nob_cmd_append (&compile_cmd, "/link", "/LIBPATH:lib/modified_temp/lib",
+                      "avformat.lib", "avcodec.lib", "swscale.lib", "avutil.lib",
+                      "libdav1d.a", "bcrypt.lib", "shell32.lib");
 
       if (str_eq (*build_type, "release"))
         nob_cmd_append (&compile_cmd, "/LTCG");
