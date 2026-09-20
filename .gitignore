@@ -11,6 +11,8 @@ nob.old
 
 # Big files, see the main sources.md for where to get some
 test_files
+src/lib/windows
+src/lib/gnu_linux
 
 # Debug information
 gdb.txt

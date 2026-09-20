@@ -3,7 +3,9 @@ This project only uses C, the build system is a separate C file [`nob.c`](nob.c)
 
 ### Requirements:
 - A C11 compatible compiler, tested mainly with `gcc` on GNU + Linux, `cl` (msvc, make sure you are using a 64-bit version) on windows.
-- FFmpeg development libraries: `avformat`, `avcodec`, `swscale`, and `avutil`. If running on Windows the environment variable `FFMPEG_DIR` must be set to the directory where the FFmpeg libraries are located.
+- FFmpeg development libraries are required on GNU + Linux: `avformat`, `avcodec`, `swscale`, and `avutil`.
+
+> **NOTE**: The FFmpeg libraries dependency is needed for now as the modified ones are not ready on Linux yet
 
 The libraries can be installed in GNU + Linux systems as follows (if I added anything wrong here please open an issue):
 - Debian / Ubuntu:
@@ -33,12 +35,7 @@ sudo apk add ffmpeg-dev
 sudo emerge media-video/ffmpeg
 ```
 
-If you are using a different distribution, please check the package manager for the FFmpeg development libraries.
-
-On Windows the easiest way is with `win-get`, just run:
-```powershell
-winget install "FFmpeg (Shared)"
-```
+If you are using a different distribution, please check the package manager for the FFmpeg development libraries. And maybe open a PR for me to add them.
 
 ### Building:
 The first time you compile you will have to generate the build tool, simply run (uses `gcc` by default):
@@ -47,8 +44,10 @@ The first time you compile you will have to generate the build tool, simply run 
 Now you can compile the project with:
 `./nob(.exe) -target TARGET -platform PLATFORM -build_type BUILD_TYPE`
 
+On windows the libraries are pulled if they are not found. You will be asked if you want to install them now, you need to accept for the project to work.
+
 The parameters are as follows:
-- TARGET: inspector | reconstructor | tests (see below)
+- TARGET: inspector | reconstructor | tests (see below) | pull_libs
 - PLATFORM: gnu_linux_x11 | gnu_linux_wayland | windows (windows does not exist for now)
 - BUILD_TYPE: debug | release
 
@@ -80,13 +79,14 @@ This includes the following directories:
 3. `renderer`, the source code for the software renderer
 4. `ds`, the data structures used in the projects
 5. `math`, the mathematical functions and objects used in the code
-6. `lib`, third-party code used in the project
+6. `lib`, third-party code used in the project, on windows the modified libraries are already avaliable
 7. `test_files`, files used to test the correctness of the programs. For now this is empty as I didn't write any tests that directly require video data, but I recommend checking the sources for where to get some testing data.
 
 The following are present in `lib/` (the `.h` files are in there):
 - [nob](https://github.com/tsoding/nob.h), the build system (by TSoding)
 - [flag](https://github.com/tsoding/flag.h), for parsing the build system arguments (by TSoding)
 - [astf](https://github.com/bernardobrust/ASTF-V2), for automated testing (by me)
+- "OS_NAME", the modified libraries ([FFmpeg](https://github.com/bernardobrust/FFmpeg/tree/dav1d-mv-integration) and [dav1d](https://github.com/bernardobrust/dav1d/tree/mv-export)) pre-compiled for your OS
 
 ### Inspector
 The inspector is a tool to visualize compression data of the videos, such as color channels, chroma channels and inter prediction. See more [here](inspector/)

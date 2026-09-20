@@ -31,6 +31,54 @@ is_windows_platform (const byte *platform)
   return str_eq (platform, "windows");
 }
 
+#define WINDOWS_MOD_LIBS_URL \
+  "https://github.com/bernardobrust/VideoReconstruction/releases/download/Experimental/windows_mod_libs.zip"
+
+local bool
+windows_mod_libs_exist (void)
+{
+  return nob_file_exists ("lib/windows/lib/avcodec.lib")
+         && nob_file_exists ("lib/windows/lib/avformat.lib")
+         && nob_file_exists ("lib/windows/lib/avutil.lib")
+         && nob_file_exists ("lib/windows/lib/swscale.lib")
+         && nob_file_exists ("lib/windows/include/libavcodec/avcodec.h");
+}
+
+local bool
+pull_windows_mod_libs (void)
+{
+  const byte *zip_path = BUILD_DIR "windows_mod_libs.zip";
+  nob_log (NOB_INFO, "Pulling modified libraries from %s", WINDOWS_MOD_LIBS_URL);
+
+  Nob_Cmd cmd = { 0 };
+  nob_cmd_append (&cmd, "curl", "-f", "-L", "-o", zip_path, WINDOWS_MOD_LIBS_URL);
+  if (!nob_cmd_run (&cmd))
+    {
+      nob_log (NOB_ERROR, "Failed to download modified libraries from %s",
+               WINDOWS_MOD_LIBS_URL);
+      nob_cmd_free (cmd);
+      nob_delete_file (zip_path);
+      return false;
+    }
+  nob_cmd_free (cmd);
+
+  nob_log (NOB_INFO, "Extracting modified libraries to lib/");
+  cmd = (Nob_Cmd){ 0 };
+  nob_cmd_append (&cmd, "tar", "-xf", zip_path, "-C", "lib");
+  if (!nob_cmd_run (&cmd))
+    {
+      nob_log (NOB_ERROR, "Failed to extract %s into lib/", zip_path);
+      nob_cmd_free (cmd);
+      nob_delete_file (zip_path);
+      return false;
+    }
+  nob_cmd_free (cmd);
+
+  nob_delete_file (zip_path);
+  nob_log (NOB_INFO, "Successfully pulled and extracted modified libraries");
+  return true;
+}
+
 s32
 main (s32 argc, byte **argv)
 {
@@ -38,6 +86,15 @@ main (s32 argc, byte **argv)
 
   if (!nob_mkdir_if_not_exists (BUILD_DIR))
     return EXIT_FAILURE;
+
+  if (argc > 1 && (str_eq (argv[1], "pull")
+                   || str_eq (argv[1], "pull-libs")
+                   || str_eq (argv[1], "pull_libs")))
+    {
+      if (!pull_windows_mod_libs ())
+        return EXIT_FAILURE;
+      return EXIT_SUCCESS;
+    }
 
   // CLI parsing
   byte **target = flag_str ("target", "", "Target to build");
@@ -54,6 +111,15 @@ main (s32 argc, byte **argv)
   argc = flag_rest_argc ();
   argv = flag_rest_argv ();
 
+  if (str_eq (*target, "pull")
+      || str_eq (*target, "pull-libs")
+      || str_eq (*target, "pull_libs"))
+    {
+      if (!pull_windows_mod_libs ())
+        return EXIT_FAILURE;
+      return EXIT_SUCCESS;
+    }
+
   // Validation
   bool valid_target = str_eq (*target, "inspector")
                       || str_eq (*target, "reconstructor")
@@ -62,7 +128,7 @@ main (s32 argc, byte **argv)
   if (!valid_target)
     {
       nob_log (NOB_ERROR, "Invalid target, use one of "
-                          "'inspector', 'reconstructor' or 'tests'");
+                          "'inspector', 'reconstructor', 'tests' or 'pull-libs'");
       return EXIT_FAILURE;
     }
 
@@ -194,10 +260,30 @@ main (s32 argc, byte **argv)
   // Libraries
   if (is_windows_platform (*platform))
     {
-      // Modified libraries should be pulled from: https://github.com/bernardobrust/VideoReconstruction/releases/download/Experimental/windows_mod_libs.zip
-      // Extraction yields: windows/include and windows/lib
-      nob_cmd_append (&compile_cmd, "/Ilib/modified_temp/include");
-      nob_cmd_append (&compile_cmd, "/link", "/LIBPATH:lib/modified_temp/lib",
+      // Modified library pulling
+      if (!windows_mod_libs_exist ())
+        {
+          nob_log (NOB_WARNING,
+                   "Modified FFmpeg libraries not found in lib/windows/");
+          printf ("They can be pulled from: %s\n", WINDOWS_MOD_LIBS_URL);
+          printf ("Do you want to download and extract them now? [y/N]: ");
+          fflush (stdout);
+
+          byte response[32] = { 0 };
+          if (fgets (response, sizeof (response), stdin) == NULL
+              || (response[0] != 'y' && response[0] != 'Y'))
+            {
+              nob_log (NOB_ERROR,
+                       "Modified libraries are required to build on Windows");
+              return EXIT_FAILURE;
+            }
+
+          if (!pull_windows_mod_libs ())
+            return EXIT_FAILURE;
+        }
+
+      nob_cmd_append (&compile_cmd, "/Ilib/windows/include");
+      nob_cmd_append (&compile_cmd, "/link", "/LIBPATH:lib/windows/lib",
                       "avformat.lib", "avcodec.lib", "swscale.lib", "avutil.lib",
                       "libdav1d.a", "bcrypt.lib", "shell32.lib");
 
