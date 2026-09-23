@@ -3,39 +3,10 @@ This project only uses C, the build system is a separate C file [`nob.c`](nob.c)
 
 ### Requirements:
 - A C11 compatible compiler, tested mainly with `gcc` on GNU + Linux, `cl` (msvc, make sure you are using a 64-bit version) on windows.
-- FFmpeg development libraries are required on GNU + Linux: `avformat`, `avcodec`, `swscale`, and `avutil`.
+- `curl` on both platforms to download the modified libraries when needed.
+- `unzip` on GNU + Linux or `tar` on Windows to extract the library bundle.
 
-> **NOTE**: The FFmpeg libraries dependency is needed for now as the modified ones are not ready on Linux yet
-
-The libraries can be installed in GNU + Linux systems as follows (if I added anything wrong here please open an issue):
-- Debian / Ubuntu:
-```bash
-sudo apt install libavformat-dev libavcodec-dev libswscale-dev libavutil-dev
-```
-- Fedora / RHEL / CentOS / Rocky Linux / AlmaLinux (FFmpeg packages are generally provided through additional repositories such as RPM Fusion):
-```bash
-sudo dnf install ffmpeg-devel
-```
-- Arch Linux (and adjacent like Atrix) / Manjaro / CachyOS:
-```bash
-sudo pacman -S ffmpeg
-```
-- openSUSE (Package names may vary with the FFmpeg version available in the configured repositories, I don't know the exact versions that will work as I don't use open SUSE nor anyone that does, but I'm using FFmpeg version 9 and from what I read the repos use this version as well):
-```bash
-sudo zypper install ffmpeg-9-libavformat-devel ffmpeg-9-libavcodec-devel ffmpeg-9-libswscale-devel ffmpeg-9-libavutil-devel
-```
-- Alpine Linux:
-```bash
-sudo apk add ffmpeg-dev
-```
-- Gentoo:
-
-**USE flags: dav1d (enabled by default)**
-```bash
-sudo emerge media-video/ffmpeg
-```
-
-If you are using a different distribution, please check the package manager for the FFmpeg development libraries. And maybe open a PR for me to add them.
+The modified FFmpeg and dav1d libraries are downloaded from the project release the first time you build if they are missing. You can also fetch them explicitly with `./nob pull_libs`; on GNU + Linux, use `./nob pull-linux-libs`.
 
 ### Building:
 The first time you compile you will have to generate the build tool, simply run (uses `gcc` by default):
@@ -44,7 +15,7 @@ The first time you compile you will have to generate the build tool, simply run 
 Now you can compile the project with:
 `./nob(.exe) -target TARGET -platform PLATFORM -build_type BUILD_TYPE`
 
-On windows the libraries are pulled if they are not found. You will be asked if you want to install them now, you need to accept for the project to work.
+On GNU + Linux and Windows, the platform libraries are pulled if they are not found. You will be asked if you want to download them now; accept for the project to build.
 
 The parameters are as follows:
 - TARGET: inspector | reconstructor | tests (see below) | pull_libs

@@ -35,6 +35,12 @@ is_windows_platform (const byte *platform)
   "https://github.com/bernardobrust/VideoReconstruction/releases/download/"   \
   "Experimental/windows_mod_libs.zip"
 
+#define LINUX_MOD_LIBS_URL                                                    \
+  "https://github.com/bernardobrust/VideoReconstruction/releases/download/"   \
+  "Experimental/gnu_linux_mod_libs.zip"
+
+#define LINUX_LIBS_DIR "lib"
+
 local bool
 windows_mod_libs_exist (void)
 {
@@ -85,6 +91,80 @@ pull_windows_mod_libs (void)
   return true;
 }
 
+local bool
+linux_mod_libs_exist (void)
+{
+  return nob_file_exists (LINUX_LIBS_DIR "/gnu_linux/lib/libavcodec.a")
+         && nob_file_exists (LINUX_LIBS_DIR "/gnu_linux/lib/libavformat.a")
+         && nob_file_exists (LINUX_LIBS_DIR "/gnu_linux/lib/libavutil.a")
+         && nob_file_exists (LINUX_LIBS_DIR "/gnu_linux/lib/libswscale.a")
+         && nob_file_exists (LINUX_LIBS_DIR "/gnu_linux/lib/libdav1d.a")
+         && nob_file_exists (LINUX_LIBS_DIR
+                             "/gnu_linux/include/libavcodec/avcodec.h")
+         && nob_file_exists (LINUX_LIBS_DIR
+                             "/gnu_linux/include/libavutil/motion_vector.h")
+         && nob_file_exists (LINUX_LIBS_DIR
+                             "/gnu_linux/include/dav1d/dav1d.h");
+}
+
+local bool
+pull_linux_mod_libs (void)
+{
+  const byte *zip_path = BUILD_DIR "gnu_linux_mod_libs.zip";
+
+  nob_log (NOB_INFO, "Pulling modified libraries from %s",
+           LINUX_MOD_LIBS_URL);
+
+  Nob_Cmd cmd = { 0 };
+  nob_cmd_append (&cmd, "curl", "-f", "-L", "-o", zip_path,
+                  LINUX_MOD_LIBS_URL);
+  if (!nob_cmd_run (&cmd))
+    {
+      nob_log (NOB_ERROR, "Failed to download modified libraries from %s",
+               LINUX_MOD_LIBS_URL);
+      nob_cmd_free (cmd);
+      if (nob_file_exists (zip_path))
+        nob_delete_file (zip_path);
+      return false;
+    }
+  nob_cmd_free (cmd);
+
+  nob_log (NOB_INFO, "Extracting modified libraries to %s/gnu_linux/",
+           LINUX_LIBS_DIR);
+  cmd = (Nob_Cmd){ 0 };
+  nob_cmd_append (&cmd, "unzip", "-o", "-q", zip_path, "-d", LINUX_LIBS_DIR);
+  if (!nob_cmd_run (&cmd))
+    {
+      nob_log (NOB_ERROR, "Failed to extract %s into %s", zip_path,
+               LINUX_LIBS_DIR);
+      nob_cmd_free (cmd);
+      if (nob_file_exists (zip_path))
+        nob_delete_file (zip_path);
+      return false;
+    }
+  nob_cmd_free (cmd);
+
+  nob_delete_file (zip_path);
+  if (!linux_mod_libs_exist ())
+    {
+      nob_log (NOB_ERROR, "Downloaded Linux library bundle is incomplete");
+      return false;
+    }
+
+  nob_log (NOB_INFO, "Successfully pulled and extracted modified libraries!");
+  return true;
+}
+
+local bool
+pull_mod_libs (void)
+{
+#ifdef _WIN32
+  return pull_windows_mod_libs ();
+#else
+  return pull_linux_mod_libs ();
+#endif
+}
+
 s32
 main (s32 argc, byte **argv)
 {
@@ -95,9 +175,13 @@ main (s32 argc, byte **argv)
 
   if (argc > 1
       && (str_eq (argv[1], "pull") || str_eq (argv[1], "pull-libs")
-          || str_eq (argv[1], "pull_libs")))
+          || str_eq (argv[1], "pull_libs")
+          || str_eq (argv[1], "pull-linux-libs")))
     {
-      if (!pull_windows_mod_libs ())
+      bool pulled = str_eq (argv[1], "pull-linux-libs")
+                        ? pull_linux_mod_libs ()
+                        : pull_mod_libs ();
+      if (!pulled)
         return EXIT_FAILURE;
       return EXIT_SUCCESS;
     }
@@ -118,9 +202,13 @@ main (s32 argc, byte **argv)
   argv = flag_rest_argv ();
 
   if (str_eq (*target, "pull") || str_eq (*target, "pull-libs")
-      || str_eq (*target, "pull_libs"))
+      || str_eq (*target, "pull_libs")
+      || str_eq (*target, "pull-linux-libs"))
     {
-      if (!pull_windows_mod_libs ())
+      bool pulled = str_eq (*target, "pull-linux-libs")
+                        ? pull_linux_mod_libs ()
+                        : pull_mod_libs ();
+      if (!pulled)
         return EXIT_FAILURE;
       return EXIT_SUCCESS;
     }
@@ -262,7 +350,8 @@ main (s32 argc, byte **argv)
                     "/Irenderer", "/Iinput", "/Idecode");
   else
     nob_cmd_append (&compile_cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath",
-                    "-Irenderer", "-Iinput", "-Idecode");
+                    "-Irenderer", "-Iinput", "-Idecode",
+                    "-Ilib/gnu_linux/include");
 
   // Libraries
   if (is_windows_platform (*platform))
@@ -300,9 +389,36 @@ main (s32 argc, byte **argv)
         nob_cmd_append (&compile_cmd, "/LTCG");
     }
   else
-    // For now we do not pull anything on GNU + Linux
-    nob_cmd_append (&compile_cmd, "-lm", "-lavformat", "-lavcodec",
-                    "-lswscale", "-lavutil");
+    {
+      if (!linux_mod_libs_exist ())
+        {
+          nob_log (NOB_WARNING,
+                   "Modified FFmpeg libraries not found in %s/gnu_linux/",
+                   LINUX_LIBS_DIR);
+          printf ("They can be pulled from: %s\n", LINUX_MOD_LIBS_URL);
+          printf ("Do you want to download and extract them now? [Y/n]: ");
+          fflush (stdout);
+
+          s32 response = getchar ();
+          if (response == 'y' || response == 'Y' || response == '\n'
+              || response == '\r')
+            {
+              if (!pull_linux_mod_libs ())
+                return EXIT_FAILURE;
+            }
+          else
+            {
+              nob_log (NOB_ERROR,
+                       "Modified libraries are required to build on GNU + Linux");
+              return EXIT_FAILURE;
+            }
+        }
+
+      nob_cmd_append (&compile_cmd, "-Llib/gnu_linux/lib",
+                      "-lavformat", "-lavcodec", "-ldav1d", "-ldl",
+                      "-lswscale", "-lavutil", "-lm", "-latomic",
+                      "-pthread");
+    }
 
 #ifdef __clang__
 #pragma clang diagnostic push
