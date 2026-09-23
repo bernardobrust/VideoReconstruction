@@ -2,44 +2,46 @@
 This project only uses C, the build system is a separate C file [`nob.c`](nob.c) (check the structure section).
 
 ### Requirements:
-- A C11 compatible compiler, tested mainly with `gcc` on GNU + Linux, `cl` (msvc, make sure you are using a 64-bit version) on windows.
+- A C11 compatible compiler, tested mainly with `gcc` on GNU + Linux, `cl` (a.k.a msvc) on Windows (msvc, make sure you are using a 64-bit version).
 - `curl` on both platforms to download the modified libraries when needed.
 - `unzip` on GNU + Linux or `tar` on Windows to extract the library bundle.
 
-The modified FFmpeg and dav1d libraries are downloaded from the project release the first time you build if they are missing. You can also fetch them explicitly with `./nob pull_libs`; on GNU + Linux, use `./nob pull-linux-libs`.
+The modified FFmpeg and dav1d libraries are downloaded from the project's "releases" page on GitHub the first time you build if they are missing
 
 ### Building:
 The first time you compile you will have to generate the build tool, simply run (uses `gcc` by default):
 `gcc nob.c -o nob` or `cl nob.c`
 
 Now you can compile the project with:
-`./nob(.exe) -target TARGET -platform PLATFORM -build_type BUILD_TYPE`
+`./nob(.exe) -target TARGET -platform PLATFORM -mode MODE`
 
-On GNU + Linux and Windows, the platform libraries are pulled if they are not found. You will be asked if you want to download them now; accept for the project to build.
+On GNU + Linux and Windows, the platform libraries are pulled if they are not found. You will be asked if you want to download them now; accept for the project to build
 
 The parameters are as follows:
-- TARGET: inspector | reconstructor | tests (see below) | pull_libs
-- PLATFORM: gnu_linux_x11 | gnu_linux_wayland | windows (windows does not exist for now)
-- BUILD_TYPE: debug | release
+- TARGET: inspector | reconstructor | tests (see below) | pull (see below)
+- PLATFORM: gnu_linux_x11 | gnu_linux_wayland | windows
+- MODE: debug | release
 
 For example, to build the inspector for GNU + Linux with X11:
-`./nob -target inspector -platform gnu_linux_x11 -build_type release`
+`./nob -target inspector -platform gnu_linux_x11 -mode release`
 
-Both GNU + Linux back-ends speak their display protocols directly, so no X11 or Wayland development packages are required.
+Both GNU + Linux back-ends speak their display protocols directly, so no X11 or Wayland development packages are required
 
-The generated executable will be in the form ""TARGET_BUILD_TYPE_PLATFORM(.exe)"" in the `build/` directory. Exemple: `build/inspector_release_gnu_linux_x11` or `build\inspector_debug_windows.exe`
+Pulling libs without a specific platform (a.k.a just `-target pull`) will pull for the OS you are using, if you want to specify you can use `pull-windows-libs` or `pull-gnu-linux-libs`
+
+The generated executable will be in the form ""TARGET_MODE_PLATFORM(.exe)"" in the `build/` directory. Exemple: `build/inspector_release_gnu_linux_x11` or `build\inspector_debug_windows.exe`
 
 ### Running:
 You can tun the inspector using the executable and passing a video path:
-``build/inspector_...(.exe) video_path``
+`build/inspector_...(.exe) video_path`
 
 ### Testing:
 Testing can be performed with either a whitelist or a blacklist:
 `./build/tests_...(.exe) -enable TESTS_TO_RUN` or `./build/tests_...(.exe) -disable TESTS_TO_EXCLUDE`
 
-Not providing any option will run all of the tests.
+**Not providing any option will run all of the tests.**
 
-List of tests:
+List of tests (to be expanded):
 - dyn_arr: dynamic array tests
 
 # Structure

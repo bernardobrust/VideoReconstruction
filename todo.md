@@ -41,7 +41,8 @@ We'll add a lot more stuff here as the project advances
 - [x] Setup test build
 - [x] FFmpeg integration
 - [x] Modified library integration for Windows
-- [ ] Modified library integration for GNU + Linux (I'll likely do this from a native machine to make sure every step works)
+- [x] Modified library integration for GNU + Linux (I'll likely do this from a native machine to make sure every step works)
+- [ ] Check the compilation flags of the libraries, optimize as much as possible
 - [ ] Auto updates?
 - [ ] Get testing data (I have some mock videos but we'll need more latter)
 - [ ] Translation units of `shared` and individual projects via inclusion of `.c` files
@@ -80,7 +81,7 @@ Should we test the rendering primitives?
 - [ ] Draw text
 - [x] Draw frame of a video
 - [x] Draw transparent rectangle on top of frame (and arrow)
-- [ ] Scale video resolution to block dimensions
+- [ ] Scale video resolution to pane dimensions
 - [ ] Paralelize the renderer
 
 ### Systems (inspector)

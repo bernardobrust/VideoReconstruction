@@ -112,8 +112,7 @@ pull_linux_mod_libs (void)
 {
   const byte *zip_path = BUILD_DIR "gnu_linux_mod_libs.zip";
 
-  nob_log (NOB_INFO, "Pulling modified libraries from %s",
-           LINUX_MOD_LIBS_URL);
+  nob_log (NOB_INFO, "Pulling modified libraries from %s", LINUX_MOD_LIBS_URL);
 
   Nob_Cmd cmd = { 0 };
   nob_cmd_append (&cmd, "curl", "-f", "-L", "-o", zip_path,
@@ -173,24 +172,11 @@ main (s32 argc, byte **argv)
   if (!nob_mkdir_if_not_exists (BUILD_DIR))
     return EXIT_FAILURE;
 
-  if (argc > 1
-      && (str_eq (argv[1], "pull") || str_eq (argv[1], "pull-libs")
-          || str_eq (argv[1], "pull_libs")
-          || str_eq (argv[1], "pull-linux-libs")))
-    {
-      bool pulled = str_eq (argv[1], "pull-linux-libs")
-                        ? pull_linux_mod_libs ()
-                        : pull_mod_libs ();
-      if (!pulled)
-        return EXIT_FAILURE;
-      return EXIT_SUCCESS;
-    }
-
   // CLI parsing
   byte **target = flag_str ("target", "", "Target to build");
   byte **platform = flag_str ("platform", "", "Platform to build");
-  byte **build_type
-      = flag_str ("build_type", "", "What kind of binary to generate");
+  byte **mode
+      = flag_str ("mode", "", "What kind of binary to generate");
 
   if (!flag_parse (argc, argv))
     {
@@ -201,14 +187,22 @@ main (s32 argc, byte **argv)
   argc = flag_rest_argc ();
   argv = flag_rest_argv ();
 
-  if (str_eq (*target, "pull") || str_eq (*target, "pull-libs")
-      || str_eq (*target, "pull_libs")
-      || str_eq (*target, "pull-linux-libs"))
+  if ((str_eq (*target, "pull") || str_eq (*target, "pull-libs")
+          || str_eq (*target, "pull_libs")))
     {
-      bool pulled = str_eq (*target, "pull-linux-libs")
-                        ? pull_linux_mod_libs ()
-                        : pull_mod_libs ();
-      if (!pulled)
+      if (!pull_mod_libs ())
+        return EXIT_FAILURE;
+      return EXIT_SUCCESS;
+    }
+  else if (str_eq (*target, "pull-gnu-linux-libs"))
+    {
+      if (!pull_linux_mod_libs ())
+        return EXIT_FAILURE;
+      return EXIT_SUCCESS;
+    }
+  else if (str_eq (*target, "pull-windows-libs"))
+    {
+      if (!pull_windows_mod_libs ())
         return EXIT_FAILURE;
       return EXIT_SUCCESS;
     }
@@ -237,10 +231,10 @@ main (s32 argc, byte **argv)
       return EXIT_FAILURE;
     }
 
-  bool valid_build_type
-      = str_eq (*build_type, "debug") || str_eq (*build_type, "release");
+  bool valid_mode
+      = str_eq (*mode, "debug") || str_eq (*mode, "release");
 
-  if (!valid_build_type)
+  if (!valid_mode)
     {
       nob_log (NOB_ERROR,
                "Invalid build type, use one of 'debug' or 'release'");
@@ -248,7 +242,7 @@ main (s32 argc, byte **argv)
     }
 
   nob_log (INFO, "Building target: %s, for platform: %s", *target, *platform);
-  nob_log (INFO, "Build mode: %s", *build_type);
+  nob_log (INFO, "Build mode: %s", *mode);
 
   Nob_Cmd compile_cmd = { 0 };
 
@@ -264,7 +258,7 @@ main (s32 argc, byte **argv)
   strcat (bin_name, BUILD_DIR);
   strcat (bin_name, *target);
   strcat (bin_name, "_");
-  strcat (bin_name, *build_type);
+  strcat (bin_name, *mode);
   strcat (bin_name, "_");
   strcat (bin_name, *platform);
 
@@ -276,7 +270,7 @@ main (s32 argc, byte **argv)
     {
       nob_cmd_append (&compile_cmd, "/nologo", "/std:c11");
 
-      if (str_eq (*build_type, "debug"))
+      if (str_eq (*mode, "debug"))
         nob_cmd_append (&compile_cmd, "/W4", "/external:W0",
                         "/external:anglebrackets", "/Zi", "/Od");
       else
@@ -292,7 +286,7 @@ main (s32 argc, byte **argv)
     {
       nob_cmd_append (&compile_cmd, "--std=c11");
 
-      if (str_eq (*build_type, "debug"))
+      if (str_eq (*mode, "debug"))
         nob_cmd_append (&compile_cmd, "-Wall", "-Wextra", "-Werror",
                         "-Wpedantic", "-ggdb", "-Og");
       else
@@ -385,7 +379,7 @@ main (s32 argc, byte **argv)
                       "avformat.lib", "avcodec.lib", "swscale.lib",
                       "avutil.lib", "libdav1d.a", "bcrypt.lib", "shell32.lib");
 
-      if (str_eq (*build_type, "release"))
+      if (str_eq (*mode, "release"))
         nob_cmd_append (&compile_cmd, "/LTCG");
     }
   else
@@ -408,16 +402,16 @@ main (s32 argc, byte **argv)
             }
           else
             {
-              nob_log (NOB_ERROR,
-                       "Modified libraries are required to build on GNU + Linux");
+              nob_log (
+                  NOB_ERROR,
+                  "Modified libraries are required to build on GNU + Linux");
               return EXIT_FAILURE;
             }
         }
 
-      nob_cmd_append (&compile_cmd, "-Llib/gnu_linux/lib",
-                      "-lavformat", "-lavcodec", "-ldav1d", "-ldl",
-                      "-lswscale", "-lavutil", "-lm", "-latomic",
-                      "-pthread");
+      nob_cmd_append (&compile_cmd, "-Llib/gnu_linux/lib", "-lavformat",
+                      "-lavcodec", "-ldav1d", "-ldl", "-lswscale", "-lavutil",
+                      "-lm", "-latomic", "-pthread");
     }
 
 #ifdef __clang__
