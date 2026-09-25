@@ -1,5 +1,5 @@
-### Notes:
-As it turns out libdav1d does not export motion vectors in FFmpeg the same way HEVC does. So I'll basically have to hack the library and export them myself.
+### Temp:
+Build the libraries for GH releases on Linux
 
 #### Per-file basis
 - decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
@@ -16,7 +16,11 @@ As it turns out libdav1d does not export motion vectors in FFmpeg the same way H
 - @PERFORMANCE The transparent shape drawing is a massive performance bottleneck, we need to optimize it. Maybe we can use a different approach for this, like using a separate buffer for the transparent shapes and then blending it with the video frame
 
 ### Detour (top priority)
-- [x] Hack libdav1d (and FFmpeg as a consequence) to export compression data (MVs, channels, intra, transforms) in a way that we can use them in the inspector. This will require some research and experimentation, but it should be doable
+- [ ] Hack libdav1d (and FFmpeg as a consequence) to export compression data:
+	- [x] MVs
+	- [ ] Transforms
+	- [ ] Intra prediction
+	- [ ] ...
 - [ ] Build a sample program to check that, likelly a test file
 - [ ] Generate the patches for the changes made and add them to a `lib/patches` dir in order to keep modifications explicit
 - [x] Change the decoder to use the modified versions of the libs

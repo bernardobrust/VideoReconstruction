@@ -11,6 +11,7 @@
 #include <libswscale/swscale.h>
 
 // For debugging
+// Actually calling this everytime slows the program down so much it's crazy
 local void
 print_motion_vectors (const AVFrame *frame)
 {
