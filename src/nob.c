@@ -175,8 +175,7 @@ main (s32 argc, byte **argv)
   // CLI parsing
   byte **target = flag_str ("target", "", "Target to build");
   byte **platform = flag_str ("platform", "", "Platform to build");
-  byte **mode
-      = flag_str ("mode", "", "What kind of binary to generate");
+  byte **mode = flag_str ("mode", "", "What kind of binary to generate");
 
   if (!flag_parse (argc, argv))
     {
@@ -188,7 +187,7 @@ main (s32 argc, byte **argv)
   argv = flag_rest_argv ();
 
   if ((str_eq (*target, "pull") || str_eq (*target, "pull-libs")
-          || str_eq (*target, "pull_libs")))
+       || str_eq (*target, "pull_libs")))
     {
       if (!pull_mod_libs ())
         return EXIT_FAILURE;
@@ -231,8 +230,7 @@ main (s32 argc, byte **argv)
       return EXIT_FAILURE;
     }
 
-  bool valid_mode
-      = str_eq (*mode, "debug") || str_eq (*mode, "release");
+  bool valid_mode = str_eq (*mode, "debug") || str_eq (*mode, "release");
 
   if (!valid_mode)
     {
@@ -414,18 +412,8 @@ main (s32 argc, byte **argv)
                       "-lm", "-latomic", "-pthread");
     }
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc23-extensions"
-#pragma clang diagnostic ignored "-Wvariadic-macro-arguments-omitted"
-#endif
-
   if (!nob_cmd_run (&compile_cmd))
     return EXIT_FAILURE;
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
   return EXIT_SUCCESS;
 }

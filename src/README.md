@@ -2,13 +2,15 @@
 This project only uses C, the build system is a separate C file [`nob.c`](nob.c) (check the structure section).
 
 ### Requirements:
-- A C11 compatible compiler, tested mainly with `gcc` on GNU + Linux, `cl` (a.k.a msvc) on Windows (msvc, make sure you are using a 64-bit version).
+- A C11 compatible compiler, tested mainly with `gcc` on GNU + Linux, `cl` (a.k.a msvc) on Windows (make sure you are using a 64-bit version).
 - `curl` on both platforms to download the modified libraries when needed.
 - `unzip` on GNU + Linux or `tar` on Windows to extract the library bundle.
 
 The modified FFmpeg and dav1d libraries are downloaded from the project's "releases" page on GitHub the first time you build if they are missing
 
 ### Building:
+There is a sample `project.4coder` file along with sample build scripts on this directory. For now it just binds "F1" to compile the inspector (for x11 on the .sh) and F2 to run for "1080_jellyfin.mp4". It's more of an example than something to actually be used
+
 The first time you compile you will have to generate the build tool, simply run (uses `gcc` by default):
 `gcc nob.c -o nob` or `cl nob.c`
 

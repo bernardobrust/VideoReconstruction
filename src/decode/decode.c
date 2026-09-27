@@ -14,156 +14,156 @@
 local void
 process_side_data (const AVFrame *frame, RendererPlex *rp)
 {
-  AVFrameSideData *sd
-      = av_frame_get_side_data (frame, AV_FRAME_DATA_MOTION_VECTORS);
-
-  if (!sd)
+    AVFrameSideData *sd
+        = av_frame_get_side_data (frame, AV_FRAME_DATA_MOTION_VECTORS);
+    
+    if (!sd)
     {
-      printf ("No side data for this frame: %" PRId64 "\n", frame->pts);
-      return;
+        printf ("No side data for this frame: %" PRId64 "\n", frame->pts);
+        return;
     }
-
-  const AVMotionVector *mvs = (const AVMotionVector *)sd->data;
-  s32 nb_mvs = (s32)(sd->size / sizeof (*mvs));
-
-  const u32 forward_color = rgba (0, 255, 0, 180);
-  const u32 backward_color = rgba (255, 0, 0, 180);
-  const s32 thickness = 2;
-
-  for (s32 i = 0; i < nb_mvs; ++i)
+    
+    const AVMotionVector *mvs = (const AVMotionVector *)sd->data;
+    s32 nb_mvs = (s32)(sd->size / sizeof (*mvs));
+    
+    const u32 forward_color = rgba (0, 255, 0, 180);
+    const u32 backward_color = rgba (255, 0, 0, 180);
+    const s32 thickness = 2;
+    
+    for (s32 i = 0; i < nb_mvs; ++i)
     {
-      const AVMotionVector *mv = &mvs[i];
-
-      s32 cx = (s32)(mv->w / 2);
-      s32 cy = (s32)(mv->h / 2);
-
-      s32 startx, starty, endx, endy;
-      u32 color;
-
-      // Swap if needed
-      if (mv->source > 0)
+        const AVMotionVector *mv = &mvs[i];
+        
+        s32 cx = (s32)(mv->w / 2);
+        s32 cy = (s32)(mv->h / 2);
+        
+        s32 startx, starty, endx, endy;
+        u32 color;
+        
+        // Swap if needed
+        if (mv->source > 0)
         {
-          startx = (s32)mv->dst_x + cx;
-          starty = (s32)mv->dst_y + cy;
-          endx = (s32)mv->src_x + cx;
-          endy = (s32)mv->src_y + cy;
-          color = backward_color;
+            startx = (s32)mv->dst_x + cx;
+            starty = (s32)mv->dst_y + cy;
+            endx = (s32)mv->src_x + cx;
+            endy = (s32)mv->src_y + cy;
+            color = backward_color;
         }
-      else
+        else
         {
-          startx = (s32)mv->src_x + cx;
-          starty = (s32)mv->src_y + cy;
-          endx = (s32)mv->dst_x + cx;
-          endy = (s32)mv->dst_y + cy;
-          color = forward_color;
+            startx = (s32)mv->src_x + cx;
+            starty = (s32)mv->src_y + cy;
+            endx = (s32)mv->dst_x + cx;
+            endy = (s32)mv->dst_y + cy;
+            color = forward_color;
         }
-
-      // 0 size
-      if (startx == endx && starty == endy)
-        continue;
-
-      draw_arrow_t (startx, starty, endx, endy, thickness, color, rp);
+        
+        // 0 size
+        if (startx == endx && starty == endy)
+            continue;
+        
+        draw_arrow_t (startx, starty, endx, endy, thickness, color, rp);
     }
 }
 
 VideoPlex *
 init_video (byte *video_file)
 {
-  VideoPlex *vp = (VideoPlex *)malloc (sizeof (VideoPlex));
-  if (!vp)
+    VideoPlex *vp = (VideoPlex *)malloc (sizeof (VideoPlex));
+    if (!vp)
     {
-      fprintf (stderr, "Could not allocate VideoPlex.\n");
-      return NULL;
+        fprintf (stderr, "Could not allocate VideoPlex.\n");
+        return NULL;
     }
-
-  vp->fmt = NULL;
-  if (avformat_open_input (&vp->fmt, video_file, NULL, NULL) < 0)
+    
+    vp->fmt = NULL;
+    if (avformat_open_input (&vp->fmt, video_file, NULL, NULL) < 0)
     {
-      fprintf (stderr, "Could not open video file.\n");
-      return NULL;
+        fprintf (stderr, "Could not open video file.\n");
+        return NULL;
     }
-
-  if (avformat_find_stream_info (vp->fmt, NULL) < 0)
+    
+    if (avformat_find_stream_info (vp->fmt, NULL) < 0)
     {
-      fprintf (stderr,
-               "Could not find stream info. Is the file correctly encoded?\n");
-      return NULL;
+        fprintf (stderr,
+                 "Could not find stream info. Is the file correctly encoded?\n");
+        return NULL;
     }
-
-  vp->video_stream = -1;
-  for (u32 i = 0; i < vp->fmt->nb_streams; ++i)
+    
+    vp->video_stream = -1;
+    for (u32 i = 0; i < vp->fmt->nb_streams; ++i)
     {
-      if (vp->fmt->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
+        if (vp->fmt->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
         {
-          vp->video_stream = i;
-          break;
+            vp->video_stream = i;
+            break;
         }
     }
-
-  if (vp->video_stream < 0)
+    
+    if (vp->video_stream < 0)
     {
-      fprintf (stderr,
-               "No video stream found. Is the file correctly encoded?\n");
-      return NULL;
+        fprintf (stderr,
+                 "No video stream found. Is the file correctly encoded?\n");
+        return NULL;
     }
-
-  vp->stream = vp->fmt->streams[vp->video_stream];
-  vp->decoder = avcodec_find_decoder (vp->stream->codecpar->codec_id);
-  if (!vp->decoder)
+    
+    vp->stream = vp->fmt->streams[vp->video_stream];
+    vp->decoder = avcodec_find_decoder (vp->stream->codecpar->codec_id);
+    if (!vp->decoder)
     {
-      fprintf (stderr, "No decoder found, did you install the FFmpeg "
-                       "libraries corectly?\n");
-      return NULL;
+        fprintf (stderr, "No decoder found, did you install the FFmpeg "
+                 "libraries corectly?\n");
+        return NULL;
     }
-
-  printf ("Decoder: %s\n", vp->decoder->name);
-
-  // This project assumes the video is AV1 encoded
-  if (vp->stream->codecpar->codec_id != AV_CODEC_ID_AV1)
+    
+    printf ("Decoder: %s\n", vp->decoder->name);
+    
+    // This project assumes the video is AV1 encoded
+    if (vp->stream->codecpar->codec_id != AV_CODEC_ID_AV1)
     {
-      fprintf (stderr, "Video is not AV1 encoded, but you can convert it to "
-                       "AV1 using FFmpeg.\n");
-      return NULL;
+        fprintf (stderr, "Video is not AV1 encoded, but you can convert it to "
+                 "AV1 using FFmpeg.\n");
+        return NULL;
     }
-
-  vp->codec = avcodec_alloc_context3 (vp->decoder);
-  if (!vp->codec)
+    
+    vp->codec = avcodec_alloc_context3 (vp->decoder);
+    if (!vp->codec)
     {
-      fprintf (stderr, "Could not allocate codec context.\n");
-      return NULL;
+        fprintf (stderr, "Could not allocate codec context.\n");
+        return NULL;
     }
-
-  if (avcodec_parameters_to_context (vp->codec, vp->stream->codecpar) < 0)
+    
+    if (avcodec_parameters_to_context (vp->codec, vp->stream->codecpar) < 0)
     {
-      fprintf (stderr, "Could not copy codec parameters.\n");
-      return NULL;
+        fprintf (stderr, "Could not copy codec parameters.\n");
+        return NULL;
     }
-
-  // Important: we need to set the export_mvs flag to get motion vectors
-  av_opt_set_int (vp->codec, "flags2", AV_CODEC_FLAG2_EXPORT_MVS, 0);
-  if (avcodec_open2 (vp->codec, vp->decoder, NULL) < 0)
+    
+    // Important: we need to set the export_mvs flag to get motion vectors
+    av_opt_set_int (vp->codec, "flags2", AV_CODEC_FLAG2_EXPORT_MVS, 0);
+    if (avcodec_open2 (vp->codec, vp->decoder, NULL) < 0)
     {
-      fprintf (stderr, "Could not open decoder\n");
-      return NULL;
+        fprintf (stderr, "Could not open decoder\n");
+        return NULL;
     }
-
-  printf ("Resolution: %dx%d\n", vp->codec->width, vp->codec->height);
-
-  vp->frame = av_frame_alloc ();
-  if (!vp->frame)
+    
+    printf ("Resolution: %dx%d\n", vp->codec->width, vp->codec->height);
+    
+    vp->frame = av_frame_alloc ();
+    if (!vp->frame)
     {
-      fprintf (stderr, "Could not allocate frame\n");
-      return NULL;
+        fprintf (stderr, "Could not allocate frame\n");
+        return NULL;
     }
-
-  vp->packet = av_packet_alloc ();
-  if (!vp->packet)
+    
+    vp->packet = av_packet_alloc ();
+    if (!vp->packet)
     {
-      fprintf (stderr, "Could not allocate packet\n");
-      return NULL;
+        fprintf (stderr, "Could not allocate packet\n");
+        return NULL;
     }
-
-  return vp;
+    
+    return vp;
 }
 
 // We may want to factor the scaling out of here
@@ -174,108 +174,108 @@ init_video (byte *video_file)
 s32
 decode_next_frame (VideoPlex *vp, RendererPlex *rp)
 {
-  bool got_frame = false;
-  while (!got_frame)
+    bool got_frame = false;
+    while (!got_frame)
     {
-      s32 ret = av_read_frame (vp->fmt, vp->packet);
-
-      if (ret < 0)
+        s32 ret = av_read_frame (vp->fmt, vp->packet);
+        
+        if (ret < 0)
         {
-          // Input is exhausted, flush the decoder
-          ret = avcodec_send_packet (vp->codec, NULL);
-
-          if (ret < 0 && ret != AVERROR_EOF)
+            // Input is exhausted, flush the decoder
+            ret = avcodec_send_packet (vp->codec, NULL);
+            
+            if (ret < 0 && ret != AVERROR_EOF)
             {
-              fprintf (stderr, "Error flushing decoder.\n");
-              return -1;
+                fprintf (stderr, "Error flushing decoder.\n");
+                return -1;
             }
-
-          // Receive any frames buffered inside the decoder
-          while (!got_frame)
+            
+            // Receive any frames buffered inside the decoder
+            while (!got_frame)
             {
-              ret = avcodec_receive_frame (vp->codec, vp->frame);
-
-              if (ret == 0)
+                ret = avcodec_receive_frame (vp->codec, vp->frame);
+                
+                if (ret == 0)
                 {
-                  got_frame = true;
-                  break;
+                    got_frame = true;
+                    break;
                 }
-
-              // No more frames. This really is the end
-              if (ret == AVERROR_EOF)
-                return 1;
-
-              // Shouldn't normally happen after flushing, but isn't an error
-              if (ret == AVERROR (EAGAIN))
-                return 1;
-
-              fprintf (stderr, "Error receiving flushed frame.\n");
-              return -1;
+                
+                // No more frames. This really is the end
+                if (ret == AVERROR_EOF)
+                    return 1;
+                
+                // Shouldn't normally happen after flushing, but isn't an error
+                if (ret == AVERROR (EAGAIN))
+                    return 1;
+                
+                fprintf (stderr, "Error receiving flushed frame.\n");
+                return -1;
             }
-
-          break;
-        }
-
-      // Ignore non-video packets
-      if (vp->packet->stream_index != vp->video_stream)
-        {
-          av_packet_unref (vp->packet);
-          continue;
-        }
-
-      ret = avcodec_send_packet (vp->codec, vp->packet);
-      av_packet_unref (vp->packet);
-
-      if (ret < 0)
-        {
-          fprintf (stderr, "Error sending packet to decoder.\n");
-          return -1;
-        }
-
-      // A packet can produce zero, one, or multiple frames
-      while (!got_frame)
-        {
-          ret = avcodec_receive_frame (vp->codec, vp->frame);
-
-          if (ret == 0)
-            {
-              got_frame = true;
-              break;
-            }
-
-          if (ret == AVERROR (EAGAIN))
+            
             break;
-
-          if (ret == AVERROR_EOF)
-            return 1;
-
-          fprintf (stderr, "Error receiving decoded frame.\n");
-          return -1;
+        }
+        
+        // Ignore non-video packets
+        if (vp->packet->stream_index != vp->video_stream)
+        {
+            av_packet_unref (vp->packet);
+            continue;
+        }
+        
+        ret = avcodec_send_packet (vp->codec, vp->packet);
+        av_packet_unref (vp->packet);
+        
+        if (ret < 0)
+        {
+            fprintf (stderr, "Error sending packet to decoder.\n");
+            return -1;
+        }
+        
+        // A packet can produce zero, one, or multiple frames
+        while (!got_frame)
+        {
+            ret = avcodec_receive_frame (vp->codec, vp->frame);
+            
+            if (ret == 0)
+            {
+                got_frame = true;
+                break;
+            }
+            
+            if (ret == AVERROR (EAGAIN))
+                break;
+            
+            if (ret == AVERROR_EOF)
+                return 1;
+            
+            fprintf (stderr, "Error receiving decoded frame.\n");
+            return -1;
         }
     }
-
-  // Convert the decoded frame. We may want to factor this out
-  s32 w = vp->codec->width, h = vp->codec->height, format = vp->frame->format;
-
-  // Using RGBA was swapping the colors, so we use BGRA instead.
-  struct SwsContext *sws = sws_getContext (w, h, format, w, h, AV_PIX_FMT_BGRA,
-                                           SWS_BILINEAR, NULL, NULL, NULL);
-
-  if (!sws)
+    
+    // Convert the decoded frame. We may want to factor this out
+    s32 w = vp->codec->width, h = vp->codec->height, format = vp->frame->format;
+    
+    // Using RGBA was swapping the colors, so we use BGRA instead.
+    struct SwsContext *sws = sws_getContext (w, h, format, w, h, AV_PIX_FMT_BGRA,
+                                             SWS_BILINEAR, NULL, NULL, NULL);
+    
+    if (!sws)
     {
-      fprintf (stderr, "Could not create scaler.\n");
-      return -2;
+        fprintf (stderr, "Could not create scaler.\n");
+        return -2;
     }
-
-  u8 *dst_data[4] = { (u8 *)rp->image_buffer, NULL, NULL, NULL };
-  s32 dst_linesize[4] = { w * 4, 0, 0, 0 };
-
-  sws_scale (sws, (const u8 *const *)vp->frame->data, vp->frame->linesize, 0,
-             h, dst_data, dst_linesize);
-
-  sws_freeContext (sws);
-
-  process_side_data (vp->frame, rp);
-
-  return 0;
+    
+    u8 *dst_data[4] = { (u8 *)rp->image_buffer, NULL, NULL, NULL };
+    s32 dst_linesize[4] = { w * 4, 0, 0, 0 };
+    
+    sws_scale (sws, (const u8 *const *)vp->frame->data, vp->frame->linesize, 0,
+               h, dst_data, dst_linesize);
+    
+    sws_freeContext (sws);
+    
+    process_side_data (vp->frame, rp);
+    
+    return 0;
 }
