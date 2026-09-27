@@ -1,5 +1,7 @@
 ### Temp:
-Build the libraries for GH releases on Linux
+There is a problem (?) when loading certain AV1 videos that creashed `dav1d_motion_vectors_capture` as "Access violation".
+
+This is weird as it only happened on one video, but I'll check that out latter
 
 #### Per-file basis
 - decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
@@ -97,7 +99,9 @@ Should we test the rendering primitives?
 - [x] Take the video to use as a parameter of the inspector binary
 - [ ] Scale/downscale video to a given WxH (ongoing)
 - [ ] App state PLEX (a.k.a fat struct)
-- [ ] Render motion vectors per block
+- [x] Render motion vectors on top of the frame
+- [ ] Render motion vectors per block (a.k.a hightlight the block)
+- [ ] Modify vector color based on magnitude (better than scaling the arrow)
 - [ ] Compression data...
 - [ ] Vector scale represented as a color
 - [ ] Next and previous frame

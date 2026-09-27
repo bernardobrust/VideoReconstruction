@@ -19,7 +19,7 @@ process_side_data (const AVFrame *frame, RendererPlex *rp)
 
   if (!sd)
     {
-      printf ("No side data for this frame\n");
+      printf ("No side data for this frame: %" PRId64 "\n", frame->pts);
       return;
     }
 

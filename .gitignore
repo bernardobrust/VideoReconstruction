@@ -16,6 +16,7 @@ src/lib/gnu_linux
 
 # Debug information
 gdb.txt
+dbg/
 
 # Profiling data
 profiling/
