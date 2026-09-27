@@ -10,43 +10,59 @@
 #include <libavutil/opt.h>
 #include <libswscale/swscale.h>
 
-// For debugging
-// Actually calling this everytime slows the program down so much it's crazy
+// Drawing the motion vectors
 local void
-print_motion_vectors (const AVFrame *frame)
+process_side_data (const AVFrame *frame, RendererPlex *rp)
 {
   AVFrameSideData *sd
       = av_frame_get_side_data (frame, AV_FRAME_DATA_MOTION_VECTORS);
 
-  printf ("frame pts=%" PRId64 ", motion vector side data: %s\n", frame->pts,
-          sd ? "YES" : "NO");
-
   if (!sd)
     {
-      printf ("No motion vectors for this frame\n");
+      printf ("No side data for this frame\n");
       return;
     }
 
   const AVMotionVector *mvs = (const AVMotionVector *)sd->data;
-
   s32 nb_mvs = (s32)(sd->size / sizeof (*mvs));
 
-  printf ("Motion vectors: %d\n", nb_mvs);
+  const u32 forward_color = rgba (0, 255, 0, 180);
+  const u32 backward_color = rgba (255, 0, 0, 180);
+  const s32 thickness = 2;
 
-  for (s32 i = 0; i < nb_mvs; i++)
+  for (s32 i = 0; i < nb_mvs; ++i)
     {
       const AVMotionVector *mv = &mvs[i];
 
-      printf ("source=%d "
-              "block=%dx%d "
-              "src=(%d,%d) "
-              "dst=(%d,%d) "
-              "motion=(%d,%d) "
-              "scale=%d flags=0x%" PRIx64 "\n",
+      s32 cx = (s32)(mv->w / 2);
+      s32 cy = (s32)(mv->h / 2);
 
-              mv->source, mv->w, mv->h, mv->src_x, mv->src_y, mv->dst_x,
-              mv->dst_y, mv->motion_x, mv->motion_y, mv->motion_scale,
-              mv->flags);
+      s32 startx, starty, endx, endy;
+      u32 color;
+
+      // Swap if needed
+      if (mv->source > 0)
+        {
+          startx = (s32)mv->dst_x + cx;
+          starty = (s32)mv->dst_y + cy;
+          endx = (s32)mv->src_x + cx;
+          endy = (s32)mv->src_y + cy;
+          color = backward_color;
+        }
+      else
+        {
+          startx = (s32)mv->src_x + cx;
+          starty = (s32)mv->src_y + cy;
+          endx = (s32)mv->dst_x + cx;
+          endy = (s32)mv->dst_y + cy;
+          color = forward_color;
+        }
+
+      // 0 size
+      if (startx == endx && starty == endy)
+        continue;
+
+      draw_arrow_t (startx, starty, endx, endy, thickness, color, rp);
     }
 }
 
@@ -156,7 +172,7 @@ init_video (byte *video_file)
 // 0 = ok
 // 1 = end
 s32
-decode_next_frame (VideoPlex *vp, u32 *image)
+decode_next_frame (VideoPlex *vp, RendererPlex *rp)
 {
   bool got_frame = false;
   while (!got_frame)
@@ -181,8 +197,6 @@ decode_next_frame (VideoPlex *vp, u32 *image)
 
               if (ret == 0)
                 {
-                  print_motion_vectors (vp->frame);
-
                   got_frame = true;
                   break;
                 }
@@ -225,8 +239,6 @@ decode_next_frame (VideoPlex *vp, u32 *image)
 
           if (ret == 0)
             {
-              print_motion_vectors (vp->frame);
-
               got_frame = true;
               break;
             }
@@ -255,13 +267,15 @@ decode_next_frame (VideoPlex *vp, u32 *image)
       return -2;
     }
 
-  u8 *dst_data[4] = { (u8 *)image, NULL, NULL, NULL };
+  u8 *dst_data[4] = { (u8 *)rp->image_buffer, NULL, NULL, NULL };
   s32 dst_linesize[4] = { w * 4, 0, 0, 0 };
 
   sws_scale (sws, (const u8 *const *)vp->frame->data, vp->frame->linesize, 0,
              h, dst_data, dst_linesize);
 
   sws_freeContext (sws);
+
+  process_side_data (vp->frame, rp);
 
   return 0;
 }

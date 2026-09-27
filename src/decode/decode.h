@@ -4,6 +4,7 @@
 #include <libavformat/avformat.h>
 
 #include "macros.h"
+#include "renderer.h"
 
 typedef struct
 {
@@ -18,4 +19,4 @@ typedef struct
 } VideoPlex;
 
 VideoPlex *init_video (byte *video_file);
-s32 decode_next_frame (VideoPlex *vp, u32 *image);
+s32 decode_next_frame (VideoPlex *vp, RendererPlex *rp);
