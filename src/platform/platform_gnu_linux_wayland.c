@@ -179,7 +179,7 @@ wl_display_get_registry (s32 fd)
 
 local u32
 wl_registry_bind (s32 fd, u32 registry, u32 name, byte *interface,
-                  u32erface_len, u32 version)
+                  u32 interface_len, u32 version)
 {
   u64 msg_size = 0;
   byte msg[512] = "";
