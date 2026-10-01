@@ -57,7 +57,6 @@ We won't need audio for this project
 - [x] Raw X11 platform Layer
 - [x] Raw Wayland platform Layer
 - [x] Windows platform layer
-- [ ] Floating windows on window managers
 - [ ] Full screen support
 - [ ] Mac platform layer? (Sounds like a pain for little gain)
 
