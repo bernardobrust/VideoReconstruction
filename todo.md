@@ -4,11 +4,14 @@ There is a problem (?) when loading certain AV1 videos that creashed `dav1d_moti
 #### Per-file basis
 - decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
 - decode.c : @IMPROVEMENT check if the "RGBA" vs "BGRA" problem is platform-specific, more specifically, if it has to do with "XRGB8888" on wayland, or with endianess.
+- decode.c : calculate the constants based on the display's size + all contants in general
 - dyn_arr.c : @OPTIMIZATION check if $2$ is a reasonable scale factor, or add a macro to change it
 - tests/main.c : @IMPROVEMENT check if this strategy for argument handling is good
 - platform.h : @FEATURE add a function to get monitor resolution (or maybe a function to get the monitor size and position)
+- performance.h : @IMPROVEMENT move `DIV_255` to math.h
 - renderer.c : @FIX, @OPTIMIZATION the circle looks weird, it likelly has to do with the loops tho i'm not certain
 - renderer.c : @IMPROVEMENT maybe there's a way to unify normal and transparen shapes without losing performance
+- basic.c : @IMPROVEMENT `_Generic` macro for `clamp` functions?
 
 ### Performance
 - @PERFORMANCE For now the main bottleneck is the decode -> send image buffer to display loop, which is not paralelized. We can improve this latter by using a queue of decoded frames and a separate thread for the renderer
@@ -57,6 +60,7 @@ We won't need audio for this project
 - [x] Raw X11 platform Layer
 - [x] Raw Wayland platform Layer
 - [x] Windows platform layer
+- [ ] Floating windows on window managers
 - [ ] Full screen support
 - [ ] Mac platform layer? (Sounds like a pain for little gain)
 

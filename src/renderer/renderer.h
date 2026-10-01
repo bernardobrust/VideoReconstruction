@@ -18,6 +18,7 @@ RendererPlex *init_renderer (s32 w, s32 h);
 u32 rgba (u32 r, u32 g, u32 b, u32 a);
 u8 blend_channel (u8 src, u8 dst, u8 alpha);
 u32 blend_rgba_pixel (u32 src, u32 dst);
+u32 interpolate_color_br (f32 interp_term);
 
 void draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp);
 

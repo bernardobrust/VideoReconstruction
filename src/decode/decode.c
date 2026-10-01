@@ -10,6 +10,12 @@
 #include <libavutil/opt.h>
 #include <libswscale/swscale.h>
 
+#include "basic.h"
+
+// We may want to calculate these based on the display's dimentions
+const f32 MAX_MOTION_MAGNITUDE = 90.0f;
+const f32 MAX_DISPLAY_LENGTH = 15.0f;
+
 // Drawing the motion vectors
 // I don't really know if this should be in the decode, renderer would probably
 // be better
@@ -28,41 +34,46 @@ process_side_data (const AVFrame *frame, RendererPlex *rp)
   const AVMotionVector *mvs = (const AVMotionVector *)sd->data;
   s32 nb_mvs = (s32)(sd->size / sizeof (*mvs));
 
-  const u32 forward_color = rgba (0, 255, 0, 180);
-  const u32 backward_color = rgba (255, 0, 0, 180);
   const s32 thickness = 2;
 
   for (s32 i = 0; i < nb_mvs; ++i)
     {
       const AVMotionVector *mv = &mvs[i];
 
-      s32 cx = (s32)(mv->w / 2);
-      s32 cy = (s32)(mv->h / 2);
-
-      s32 startx, starty, endx, endy;
-      u32 color;
+      s32 cx = (s32)(mv->w / 2), cy = (s32)(mv->h / 2);
+      s32 startx, starty, raw_endx, raw_endy;
 
       // Swap if needed
       if (mv->source > 0)
         {
           startx = (s32)mv->dst_x + cx;
           starty = (s32)mv->dst_y + cy;
-          endx = (s32)mv->src_x + cx;
-          endy = (s32)mv->src_y + cy;
-          color = backward_color;
+          raw_endx = (s32)mv->src_x + cx;
+          raw_endy = (s32)mv->src_y + cy;
         }
       else
         {
           startx = (s32)mv->src_x + cx;
           starty = (s32)mv->src_y + cy;
-          endx = (s32)mv->dst_x + cx;
-          endy = (s32)mv->dst_y + cy;
-          color = forward_color;
+          raw_endx = (s32)mv->dst_x + cx;
+          raw_endy = (s32)mv->dst_y + cy;
         }
 
+      f32 dx = (f32)(raw_endx - startx), dy = (f32)(raw_endy - starty);
+
       // 0 size
-      if (startx == endx && starty == endy)
+      if (dx == 0.0f && dy == 0.0f)
         continue;
+
+      f32 raw_len = hypot_f32 (dx, dy);
+
+      f32 normalized = clamp_f32 (raw_len / MAX_MOTION_MAGNITUDE, 0.0f, 1.0f),
+          motion_factor = sqrtf (normalized),
+          display_len = MIN (raw_len, MAX_DISPLAY_LENGTH),
+          scale = display_len / raw_len;
+      u32 color = interpolate_color_br (motion_factor);
+      s32 endx = startx + (s32)roundf (dx * scale),
+          endy = starty + (s32)roundf (dy * scale);
 
       draw_arrow_t (startx, starty, endx, endy, thickness, color, rp);
     }

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,6 +38,36 @@ blend_rgba_pixel (u32 src, u32 dst)
      b = blend_channel (src & 0xFF, dst & 0xFF, a);
 
   return rgba (r, g, b, a);
+}
+
+// Interpolates a color from blue (0, 0, 255) -> red (255, 0, 0) based on a
+// interpolation term Includes alpha in the calculation
+u32
+interpolate_color_br (f32 interp_term)
+{
+  assert (interp_term >= 0 && interp_term <= 1.0f);
+
+  u8 r, g, b;
+
+  if (interp_term < 0.5f)
+    {
+      // Lower half [0.0 - 0.5]: blue (small) -> green (medium)
+      float factor = interp_term * 2.0f; // Scale [0.0, 0.5] -> [0.0, 1.0]
+      r = 0;
+      g = (u8)(factor * 255.0f);
+      b = (u8)((1.0f - factor) * 255.0f);
+    }
+  else
+    {
+      // Upper half [0.5 - 1.0]: green (Medium) -> red (Large)
+      float factor
+          = (interp_term - 0.5f) * 2.0f; // Scale [0.5, 1.0] -> [0.0, 1.0]
+      r = (u8)(factor * 255.0f);
+      g = (u8)((1.0f - factor) * 255.0f);
+      b = 0;
+    }
+
+  return rgba (r, g, b, 180); // Adjust alpha as needed
 }
 
 // For now it's this simple alocation, latter we can check for aspect ratio &&
