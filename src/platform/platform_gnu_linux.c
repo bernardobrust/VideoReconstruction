@@ -26,8 +26,8 @@ platform_sleep (f64 ms)
 
   struct timespec time
       = { .tv_sec = (time_t)(ms / 1000.0),
-          .tv_nsec = (long)((ms - (f64)(time_t)(ms / 1000.0) * 1000.0)
-                            * 1000000.0) };
+          .tv_nsec
+          = (long)((ms - (f64)(time_t)(ms / 1000.0) * 1000.0) * 1000000.0) };
 
   while (nanosleep (&time, &time) == -1 && errno == EINTR)
     {

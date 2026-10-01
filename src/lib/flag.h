@@ -1057,7 +1057,8 @@ flag_c_parse (void *c, int argc, char **argv)
                       }
 
                     if (!ignore)
-                      *(size_t *)flag__get_ref (&fc->flags[i]) = (size_t)result;
+                      *(size_t *)flag__get_ref (&fc->flags[i])
+                          = (size_t)result;
                   }
                   break;
 

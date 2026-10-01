@@ -1,6 +1,7 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
+:: May change deppending on your config
 call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul
 
 if not exist "nob.exe" (

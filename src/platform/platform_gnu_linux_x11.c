@@ -688,8 +688,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   if (!send_request (state, 18, 0, protocols, sizeof (protocols))
       || !create_gc (state)
       || !send_request (state, 8, 0,
-                        (u8[]){ (u8)state->window,
-                                (u8)(state->window >> 8),
+                        (u8[]){ (u8)state->window, (u8)(state->window >> 8),
                                 (u8)(state->window >> 16),
                                 (u8)(state->window >> 24) },
                         4))

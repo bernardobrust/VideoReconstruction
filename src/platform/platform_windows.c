@@ -371,7 +371,7 @@ platform_update (PlatformState *platform_state)
   while (PeekMessageA (&msg, NULL, 0, 0, PM_REMOVE))
     {
       if (msg.message == WM_QUIT)
-          platform_state->running = false;
+        platform_state->running = false;
 
       TranslateMessage (&msg);
       DispatchMessageA (&msg);

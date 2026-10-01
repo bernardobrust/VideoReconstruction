@@ -1,4 +1,5 @@
-// The reason this file is in platform/ is because some functions here are platform-specific
+// The reason this file is in platform/ is because some functions here are
+// platform-specific
 
 #pragma once
 
@@ -17,4 +18,4 @@
 #endif
 
 // Computes floor(x / 255), very usefull in the renderer for alpha blending
-#define DIV_255(x) (u8)((x + 1 + ((x) >> 8)) >> 8)
+#define DIV_255(x) (u8) ((x + 1 + ((x) >> 8)) >> 8)

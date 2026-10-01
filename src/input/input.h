@@ -19,17 +19,18 @@ typedef enum
 // Just these ones for now
 typedef enum
 {
-    CTRL_P,
-    CTRL_SHIFT_P,
+  CTRL_P,
+  CTRL_SHIFT_P,
 } Command;
 
-typedef struct {
-    s32 keys_pressed[5];
-    bool ctrl_mod, shift_mod;
+typedef struct
+{
+  s32 keys_pressed[5];
+  bool ctrl_mod, shift_mod;
 } InputPlex;
 
-bool input_is_command_pressed(Command c);
-bool input_is_key_pressed(KeyValue k);
+bool input_is_command_pressed (Command c);
+bool input_is_key_pressed (KeyValue k);
 
-void input_set_key_pressed(KeyValue k);
-void input_set_key_released(KeyValue k);
+void input_set_key_pressed (KeyValue k);
+void input_set_key_released (KeyValue k);

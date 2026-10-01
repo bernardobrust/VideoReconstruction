@@ -33,8 +33,8 @@ blend_rgba_pixel (u32 src, u32 dst)
     return src;
 
   u8 r = blend_channel ((src >> 16) & 0xFF, (dst >> 16) & 0xFF, a),
-      g = blend_channel ((src >> 8) & 0xFF, (dst >> 8) & 0xFF, a),
-      b = blend_channel (src & 0xFF, dst & 0xFF, a);
+     g = blend_channel ((src >> 8) & 0xFF, (dst >> 8) & 0xFF, a),
+     b = blend_channel (src & 0xFF, dst & 0xFF, a);
 
   return rgba (r, g, b, a);
 }

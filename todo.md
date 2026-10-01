@@ -1,7 +1,5 @@
 ### Temp:
-There is a problem (?) when loading certain AV1 videos that creashed `dav1d_motion_vectors_capture` as "Access violation".
-
-This is weird as it only happened on one video, but I'll check that out latter
+There is a problem (?) when loading certain AV1 videos that creashed `dav1d_motion_vectors_capture` as "Access violation". This is weird as it only happened on one video, but I'll check that out latter
 
 #### Per-file basis
 - decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
