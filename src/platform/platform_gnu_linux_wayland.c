@@ -81,6 +81,7 @@ typedef struct
   u32 xdg_toplevel;
   u32 wl_seat;
   u32 wl_keyboard;
+  u32 wl_pointer;
   u32 stride;
 
   u32 width;
@@ -576,6 +577,20 @@ wl_seat_get_keyboard (s32 fd, InternalState *state)
   return current_id;
 }
 
+local u32
+wl_seat_get_pointer (s32 fd, InternalState *state)
+{
+  u64 msg_size = 0;
+  byte msg[128] = "";
+  buf_write_u32 (msg, &msg_size, sizeof (msg), state->wl_seat);
+  buf_write_u16 (msg, &msg_size, sizeof (msg), 0);
+  buf_write_u16 (msg, &msg_size, sizeof (msg), header_size + sizeof (current_id));
+  ++current_id;
+  buf_write_u32 (msg, &msg_size, sizeof (msg), current_id);
+  if ((s64)msg_size != send (fd, msg, msg_size, 0)) exit (errno);
+  return current_id;
+}
+
 local void
 handle_message (s32 fd, PlatformState *platform_state, byte **msg,
                 u64 *msg_len)
@@ -724,6 +739,8 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
                   state->wl_keyboard = wl_seat_get_keyboard (fd, state);
                 }
             }
+          if ((capabilities & 1) && state->wl_pointer == 0)
+            state->wl_pointer = wl_seat_get_pointer (fd, state);
         }
       else if (opcode == 1)
         {
@@ -785,6 +802,11 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
             case P:
               ev = is_press ? KeyPPress : KeyPRelease;
               break;
+            case 105: ev = is_press ? KeyLeftPress : KeyLeftRelease; break;
+            case 106: ev = is_press ? KeyRightPress : KeyRightRelease; break;
+            case 103: ev = is_press ? KeyUpPress : KeyUpRelease; break;
+            case 108: ev = is_press ? KeyDownPress : KeyDownRelease; break;
+            case 57: ev = is_press ? KeySpacePress : KeySpaceRelease; break;
             default:
               valid = false;
               break;
@@ -806,6 +828,37 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
           buf_read_u32 (msg, msg_len);
           buf_read_u32 (msg, msg_len);
         }
+      return;
+    }
+  else if (state->wl_pointer != 0 && object_id == state->wl_pointer)
+    {
+      if (opcode == 0)
+        { // enter: serial, surface, x, y
+          buf_read_u32 (msg, msg_len); buf_read_u32 (msg, msg_len);
+          buf_read_u32 (msg, msg_len); buf_read_u32 (msg, msg_len);
+        }
+      else if (opcode == 1)
+        { buf_read_u32 (msg, msg_len); buf_read_u32 (msg, msg_len); }
+      else if (opcode == 2)
+        { for (s32 i = 0; i < 3; ++i) buf_read_u32 (msg, msg_len); }
+      else if (opcode == 3)
+        {
+          buf_read_u32 (msg, msg_len); buf_read_u32 (msg, msg_len);
+          u32 button = buf_read_u32 (msg, msg_len), button_state = buf_read_u32 (msg, msg_len);
+          EventType ev; bool valid = true, is_press = button_state != 0;
+          if (button == 0x110) ev = is_press ? MouseLeftPress : MouseLeftRelease;
+          else if (button == 0x111) ev = is_press ? MouseRightPress : MouseRightRelease;
+          else valid = false;
+          if (valid) dyn_arr_push (&event_queue, &ev);
+        }
+      else if (opcode == 4 || opcode == 5)
+        { if (opcode == 4) { buf_read_u32 (msg, msg_len); buf_read_u32 (msg, msg_len); buf_read_u32 (msg, msg_len); } }
+      else if (opcode == 6)
+        { buf_read_u32 (msg, msg_len); }
+      else if (opcode == 7)
+        { buf_read_u32 (msg, msg_len); buf_read_u32 (msg, msg_len); }
+      else if (opcode == 8)
+        { buf_read_u32 (msg, msg_len); buf_read_u32 (msg, msg_len); }
       return;
     }
   else if (state->wl_surface != 0 && object_id == state->wl_surface)

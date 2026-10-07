@@ -94,7 +94,7 @@ Should we test the rendering primitives?
 ### Systems (inspector)
 - [x] Event system (key presses and UI buttons)
 - [x] Input system (input struct)
-- [ ] Add mouse to the input system
+- [x] Add mouse to the input system
 
 ### Core (inspector)
 - [x] Take the video to use as a parameter of the inspector binary

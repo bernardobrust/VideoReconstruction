@@ -38,6 +38,11 @@ enum X11KeyValues
   TWO = 3 + 8,
   THREE = 4 + 8,
   P = 25 + 8,
+  KEY_LEFT = 105 + 8,
+  KEY_RIGHT = 106 + 8,
+  KEY_UP = 103 + 8,
+  KEY_DOWN = 108 + 8,
+  KEY_SPACE = 57 + 8,
 };
 
 enum
@@ -60,6 +65,8 @@ enum
   X11_CW_EVENT_MASK = 1 << 11,
   X11_EVENT_MASK_KEY_PRESS = 1 << 0,
   X11_EVENT_MASK_KEY_RELEASE = 1 << 1,
+  X11_EVENT_MASK_BUTTON_PRESS = 1 << 2,
+  X11_EVENT_MASK_BUTTON_RELEASE = 1 << 3,
   X11_EVENT_MASK_EXPOSURE = 1 << 15,
   X11_EVENT_MASK_STRUCTURE_NOTIFY = 1 << 17,
   X11_GC_FOREGROUND = 1 << 2,
@@ -434,7 +441,9 @@ create_window (InternalState *state, s32 x, s32 y, s32 w, s32 h)
   write_u32_le (body + 24, X11_CW_BACK_PIXEL | X11_CW_EVENT_MASK);
   write_u32_le (body + 32,
                 X11_EVENT_MASK_EXPOSURE | X11_EVENT_MASK_STRUCTURE_NOTIFY
-                    | X11_EVENT_MASK_KEY_PRESS | X11_EVENT_MASK_KEY_RELEASE);
+                    | X11_EVENT_MASK_KEY_PRESS | X11_EVENT_MASK_KEY_RELEASE
+                    | X11_EVENT_MASK_BUTTON_PRESS
+                    | X11_EVENT_MASK_BUTTON_RELEASE);
   write_u32_le (body + 20, state->root_visual);
 
   return send_request (state, 1, (u8)state->depth, body, sizeof (body));
@@ -506,6 +515,11 @@ dispatch_event (PlatformState *platform_state, const u8 event[32])
         case P:
           ev = is_press ? KeyPPress : KeyPRelease;
           break;
+        case KEY_LEFT: ev = is_press ? KeyLeftPress : KeyLeftRelease; break;
+        case KEY_RIGHT: ev = is_press ? KeyRightPress : KeyRightRelease; break;
+        case KEY_UP: ev = is_press ? KeyUpPress : KeyUpRelease; break;
+        case KEY_DOWN: ev = is_press ? KeyDownPress : KeyDownRelease; break;
+        case KEY_SPACE: ev = is_press ? KeySpacePress : KeySpaceRelease; break;
         default:
           valid = false;
           break;
@@ -513,6 +527,19 @@ dispatch_event (PlatformState *platform_state, const u8 event[32])
 
       if (valid)
         dyn_arr_push (&event_queue, &ev);
+    }
+  else if (type == 4 || type == 5)
+    {
+      u8 button = event[1];
+      EventType ev;
+      bool is_press = (type == 4);
+      if (button == 1)
+        ev = is_press ? MouseLeftPress : MouseLeftRelease;
+      else if (button == 3)
+        ev = is_press ? MouseRightPress : MouseRightRelease;
+      else
+        return;
+      dyn_arr_push (&event_queue, &ev);
     }
 }
 

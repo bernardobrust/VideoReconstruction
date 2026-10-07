@@ -9,7 +9,7 @@ input_set_key_pressed (KeyValue k)
     input_state.ctrl_mod = true;
   else if (k == SHIFT)
     input_state.shift_mod = true;
-  else if (k >= 0 && k < 5)
+  else if (k >= 0 && k < 10)
     input_state.keys_pressed[k] = 1;
 }
 
@@ -20,7 +20,7 @@ input_set_key_released (KeyValue k)
     input_state.ctrl_mod = false;
   else if (k == SHIFT)
     input_state.shift_mod = false;
-  else if (k >= 0 && k < 5)
+  else if (k >= 0 && k < 10)
     input_state.keys_pressed[k] = 0;
 }
 
@@ -31,9 +31,27 @@ input_is_key_pressed (KeyValue k)
     return input_state.ctrl_mod;
   if (k == SHIFT)
     return input_state.shift_mod;
-  if (k >= 0 && k < 5)
+  if (k >= 0 && k < 10)
     return input_state.keys_pressed[k] != 0;
   return false;
+}
+
+bool
+input_is_mouse_button_pressed (MouseButton button)
+{
+  return input_state.mouse_buttons_pressed[button];
+}
+
+void
+input_set_mouse_button_pressed (MouseButton button)
+{
+  input_state.mouse_buttons_pressed[button] = true;
+}
+
+void
+input_set_mouse_button_released (MouseButton button)
+{
+  input_state.mouse_buttons_pressed[button] = false;
 }
 
 bool

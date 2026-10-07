@@ -57,6 +57,20 @@ platform_dispatch_events (void)
         case KeyPRelease:
           input_set_key_released (P);
           break;
+        case KeyLeftPress: input_set_key_pressed (LEFT); break;
+        case KeyLeftRelease: input_set_key_released (LEFT); break;
+        case KeyRightPress: input_set_key_pressed (RIGHT); break;
+        case KeyRightRelease: input_set_key_released (RIGHT); break;
+        case KeyUpPress: input_set_key_pressed (UP); break;
+        case KeyUpRelease: input_set_key_released (UP); break;
+        case KeyDownPress: input_set_key_pressed (DOWN); break;
+        case KeyDownRelease: input_set_key_released (DOWN); break;
+        case KeySpacePress: input_set_key_pressed (SPACE); break;
+        case KeySpaceRelease: input_set_key_released (SPACE); break;
+        case MouseLeftPress: input_set_mouse_button_pressed (MOUSE_LEFT); break;
+        case MouseLeftRelease: input_set_mouse_button_released (MOUSE_LEFT); break;
+        case MouseRightPress: input_set_mouse_button_pressed (MOUSE_RIGHT); break;
+        case MouseRightRelease: input_set_mouse_button_released (MOUSE_RIGHT); break;
         }
     }
 

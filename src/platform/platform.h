@@ -29,6 +29,13 @@ typedef enum
   KeyThreeRelease,
   KeyPPress,
   KeyPRelease,
+  KeyLeftPress, KeyLeftRelease,
+  KeyRightPress, KeyRightRelease,
+  KeyUpPress, KeyUpRelease,
+  KeyDownPress, KeyDownRelease,
+  KeySpacePress, KeySpaceRelease,
+  MouseLeftPress, MouseLeftRelease,
+  MouseRightPress, MouseRightRelease,
 } EventType;
 
 // platform_update will push the events onto the queue, from where

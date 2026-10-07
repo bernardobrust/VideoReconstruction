@@ -181,6 +181,11 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
           case 'P':
             ev = is_press ? KeyPPress : KeyPRelease;
             break;
+          case VK_LEFT: ev = is_press ? KeyLeftPress : KeyLeftRelease; break;
+          case VK_RIGHT: ev = is_press ? KeyRightPress : KeyRightRelease; break;
+          case VK_UP: ev = is_press ? KeyUpPress : KeyUpRelease; break;
+          case VK_DOWN: ev = is_press ? KeyDownPress : KeyDownRelease; break;
+          case VK_SPACE: ev = is_press ? KeySpacePress : KeySpaceRelease; break;
           default:
             valid = false;
             break;
@@ -201,6 +206,20 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
         return 0;
       }
 
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONUP:
+    case WM_RBUTTONDOWN:
+    case WM_RBUTTONUP:
+      {
+        EventType ev;
+        if (msg == WM_LBUTTONDOWN) ev = MouseLeftPress;
+        else if (msg == WM_LBUTTONUP) ev = MouseLeftRelease;
+        else if (msg == WM_RBUTTONDOWN) ev = MouseRightPress;
+        else ev = MouseRightRelease;
+        dyn_arr_push (&event_queue, &ev);
+        return 0;
+      }
+
     case WM_KILLFOCUS:
       {
         EventType ev;
@@ -218,6 +237,13 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
         dyn_arr_push (&event_queue, &ev);
         ev = KeyPRelease;
         dyn_arr_push (&event_queue, &ev);
+        ev = KeyLeftRelease; dyn_arr_push (&event_queue, &ev);
+        ev = KeyRightRelease; dyn_arr_push (&event_queue, &ev);
+        ev = KeyUpRelease; dyn_arr_push (&event_queue, &ev);
+        ev = KeyDownRelease; dyn_arr_push (&event_queue, &ev);
+        ev = KeySpaceRelease; dyn_arr_push (&event_queue, &ev);
+        ev = MouseLeftRelease; dyn_arr_push (&event_queue, &ev);
+        ev = MouseRightRelease; dyn_arr_push (&event_queue, &ev);
         return 0;
       }
 
