@@ -71,7 +71,7 @@ main (s32 argc, byte **argv)
   f64 playback_speed = 1.0, next_frame = platform_get_time (), now, remaining;
 
   // Fixed 1/4 step
-  f64 speed_step = 0.25;
+  f64 speed_step = playback_speed / 4;
   bool paused = false, slow_down, speed_up;
 
   while (platform_update (&platform_state))
@@ -86,6 +86,7 @@ main (s32 argc, byte **argv)
           playback_speed += speed_step;
           next_frame = platform_get_time ()
                        + frame_duration_ms / playback_speed;
+          printf("Playback speed increased to: %f\n", playback_speed);
         }
 
       slow_down = input_is_key_just_pressed (DOWN);
@@ -96,6 +97,7 @@ main (s32 argc, byte **argv)
                                : speed_step;
           next_frame = platform_get_time ()
                        + frame_duration_ms / playback_speed;
+          printf("Playback speed decreased to: %f\n", playback_speed);
         }
 
       if (input_is_key_just_pressed (SPACE))
