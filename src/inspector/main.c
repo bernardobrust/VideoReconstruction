@@ -66,10 +66,9 @@ main (s32 argc, byte **argv)
   // the fps of the UI
   AVRational video_fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
 
-  f64 actual_fps = (f64)video_fps.den / (f64)video_fps.num,
-      fps = actual_fps,
-      frame_time_ms = 1000.0 * fps,
-      next_frame = platform_get_time (), now, remaining;
+  f64 actual_fps = (f64)video_fps.den / (f64)video_fps.num, fps = actual_fps,
+      frame_time_ms = 1000.0 * fps, next_frame = platform_get_time (), now,
+      remaining;
 
   // Player variousiables
   // Arbitrary scaling by 1/4 of the video fps
@@ -104,15 +103,16 @@ main (s32 argc, byte **argv)
       if (!paused)
         {
           s32 ret = decode_next_frame (vp, rp);
-          printf("Not paused with fps = %f\n", fps);
+          printf ("Not paused with fps = %f\n", fps);
           if (ret < 0)
             return EXIT_FAILURE;
           if (ret == 1)
             return EXIT_SUCCESS;
 
           renderer_present (&platform_state, rp);
-        } else
-            printf("Paused with fps = %f\n", fps);
+        }
+      else
+        printf ("Paused with fps = %f\n", fps);
 
       // Timing
       next_frame += frame_time_ms;
