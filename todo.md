@@ -99,13 +99,13 @@ Should we test the rendering primitives?
 ### Core (inspector)
 - [x] Take the video to use as a parameter of the inspector binary
 - [x] Pause
-- [ ] Slow down and speed up
+- [x] Slow down and speed up
 - [ ] Zoom-in and Zoom-out
 - [ ] Scale/downscale video to a given WxH (ongoing)
 - [ ] App state PLEX (a.k.a fat struct)
 - [x] Render motion vectors on top of the frame
 - [ ] Render motion vectors per block (a.k.a hightlight the block)
-- [ ] Modify vector color based on magnitude (better than scaling the arrow)
+- [x] Modify vector color based on magnitude (better than scaling the arrow)
 - [ ] Compression data...
 - [ ] Vector scale represented as a color
 - [ ] Next and previous frame

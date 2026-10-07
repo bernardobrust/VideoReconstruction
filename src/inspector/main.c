@@ -66,62 +66,68 @@ main (s32 argc, byte **argv)
   // the fps of the UI
   AVRational video_fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
 
-  f64 actual_fps = (f64)video_fps.den / (f64)video_fps.num, fps = actual_fps,
-      frame_time_ms = 1000.0 * fps, next_frame = platform_get_time (), now,
-      remaining;
+  f64 frame_duration_ms =
+            1000.0 * (f64)video_fps.den / (f64)video_fps.num;
+  f64 playback_speed = 1.0, next_frame = platform_get_time (), now, remaining;
 
-  // Player variousiables
-  // Arbitrary scaling by 1/4 of the video fps
-  f64 scale = actual_fps / 4.0;
-  bool paused = false;
+  // Fixed 1/4 step
+  f64 speed_step = 0.25;
+  bool paused = false, slow_down, speed_up;
 
   while (platform_update (&platform_state))
     {
       if (input_is_key_pressed (ESC))
         platform_stop (&platform_state);
 
-      bool speed_up = input_is_key_just_pressed (UP);
-      speed_up |= input_is_key_just_pressed (RIGHT);
+      // Speed up and slow down
+      speed_up = input_is_key_just_pressed (UP);
       if (speed_up)
         {
-          fps += scale;
-          frame_time_ms = 1000.0 * fps;
+          playback_speed += speed_step;
+          next_frame = platform_get_time ()
+                       + frame_duration_ms / playback_speed;
         }
 
-      bool slow_down = input_is_key_just_pressed (DOWN);
-      slow_down |= input_is_key_just_pressed (LEFT);
+      slow_down = input_is_key_just_pressed (DOWN);
       if (slow_down)
         {
-          fps -= scale;
-          frame_time_ms = 1000.0 * fps;
+          playback_speed = playback_speed > speed_step
+                               ? playback_speed - speed_step
+                               : speed_step;
+          next_frame = platform_get_time ()
+                       + frame_duration_ms / playback_speed;
         }
 
       if (input_is_key_just_pressed (SPACE))
-        paused = !paused;
+        {
+          paused = !paused;
+          if (!paused)
+            next_frame = platform_get_time ()
+                         + frame_duration_ms / playback_speed;
+        }
 
-      // This is a temporary implementation
+      // Decode exactly one frame per scheduled traversal interval. Changing
+      // speed only changes the interval, the decoder's current position stays
+      // where it is.
       if (!paused)
         {
+          now = platform_get_time ();
+          remaining = next_frame - now;
+          if (remaining > 0)
+            platform_sleep (remaining);
+
           s32 ret = decode_next_frame (vp, rp);
-          printf ("Not paused with fps = %f\n", fps);
           if (ret < 0)
             return EXIT_FAILURE;
           if (ret == 1)
             return EXIT_SUCCESS;
 
           renderer_present (&platform_state, rp);
+          next_frame = platform_get_time () + frame_duration_ms / playback_speed;
         }
       else
-        printf ("Paused with fps = %f\n", fps);
-
-      // Timing
-      next_frame += frame_time_ms;
-      now = platform_get_time ();
-      remaining = next_frame - now;
-
-      // If this is negative we are actually delayed
-      if (remaining > 0)
-        platform_sleep (remaining);
+          // FIxed in case we are not decoding
+        platform_sleep (10.0);
     }
 
   return EXIT_SUCCESS;
