@@ -515,11 +515,21 @@ dispatch_event (PlatformState *platform_state, const u8 event[32])
         case P:
           ev = is_press ? KeyPPress : KeyPRelease;
           break;
-        case KEY_LEFT: ev = is_press ? KeyLeftPress : KeyLeftRelease; break;
-        case KEY_RIGHT: ev = is_press ? KeyRightPress : KeyRightRelease; break;
-        case KEY_UP: ev = is_press ? KeyUpPress : KeyUpRelease; break;
-        case KEY_DOWN: ev = is_press ? KeyDownPress : KeyDownRelease; break;
-        case KEY_SPACE: ev = is_press ? KeySpacePress : KeySpaceRelease; break;
+        case KEY_LEFT:
+          ev = is_press ? KeyLeftPress : KeyLeftRelease;
+          break;
+        case KEY_RIGHT:
+          ev = is_press ? KeyRightPress : KeyRightRelease;
+          break;
+        case KEY_UP:
+          ev = is_press ? KeyUpPress : KeyUpRelease;
+          break;
+        case KEY_DOWN:
+          ev = is_press ? KeyDownPress : KeyDownRelease;
+          break;
+        case KEY_SPACE:
+          ev = is_press ? KeySpacePress : KeySpaceRelease;
+          break;
         default:
           valid = false;
           break;

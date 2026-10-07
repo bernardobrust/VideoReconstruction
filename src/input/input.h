@@ -21,7 +21,11 @@ typedef enum
   SPACE = 9,
 } KeyValue;
 
-typedef enum { MOUSE_LEFT, MOUSE_RIGHT } MouseButton;
+typedef enum
+{
+  MOUSE_LEFT,
+  MOUSE_RIGHT
+} MouseButton;
 
 // Just these ones for now
 typedef enum

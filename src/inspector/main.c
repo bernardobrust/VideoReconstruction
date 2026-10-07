@@ -20,6 +20,7 @@ main (s32 argc, byte **argv)
     {
       fprintf (stderr,
                "Please provide a path to the video file to inspect.\n");
+
       return EXIT_FAILURE;
     }
 
@@ -31,12 +32,14 @@ main (s32 argc, byte **argv)
   else if (file_exists == 1)
     {
       fprintf (stderr, "File does not exist. Is the path correct?\n");
+
       return EXIT_FAILURE;
     }
   else
     {
       fprintf (stderr,
                "Could not access path. Do you have permission to open it?\n");
+
       return EXIT_FAILURE;
     }
 
@@ -66,12 +69,11 @@ main (s32 argc, byte **argv)
   // the fps of the UI
   AVRational video_fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
 
-  f64 frame_duration_ms =
-            1000.0 * (f64)video_fps.den / (f64)video_fps.num;
-  f64 playback_speed = 1.0, next_frame = platform_get_time (), now, remaining;
+  f64 frame_duration_ms = 1000.0 * (f64)video_fps.den / (f64)video_fps.num,
+      playback_speed = 1.0, next_frame = platform_get_time (), now, remaining;
 
   // Fixed 1/4 step
-  f64 speed_step = playback_speed / 4;
+  f64 speed_step = playback_speed / 4.0;
   bool paused = false, slow_down, speed_up;
 
   while (platform_update (&platform_state))
@@ -84,28 +86,37 @@ main (s32 argc, byte **argv)
       if (speed_up)
         {
           playback_speed += speed_step;
-          next_frame = platform_get_time ()
-                       + frame_duration_ms / playback_speed;
-          printf("Playback speed increased to: %f\n", playback_speed);
+          // We can't (and shouldn't) decode faster than the video's time
+          // references
+          next_frame
+              = platform_get_time () + frame_duration_ms / playback_speed;
+
+          printf ("Playback speed increased to: %f\n", playback_speed);
         }
 
       slow_down = input_is_key_just_pressed (DOWN);
       if (slow_down)
         {
+          // We do not want super-low speeds, this actually limits to 1/4 of
+          // the normal speed
           playback_speed = playback_speed > speed_step
                                ? playback_speed - speed_step
                                : speed_step;
-          next_frame = platform_get_time ()
-                       + frame_duration_ms / playback_speed;
-          printf("Playback speed decreased to: %f\n", playback_speed);
+          next_frame
+              = platform_get_time () + frame_duration_ms / playback_speed;
+
+          printf ("Playback speed decreased to: %f\n", playback_speed);
         }
 
+      // NOTE: this pause is for the video, not the program, so UI, inputs,
+      // pre-decoding (theaded) should still keep going
       if (input_is_key_just_pressed (SPACE))
         {
+          // Toggle pause
           paused = !paused;
           if (!paused)
-            next_frame = platform_get_time ()
-                         + frame_duration_ms / playback_speed;
+            next_frame
+                = platform_get_time () + frame_duration_ms / playback_speed;
         }
 
       // Decode exactly one frame per scheduled traversal interval. Changing
@@ -125,10 +136,12 @@ main (s32 argc, byte **argv)
             return EXIT_SUCCESS;
 
           renderer_present (&platform_state, rp);
-          next_frame = platform_get_time () + frame_duration_ms / playback_speed;
+          next_frame
+              = platform_get_time () + frame_duration_ms / playback_speed;
         }
       else
-          // FIxed in case we are not decoding
+        // FIxed in case we are not decoding, latter we'll keep the UI
+        // framerate
         platform_sleep (10.0);
     }
 

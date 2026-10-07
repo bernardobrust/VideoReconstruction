@@ -17,7 +17,7 @@ blacklist_patterns = {
 };
 
 load_paths_base = {
-    { ".", .relative = true, .recursive = true },
+    { ".", .relative = true, .recursive = true, .exclude = { ".git", "build", "bin", "lib", "dbg", "profiling" } },
 };
 
 load_paths = {
