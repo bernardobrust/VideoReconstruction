@@ -33,12 +33,14 @@ typedef enum
 typedef struct
 {
   s32 keys_pressed[10];
+  bool keys_just_pressed[10];
   bool mouse_buttons_pressed[2];
   bool ctrl_mod, shift_mod;
 } InputPlex;
 
 bool input_is_command_pressed (Command c);
 bool input_is_key_pressed (KeyValue k);
+bool input_is_key_just_pressed (KeyValue k);
 bool input_is_mouse_button_pressed (MouseButton button);
 
 void input_set_key_pressed (KeyValue k);

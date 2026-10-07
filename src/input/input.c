@@ -10,7 +10,11 @@ input_set_key_pressed (KeyValue k)
   else if (k == SHIFT)
     input_state.shift_mod = true;
   else if (k >= 0 && k < 10)
-    input_state.keys_pressed[k] = 1;
+    {
+      if (!input_state.keys_pressed[k])
+        input_state.keys_just_pressed[k] = true;
+      input_state.keys_pressed[k] = 1;
+    }
 }
 
 void
@@ -34,6 +38,17 @@ input_is_key_pressed (KeyValue k)
   if (k >= 0 && k < 10)
     return input_state.keys_pressed[k] != 0;
   return false;
+}
+
+bool
+input_is_key_just_pressed (KeyValue k)
+{
+  if (k < 0 || k >= 10)
+    return false;
+
+  bool just_pressed = input_state.keys_just_pressed[k];
+  input_state.keys_just_pressed[k] = false;
+  return just_pressed;
 }
 
 bool

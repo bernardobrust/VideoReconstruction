@@ -805,6 +805,22 @@ platform_update (PlatformState *platform_state)
 
   while (state->read_len >= 32)
     {
+      // X11 represents key auto-repeat as a release followed by a press with
+      // the same keycode and timestamp. Treat that pair as a continued hold;
+      // forwarding the release would briefly clear the input state each time
+      // the server repeats the key.
+      if ((state->read_buf[0] & 0x7f) == 3 && state->read_len >= 64
+          && (state->read_buf[32] & 0x7f) == 2
+          && state->read_buf[1] == state->read_buf[33]
+          && read_u32_le (state->read_buf + 4)
+                 == read_u32_le (state->read_buf + 36))
+        {
+          memmove (state->read_buf, state->read_buf + 64,
+                   state->read_len - 64);
+          state->read_len -= 64;
+          continue;
+        }
+
       dispatch_event (platform_state, state->read_buf);
       memmove (state->read_buf, state->read_buf + 32, state->read_len - 32);
       state->read_len -= 32;

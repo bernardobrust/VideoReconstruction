@@ -64,23 +64,57 @@ main (s32 argc, byte **argv)
 
   // Stable framerate at video FPS, we'll have a lot of work latter (?) to fix
   // the fps of the UI
-  AVRational fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
-  f64 frame_time_ms = 1000.0 * fps.den / fps.num,
+  AVRational video_fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
+
+  f64 actual_fps = (f64)video_fps.den / (f64)video_fps.num,
+      fps = actual_fps,
+      frame_time_ms = 1000.0 * fps,
       next_frame = platform_get_time (), now, remaining;
+
+  // Player variousiables
+  // Arbitrary scaling by 1/4 of the video fps
+  f64 scale = actual_fps / 4.0;
+  bool paused = false;
 
   while (platform_update (&platform_state))
     {
       if (input_is_key_pressed (ESC))
         platform_stop (&platform_state);
 
-      s32 ret = decode_next_frame (vp, rp);
-      if (ret < 0)
-        return EXIT_FAILURE;
-      if (ret == 1)
-        return EXIT_SUCCESS;
+      bool speed_up = input_is_key_just_pressed (UP);
+      speed_up |= input_is_key_just_pressed (RIGHT);
+      if (speed_up)
+        {
+          fps += scale;
+          frame_time_ms = 1000.0 * fps;
+        }
 
-      renderer_present (&platform_state, rp);
+      bool slow_down = input_is_key_just_pressed (DOWN);
+      slow_down |= input_is_key_just_pressed (LEFT);
+      if (slow_down)
+        {
+          fps -= scale;
+          frame_time_ms = 1000.0 * fps;
+        }
 
+      if (input_is_key_just_pressed (SPACE))
+        paused = !paused;
+
+      // This is a temporary implementation
+      if (!paused)
+        {
+          s32 ret = decode_next_frame (vp, rp);
+          printf("Not paused with fps = %f\n", fps);
+          if (ret < 0)
+            return EXIT_FAILURE;
+          if (ret == 1)
+            return EXIT_SUCCESS;
+
+          renderer_present (&platform_state, rp);
+        } else
+            printf("Paused with fps = %f\n", fps);
+
+      // Timing
       next_frame += frame_time_ms;
       now = platform_get_time ();
       remaining = next_frame - now;
