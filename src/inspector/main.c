@@ -29,7 +29,11 @@ main (s32 argc, byte **argv)
   byte *video_file = argv[1];
   s32 file_exists = platform_file_exists (video_file);
   if (file_exists == 0)
-    printf ("Video to inspect: %s.\n", video_file);
+    {
+#ifndef NDEBUG
+      printf ("Video to inspect: %s.\n", video_file);
+#endif
+    }
   else if (file_exists == 1)
     {
       fprintf (stderr, "File does not exist. Is the path correct?\n");
@@ -57,9 +61,14 @@ main (s32 argc, byte **argv)
   if (!rp)
     return EXIT_FAILURE;
 
+  if (!operations_init (rp))
+    return EXIT_FAILURE;
+
   // decode_next_frame prints the error
   if (decode_next_frame (vp, rp) != 0)
     return EXIT_FAILURE;
+
+  operations_on_frame_decoded (rp);
 
   // Initialize platform
   PlatformState platform_state = { 0 };
@@ -97,14 +106,17 @@ main (s32 argc, byte **argv)
           if (ret == 1)
             return EXIT_SUCCESS;
 
+          operations_apply_zoom (rp);
+
           renderer_present (&platform_state, rp);
           next_frame
               = platform_get_time () + frame_duration_ms / playback_speed;
         }
       else
-        // FIxed in case we are not decoding, latter we'll keep the UI
-        // framerate
-        platform_sleep (10.0);
+        {
+          operations_render_paused (&platform_state, rp);
+          platform_sleep (10.0);
+        }
     }
 
   return EXIT_SUCCESS;

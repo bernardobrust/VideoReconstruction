@@ -10,10 +10,10 @@ platform_dispatch_events (void)
 {
   for (s32 i = 0; i < event_queue.len; ++i)
     {
-      EventType ev = *(EventType *)dyn_arr_get (&event_queue, i);
+      PlatformEvent ev = *(PlatformEvent *)dyn_arr_get (&event_queue, i);
 
       // Absolute Coding BTW
-      switch (ev)
+      switch (ev.type)
         {
         case KeyCtrlPress:
           input_set_key_pressed (CTRL);
@@ -87,16 +87,23 @@ platform_dispatch_events (void)
         case KeySpaceRelease:
           input_set_key_released (SPACE);
           break;
+        case MouseMove:
+          input_set_mouse_pos (ev.x, ev.y);
+          break;
         case MouseLeftPress:
+          input_set_mouse_pos (ev.x, ev.y);
           input_set_mouse_button_pressed (MOUSE_LEFT);
           break;
         case MouseLeftRelease:
+          input_set_mouse_pos (ev.x, ev.y);
           input_set_mouse_button_released (MOUSE_LEFT);
           break;
         case MouseRightPress:
+          input_set_mouse_pos (ev.x, ev.y);
           input_set_mouse_button_pressed (MOUSE_RIGHT);
           break;
         case MouseRightRelease:
+          input_set_mouse_pos (ev.x, ev.y);
           input_set_mouse_button_released (MOUSE_RIGHT);
           break;
         }

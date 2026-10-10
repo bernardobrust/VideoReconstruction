@@ -155,7 +155,7 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
         if (is_press && was_down)
           break;
 
-        EventType ev;
+        EventType ev = (EventType)0;
         bool valid = true;
 
         switch (vk_code)
@@ -202,7 +202,7 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
           }
 
         if (valid)
-          dyn_arr_push (&event_queue, &ev);
+          platform_event_push (ev, 0, 0);
 
         if (msg == WM_SYSKEYDOWN || msg == WM_SYSKEYUP)
           {
@@ -216,55 +216,88 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
         return 0;
       }
 
+    case WM_MOUSEMOVE:
+      {
+        if (platform_state != NULL && platform_state->internal_state != NULL)
+          {
+            InternalState *state
+                = (InternalState *)platform_state->internal_state;
+            RECT client_rect;
+            GetClientRect (hwnd, &client_rect);
+            s32 client_w = client_rect.right - client_rect.left;
+            s32 client_h = client_rect.bottom - client_rect.top;
+            if (client_w > 0 && client_h > 0)
+              {
+                s32 mx = (s16)LOWORD (l_param);
+                s32 my = (s16)HIWORD (l_param);
+                s32 buf_x = (mx * state->width) / client_w;
+                s32 buf_y = (my * state->height) / client_h;
+                platform_event_push (MouseMove, buf_x, buf_y);
+              }
+          }
+        return 0;
+      }
+
     case WM_LBUTTONDOWN:
     case WM_LBUTTONUP:
     case WM_RBUTTONDOWN:
     case WM_RBUTTONUP:
       {
+        s32 buf_x = 0, buf_y = 0;
+        if (platform_state != NULL && platform_state->internal_state != NULL)
+          {
+            InternalState *state
+                = (InternalState *)platform_state->internal_state;
+            RECT client_rect;
+            GetClientRect (hwnd, &client_rect);
+            s32 client_w = client_rect.right - client_rect.left;
+            s32 client_h = client_rect.bottom - client_rect.top;
+            if (client_w > 0 && client_h > 0)
+              {
+                s32 mx = (s16)LOWORD (l_param);
+                s32 my = (s16)HIWORD (l_param);
+                buf_x = (mx * state->width) / client_w;
+                buf_y = (my * state->height) / client_h;
+              }
+          }
+
         EventType ev;
         if (msg == WM_LBUTTONDOWN)
-          ev = MouseLeftPress;
+          {
+            SetCapture (hwnd);
+            ev = MouseLeftPress;
+          }
         else if (msg == WM_LBUTTONUP)
-          ev = MouseLeftRelease;
+          {
+            ReleaseCapture ();
+            ev = MouseLeftRelease;
+          }
         else if (msg == WM_RBUTTONDOWN)
           ev = MouseRightPress;
         else
           ev = MouseRightRelease;
-        dyn_arr_push (&event_queue, &ev);
+
+        platform_event_push (ev, buf_x, buf_y);
         return 0;
       }
 
     case WM_KILLFOCUS:
       {
-        EventType ev;
-        ev = KeyCtrlRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = KeyShiftRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = KeyEscRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = KeyOneRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = KeyTwoRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = KeyThreeRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = KeyPRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = KeyLeftRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = KeyRightRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = KeyUpRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = KeyDownRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = KeySpaceRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = MouseLeftRelease;
-        dyn_arr_push (&event_queue, &ev);
-        ev = MouseRightRelease;
-        dyn_arr_push (&event_queue, &ev);
+        ReleaseCapture ();
+        platform_event_push (KeyCtrlRelease, 0, 0);
+        platform_event_push (KeyShiftRelease, 0, 0);
+        platform_event_push (KeyEscRelease, 0, 0);
+        platform_event_push (KeyOneRelease, 0, 0);
+        platform_event_push (KeyTwoRelease, 0, 0);
+        platform_event_push (KeyThreeRelease, 0, 0);
+        platform_event_push (KeyPRelease, 0, 0);
+        platform_event_push (KeyLeftRelease, 0, 0);
+        platform_event_push (KeyRightRelease, 0, 0);
+        platform_event_push (KeyUpRelease, 0, 0);
+        platform_event_push (KeyDownRelease, 0, 0);
+        platform_event_push (KeySpaceRelease, 0, 0);
+        platform_event_push (MouseLeftRelease, 0, 0);
+        platform_event_push (MouseRightRelease, 0, 0);
         return 0;
       }
 
@@ -289,7 +322,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   if (state == NULL)
     return false;
 
-  event_queue = *dyn_arr_init (16, sizeof (int));
+  event_queue = *dyn_arr_init (16, sizeof (PlatformEvent));
 
   win32_init_perf_frequency ();
   win32_enable_dpi_awareness ();

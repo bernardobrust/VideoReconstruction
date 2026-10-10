@@ -43,12 +43,27 @@ typedef enum
   MouseLeftRelease,
   MouseRightPress,
   MouseRightRelease,
+  MouseMove,
 } EventType;
+
+typedef struct
+{
+  EventType type;
+  s32 x;
+  s32 y;
+} PlatformEvent;
 
 // platform_update will push the events onto the queue, from where
 // platform_dispatch_events will call the associated function (such as
 // input_set_key_pressed)
 extern DynArr event_queue;
+
+static inline void
+platform_event_push (EventType type, s32 x, s32 y)
+{
+  PlatformEvent ev = { type, x, y };
+  dyn_arr_push (&event_queue, &ev);
+}
 
 bool platform_init (PlatformState *platform_state, const byte *window_name,
                     s32 x, s32 y, s32 w, s32 h, byte *image_buffer);

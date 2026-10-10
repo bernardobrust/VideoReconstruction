@@ -16,6 +16,3 @@
 #define likely(x) __builtin_expect (!!(x), 1)
 #define unlikely(x) __builtin_expect (!!(x), 0)
 #endif
-
-// Computes floor(x / 255), very usefull in the renderer for alpha blending
-#define DIV_255(x) (u8) ((x + 1 + ((x) >> 8)) >> 8)

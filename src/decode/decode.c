@@ -27,7 +27,9 @@ process_side_data (const AVFrame *frame, RendererPlex *rp)
 
   if (!sd)
     {
+#ifndef NDEBUG
       printf ("No side data for this frame: %" PRId64 "\n", frame->pts);
+#endif
       return;
     }
 
@@ -150,7 +152,9 @@ init_video (byte *video_file)
       return NULL;
     }
 
+#ifndef NDEBUG
   printf ("Resolution: %dx%d\n", vp->codec->width, vp->codec->height);
+#endif
 
   vp->frame = av_frame_alloc ();
   if (!vp->frame)

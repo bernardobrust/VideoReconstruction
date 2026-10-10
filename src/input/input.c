@@ -54,19 +54,69 @@ input_is_key_just_pressed (KeyValue k)
 bool
 input_is_mouse_button_pressed (MouseButton button)
 {
+  if (button < 0 || button >= 2)
+    return false;
   return input_state.mouse_buttons_pressed[button];
+}
+
+bool
+input_is_mouse_button_just_pressed (MouseButton button)
+{
+  if (button < 0 || button >= 2)
+    return false;
+
+  bool just_pressed = input_state.mouse_buttons_just_pressed[button];
+  input_state.mouse_buttons_just_pressed[button] = false;
+  return just_pressed;
+}
+
+bool
+input_is_mouse_button_just_released (MouseButton button)
+{
+  if (button < 0 || button >= 2)
+    return false;
+
+  bool just_released = input_state.mouse_buttons_just_released[button];
+  input_state.mouse_buttons_just_released[button] = false;
+  return just_released;
+}
+
+void
+input_get_mouse_pos (s32 *x, s32 *y)
+{
+  if (x)
+    *x = input_state.mouse_x;
+  if (y)
+    *y = input_state.mouse_y;
+}
+
+void
+input_set_mouse_pos (s32 x, s32 y)
+{
+  input_state.mouse_x = x;
+  input_state.mouse_y = y;
 }
 
 void
 input_set_mouse_button_pressed (MouseButton button)
 {
-  input_state.mouse_buttons_pressed[button] = true;
+  if (button >= 0 && button < 2)
+    {
+      if (!input_state.mouse_buttons_pressed[button])
+        input_state.mouse_buttons_just_pressed[button] = true;
+      input_state.mouse_buttons_pressed[button] = true;
+    }
 }
 
 void
 input_set_mouse_button_released (MouseButton button)
 {
-  input_state.mouse_buttons_pressed[button] = false;
+  if (button >= 0 && button < 2)
+    {
+      if (input_state.mouse_buttons_pressed[button])
+        input_state.mouse_buttons_just_released[button] = true;
+      input_state.mouse_buttons_pressed[button] = false;
+    }
 }
 
 bool

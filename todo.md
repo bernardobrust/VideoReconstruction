@@ -1,15 +1,14 @@
 ### Temp:
 - There is a problem (?) when loading certain AV1 videos that creashed `dav1d_motion_vectors_capture` as "Access violation". This is weird as it only happened on one video, but I'll check that out latter
 
-
 #### Per-file basis
+- main.c : @FIX the problems woth the UI framerate are already showing when highlighing the zoom area
 - decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
 - decode.c : @IMPROVEMENT check if the "RGBA" vs "BGRA" problem is platform-specific, more specifically, if it has to do with "XRGB8888" on wayland, or with endianess.
 - decode.c : calculate the constants based on the display's size + all contants in general
 - dyn_arr.c : @OPTIMIZATION check if $2$ is a reasonable scale factor, or add a macro to change it
 - tests/main.c : @IMPROVEMENT check if this strategy for argument handling is good
 - platform.h : @FEATURE add a function to get monitor resolution (or maybe a function to get the monitor size and position)
-- performance.h : @IMPROVEMENT move `DIV_255` to math.h
 - renderer.c : @FIX, @OPTIMIZATION the circle looks weird, it likelly has to do with the loops tho i'm not certain
 - renderer.c : @IMPROVEMENT maybe there's a way to unify normal and transparen shapes without losing performance
 - basic.c : @IMPROVEMENT `_Generic` macro for `clamp` functions?
@@ -20,7 +19,7 @@
 - Keep in mind that we NEED the entire get video data -> render to be fast enough to support live video streams, so we need it to support arbitrary frame and bit rates
 - The transparent shape drawing is a massive performance bottleneck, we need to optimize it. Maybe we can use a different approach for this, like using a separate buffer for the transparent shapes and then blending it with the video frame
 
-### Detour (top priority)
+### Modified libraries
 - [ ] Hack libdav1d (and FFmpeg as a consequence) to export compression data:
 	- [x] MVs
 	- [ ] Transforms
@@ -102,14 +101,12 @@ Should we test the rendering primitives?
 - [x] Take the video to use as a parameter of the inspector binary
 - [x] Pause
 - [x] Slow down and speed up
-- [ ] Zoom-in and Zoom-out
-- [ ] Scale/downscale video to a given WxH (ongoing)
-- [ ] App state PLEX (a.k.a fat struct)
+- [x] Zoom-in and Zoom-out
+- [ ] Scale/downscale video to a given WxH
 - [x] Render motion vectors on top of the frame
 - [ ] Render motion vectors per block (a.k.a hightlight the block)
 - [x] Modify vector color based on magnitude (better than scaling the arrow)
-- [ ] Compression data...
-- [ ] Vector scale represented as a color
+- [ ] More compression data...
 - [ ] Next and previous frame
 - [ ] Jump to specific frame/time
 - [ ] Video timeline

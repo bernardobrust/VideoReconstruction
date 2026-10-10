@@ -536,10 +536,12 @@ dispatch_event (PlatformState *platform_state, const u8 event[32])
         }
 
       if (valid)
-        dyn_arr_push (&event_queue, &ev);
+        platform_event_push (ev, 0, 0);
     }
   else if (type == 4 || type == 5)
     {
+      s16 mx = (s16)read_u16_le (event + 24);
+      s16 my = (s16)read_u16_le (event + 26);
       u8 button = event[1];
       EventType ev;
       bool is_press = (type == 4);
@@ -549,7 +551,7 @@ dispatch_event (PlatformState *platform_state, const u8 event[32])
         ev = is_press ? MouseRightPress : MouseRightRelease;
       else
         return;
-      dyn_arr_push (&event_queue, &ev);
+      platform_event_push (ev, mx, my);
     }
 }
 
@@ -566,7 +568,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   if (state == NULL)
     return false;
 
-  event_queue = *dyn_arr_init (16, sizeof (s32));
+  event_queue = *dyn_arr_init (16, sizeof (PlatformEvent));
   state->fd = display_connect ();
 
   if (state->fd < 0)

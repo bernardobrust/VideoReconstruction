@@ -825,7 +825,7 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
             }
 
           if (valid)
-            dyn_arr_push (&event_queue, &ev);
+            platform_event_push (ev, 0, 0);
         }
       else if (opcode == 4)
         {
@@ -876,7 +876,7 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
           else
             valid = false;
           if (valid)
-            dyn_arr_push (&event_queue, &ev);
+            platform_event_push (ev, 0, 0);
         }
       else if (opcode == 4 || opcode == 5)
         {
@@ -989,7 +989,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   assert (platform_state->internal_state != NULL
           && "Failed to allocate memory from internal state");
 
-  event_queue = *dyn_arr_init (16, sizeof (int));
+  event_queue = *dyn_arr_init (16, sizeof (PlatformEvent));
 
   InternalState *state = (InternalState *)platform_state->internal_state;
   memset (state, 0, sizeof (InternalState));
