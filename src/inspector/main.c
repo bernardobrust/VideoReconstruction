@@ -70,10 +70,10 @@ main (s32 argc, byte **argv)
   AVRational video_fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
 
   f64 frame_duration_ms = 1000.0 * (f64)video_fps.den / (f64)video_fps.num,
-      playback_speed = 1.0, next_frame = platform_get_time (), now, remaining;
+      next_frame = platform_get_time (), now, remaining;
 
-  // Fixed 1/4 step
-  f64 speed_step = playback_speed / 4.0;
+  // Fixed 1/8 step
+  f64 playback_speed = 1.0, speed_step = playback_speed / 8.0;
   bool paused = false, slow_down, speed_up;
 
   while (platform_update (&platform_state))
@@ -85,11 +85,11 @@ main (s32 argc, byte **argv)
       speed_up = input_is_key_just_pressed (UP);
       if (speed_up)
         {
-          playback_speed += speed_step;
+          playback_speed += playback_speed >= 1.0 ? 0.0 : speed_step;
           // We can't (and shouldn't) decode faster than the video's time
           // references
           next_frame
-              = platform_get_time () + frame_duration_ms / playback_speed;
+              = platform_get_time () - frame_duration_ms / playback_speed;
 
           printf ("Playback speed increased to: %f\n", playback_speed);
         }
@@ -99,9 +99,7 @@ main (s32 argc, byte **argv)
         {
           // We do not want super-low speeds, this actually limits to 1/4 of
           // the normal speed
-          playback_speed = playback_speed > speed_step
-                               ? playback_speed - speed_step
-                               : speed_step;
+          playback_speed -= playback_speed <= speed_step ? 0 : speed_step;
           next_frame
               = platform_get_time () + frame_duration_ms / playback_speed;
 

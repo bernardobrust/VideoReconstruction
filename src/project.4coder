@@ -14,10 +14,14 @@ patterns = {
 
 blacklist_patterns = {
     ".*",
+	"build",
+	"lib",
+	"dbg",
+	"profiling",
 };
 
 load_paths_base = {
-    { ".", .relative = true, .recursive = true, .exclude = { ".git", "build", "bin", "lib", "dbg", "profiling" } },
+    { ".", .relative = true, .recursive = true },
 };
 
 load_paths = {

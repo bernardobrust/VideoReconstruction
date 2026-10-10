@@ -10,6 +10,7 @@
 #include "lib/flag.h"
 
 #define BUILD_DIR "build/"
+#define LIBS_DIR "lib/"
 
 // Helper functions
 local bool
@@ -39,16 +40,14 @@ is_windows_platform (const byte *platform)
   "https://github.com/bernardobrust/VideoReconstruction/releases/download/"   \
   "Experimental/gnu_linux_mod_libs.zip"
 
-#define LINUX_LIBS_DIR "lib"
-
 local bool
 windows_mod_libs_exist (void)
 {
-  return nob_file_exists ("lib/windows/lib/avcodec.lib")
-         && nob_file_exists ("lib/windows/lib/avformat.lib")
-         && nob_file_exists ("lib/windows/lib/avutil.lib")
-         && nob_file_exists ("lib/windows/lib/swscale.lib")
-         && nob_file_exists ("lib/windows/include/libavcodec/avcodec.h");
+  return nob_file_exists (LIBS_DIR "windows/lib/avcodec.lib")
+         && nob_file_exists (LIBS_DIR "windows/lib/avformat.lib")
+         && nob_file_exists (LIBS_DIR "windows/lib/avutil.lib")
+         && nob_file_exists (LIBS_DIR "windows/lib/swscale.lib")
+         && nob_file_exists (LIBS_DIR "windows/include/libavcodec/avcodec.h");
 }
 
 local bool
@@ -70,6 +69,7 @@ pull_windows_mod_libs (void)
                WINDOWS_MOD_LIBS_URL);
       nob_cmd_free (cmd);
       nob_delete_file (zip_path);
+
       return false;
     }
   nob_cmd_free (cmd);
@@ -82,6 +82,7 @@ pull_windows_mod_libs (void)
       nob_log (NOB_ERROR, "Failed to extract %s into lib/", zip_path);
       nob_cmd_free (cmd);
       nob_delete_file (zip_path);
+
       return false;
     }
   nob_cmd_free (cmd);
@@ -94,17 +95,15 @@ pull_windows_mod_libs (void)
 local bool
 linux_mod_libs_exist (void)
 {
-  return nob_file_exists (LINUX_LIBS_DIR "/gnu_linux/lib/libavcodec.a")
-         && nob_file_exists (LINUX_LIBS_DIR "/gnu_linux/lib/libavformat.a")
-         && nob_file_exists (LINUX_LIBS_DIR "/gnu_linux/lib/libavutil.a")
-         && nob_file_exists (LINUX_LIBS_DIR "/gnu_linux/lib/libswscale.a")
-         && nob_file_exists (LINUX_LIBS_DIR "/gnu_linux/lib/libdav1d.a")
-         && nob_file_exists (LINUX_LIBS_DIR
-                             "/gnu_linux/include/libavcodec/avcodec.h")
-         && nob_file_exists (LINUX_LIBS_DIR
-                             "/gnu_linux/include/libavutil/motion_vector.h")
-         && nob_file_exists (LINUX_LIBS_DIR
-                             "/gnu_linux/include/dav1d/dav1d.h");
+  return nob_file_exists (LIBS_DIR "gnu_linux/lib/libavcodec.a")
+         && nob_file_exists (LIBS_DIR "gnu_linux/lib/libavformat.a")
+         && nob_file_exists (LIBS_DIR "gnu_linux/lib/libavutil.a")
+         && nob_file_exists (LIBS_DIR "gnu_linux/lib/libswscale.a")
+         && nob_file_exists (LIBS_DIR "gnu_linux/lib/libdav1d.a")
+         && nob_file_exists (LIBS_DIR "gnu_linux/include/libavcodec/avcodec.h")
+         && nob_file_exists (LIBS_DIR
+                             "gnu_linux/include/libavutil/motion_vector.h")
+         && nob_file_exists (LIBS_DIR "gnu_linux/include/dav1d/dav1d.h");
 }
 
 local bool
@@ -128,14 +127,13 @@ pull_linux_mod_libs (void)
     }
   nob_cmd_free (cmd);
 
-  nob_log (NOB_INFO, "Extracting modified libraries to %s/gnu_linux/",
-           LINUX_LIBS_DIR);
+  nob_log (NOB_INFO, "Extracting modified libraries to %sgnu_linux/",
+           LIBS_DIR);
   cmd = (Nob_Cmd){ 0 };
-  nob_cmd_append (&cmd, "unzip", "-o", "-q", zip_path, "-d", LINUX_LIBS_DIR);
+  nob_cmd_append (&cmd, "unzip", "-o", "-q", zip_path, "-d", LIBS_DIR);
   if (!nob_cmd_run (&cmd))
     {
-      nob_log (NOB_ERROR, "Failed to extract %s into %s", zip_path,
-               LINUX_LIBS_DIR);
+      nob_log (NOB_ERROR, "Failed to extract %s into %s", zip_path, LIBS_DIR);
       nob_cmd_free (cmd);
       if (nob_file_exists (zip_path))
         nob_delete_file (zip_path);
@@ -191,6 +189,7 @@ main (s32 argc, byte **argv)
     {
       if (!pull_mod_libs ())
         return EXIT_FAILURE;
+
       return EXIT_SUCCESS;
     }
   else if (str_eq (*target, "pull-gnu-linux-libs"))
@@ -216,6 +215,7 @@ main (s32 argc, byte **argv)
       nob_log (NOB_ERROR,
                "Invalid target, use one of "
                "'inspector', 'reconstructor', 'tests' or 'pull_libs'");
+
       return EXIT_FAILURE;
     }
 
@@ -227,6 +227,7 @@ main (s32 argc, byte **argv)
     {
       nob_log (NOB_ERROR, "Invalid platform, use one of "
                           "'gnu_linux_x11', 'gnu_linux_wayland' or 'windows'");
+
       return EXIT_FAILURE;
     }
 
@@ -236,6 +237,7 @@ main (s32 argc, byte **argv)
     {
       nob_log (NOB_ERROR,
                "Invalid build type, use one of 'debug' or 'release'");
+
       return EXIT_FAILURE;
     }
 
@@ -360,16 +362,16 @@ main (s32 argc, byte **argv)
           s32 response = getchar ();
           if (response == 'y' || response == 'Y' || response == '\n'
               || response == '\r')
-            {
-              if (!pull_windows_mod_libs ())
-                return EXIT_FAILURE;
-            }
-          else
-            {
-              nob_log (NOB_ERROR,
-                       "Modified libraries are required to build on Windows");
+            if (!pull_windows_mod_libs ())
               return EXIT_FAILURE;
-            }
+            else
+              {
+                nob_log (
+                    NOB_ERROR,
+                    "Modified libraries are required to build on Windows");
+
+                return EXIT_FAILURE;
+              }
         }
 
       nob_cmd_append (&compile_cmd, "/Ilib/windows/include");
@@ -385,8 +387,8 @@ main (s32 argc, byte **argv)
       if (!linux_mod_libs_exist ())
         {
           nob_log (NOB_WARNING,
-                   "Modified FFmpeg libraries not found in %s/gnu_linux/",
-                   LINUX_LIBS_DIR);
+                   "Modified FFmpeg libraries not found in %sgnu_linux/",
+                   LIBS_DIR);
           printf ("They can be pulled from: %s\n", LINUX_MOD_LIBS_URL);
           printf ("Do you want to download and extract them now? [Y/n]: ");
           fflush (stdout);
@@ -394,17 +396,16 @@ main (s32 argc, byte **argv)
           s32 response = getchar ();
           if (response == 'y' || response == 'Y' || response == '\n'
               || response == '\r')
-            {
-              if (!pull_linux_mod_libs ())
-                return EXIT_FAILURE;
-            }
-          else
-            {
-              nob_log (
-                  NOB_ERROR,
-                  "Modified libraries are required to build on GNU + Linux");
+            if (!pull_linux_mod_libs ())
               return EXIT_FAILURE;
-            }
+            else
+              {
+                nob_log (
+                    NOB_ERROR,
+                    "Modified libraries are required to build on GNU + Linux");
+
+                return EXIT_FAILURE;
+              }
         }
 
       nob_cmd_append (&compile_cmd, "-Llib/gnu_linux/lib", "-lavformat",

@@ -1,5 +1,6 @@
 ### Temp:
-There is a problem (?) when loading certain AV1 videos that creashed `dav1d_motion_vectors_capture` as "Access violation". This is weird as it only happened on one video, but I'll check that out latter
+- There is a problem (?) when loading certain AV1 videos that creashed `dav1d_motion_vectors_capture` as "Access violation". This is weird as it only happened on one video, but I'll check that out latter
+
 
 #### Per-file basis
 - decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
@@ -12,11 +13,12 @@ There is a problem (?) when loading certain AV1 videos that creashed `dav1d_moti
 - renderer.c : @FIX, @OPTIMIZATION the circle looks weird, it likelly has to do with the loops tho i'm not certain
 - renderer.c : @IMPROVEMENT maybe there's a way to unify normal and transparen shapes without losing performance
 - basic.c : @IMPROVEMENT `_Generic` macro for `clamp` functions?
+- nob.c : @FIX for some reason when pulling libraries for the first time it may successfully pull but not compile, requiering nob to be ran a second time
 
 ### Performance
-- @PERFORMANCE For now the main bottleneck is the decode -> send image buffer to display loop, which is not paralelized. We can improve this latter by using a queue of decoded frames and a separate thread for the renderer
-- @PERFORMANCE Keep in mind that we NEED the entire get video data -> render to be fast enough to support live video streams, so we need it to support arbitrary frame and bit rates
-- @PERFORMANCE The transparent shape drawing is a massive performance bottleneck, we need to optimize it. Maybe we can use a different approach for this, like using a separate buffer for the transparent shapes and then blending it with the video frame
+- For now the main bottleneck is the decode -> send image buffer to display loop, which is not paralelized. We can improve this latter by using a queue of decoded frames and a separate thread for the renderer
+- Keep in mind that we NEED the entire get video data -> render to be fast enough to support live video streams, so we need it to support arbitrary frame and bit rates
+- The transparent shape drawing is a massive performance bottleneck, we need to optimize it. Maybe we can use a different approach for this, like using a separate buffer for the transparent shapes and then blending it with the video frame
 
 ### Detour (top priority)
 - [ ] Hack libdav1d (and FFmpeg as a consequence) to export compression data:
