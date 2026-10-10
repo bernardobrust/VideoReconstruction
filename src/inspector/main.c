@@ -12,6 +12,8 @@
 #include "platform.h"
 #include "renderer.h"
 
+#include "operations.c"
+
 s32
 main (s32 argc, byte **argv)
 {
@@ -25,7 +27,6 @@ main (s32 argc, byte **argv)
     }
 
   byte *video_file = argv[1];
-
   s32 file_exists = platform_file_exists (video_file);
   if (file_exists == 0)
     printf ("Video to inspect: %s.\n", video_file);
@@ -72,50 +73,9 @@ main (s32 argc, byte **argv)
   f64 frame_duration_ms = 1000.0 * (f64)video_fps.den / (f64)video_fps.num,
       next_frame = platform_get_time (), now, remaining;
 
-  // Fixed 1/8 step
-  f64 playback_speed = 1.0, speed_step = playback_speed / 8.0;
-  bool paused = false, slow_down, speed_up;
-
   while (platform_update (&platform_state))
     {
-      if (input_is_key_pressed (ESC))
-        platform_stop (&platform_state);
-
-      // Speed up and slow down
-      speed_up = input_is_key_just_pressed (UP);
-      if (speed_up)
-        {
-          playback_speed += playback_speed >= 1.0 ? 0.0 : speed_step;
-          // We can't (and shouldn't) decode faster than the video's time
-          // references
-          next_frame
-              = platform_get_time () - frame_duration_ms / playback_speed;
-
-          printf ("Playback speed increased to: %f\n", playback_speed);
-        }
-
-      slow_down = input_is_key_just_pressed (DOWN);
-      if (slow_down)
-        {
-          // We do not want super-low speeds, this actually limits to 1/4 of
-          // the normal speed
-          playback_speed -= playback_speed <= speed_step ? 0 : speed_step;
-          next_frame
-              = platform_get_time () + frame_duration_ms / playback_speed;
-
-          printf ("Playback speed decreased to: %f\n", playback_speed);
-        }
-
-      // NOTE: this pause is for the video, not the program, so UI, inputs,
-      // pre-decoding (theaded) should still keep going
-      if (input_is_key_just_pressed (SPACE))
-        {
-          // Toggle pause
-          paused = !paused;
-          if (!paused)
-            next_frame
-                = platform_get_time () + frame_duration_ms / playback_speed;
-        }
+      process_input (&platform_state);
 
       // Decode exactly one frame per scheduled traversal interval. Changing
       // speed only changes the interval, the decoder's current position stays
@@ -128,8 +88,12 @@ main (s32 argc, byte **argv)
             platform_sleep (remaining);
 
           s32 ret = decode_next_frame (vp, rp);
+
+          // Failed to decode
           if (ret < 0)
             return EXIT_FAILURE;
+
+          // Video ended
           if (ret == 1)
             return EXIT_SUCCESS;
 

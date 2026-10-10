@@ -121,21 +121,11 @@ init_video (byte *video_file)
     }
 
   vp->stream = vp->fmt->streams[vp->video_stream];
-  vp->decoder = avcodec_find_decoder (vp->stream->codecpar->codec_id);
+  vp->decoder = avcodec_find_decoder_by_name ("libdav1d");
   if (!vp->decoder)
     {
       fprintf (stderr, "No decoder found, did you install the FFmpeg "
                        "libraries corectly?\n");
-      return NULL;
-    }
-
-  printf ("Decoder: %s\n", vp->decoder->name);
-
-  // This project assumes the video is AV1 encoded
-  if (vp->stream->codecpar->codec_id != AV_CODEC_ID_AV1)
-    {
-      fprintf (stderr, "Video is not AV1 encoded, but you can convert it to "
-                       "AV1 using FFmpeg.\n");
       return NULL;
     }
 
