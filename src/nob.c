@@ -308,7 +308,13 @@ main (s32 argc, byte **argv)
   // Data structures
   // Tests include the implementations directly.
   if (str_eq (*target, "tests"))
-    nob_cmd_append (&compile_cmd, "tests/dyn_arr.test.c");
+    {
+      nob_cmd_append (&compile_cmd, "tests/dyn_arr.test.c");
+      nob_cmd_append (&compile_cmd, "tests/math.test.c");
+      nob_cmd_append (&compile_cmd, "tests/input.test.c");
+      nob_cmd_append (&compile_cmd, "tests/utility.test.c");
+      nob_cmd_append (&compile_cmd, "tests/renderer.test.c");
+    }
   else
     nob_cmd_append (&compile_cmd, "ds/dyn_arr.c");
 

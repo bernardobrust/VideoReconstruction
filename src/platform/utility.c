@@ -74,26 +74,26 @@ buf_read_n (byte **buf, u64 *buf_size, byte *dst, u64 n)
   *buf_size -= n;
 }
 
-inline u32
+u32
 round_up (u32 value, u32 alignment)
 {
   return (value + alignment - 1) / alignment * alignment;
 }
 
-inline u16
+u16
 read_u16_le (const u8 *buf)
 {
   return (u16)(buf[0] | ((u16)buf[1] << 8));
 }
 
-inline u32
+u32
 read_u32_le (const u8 *buf)
 {
   return (u32)buf[0] | ((u32)buf[1] << 8) | ((u32)buf[2] << 16)
          | ((u32)buf[3] << 24);
 }
 
-inline u16
+u16
 read_u16_be (const u8 *buf)
 {
   return (u16)(((u16)buf[0] << 8) | buf[1]);

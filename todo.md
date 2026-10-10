@@ -7,7 +7,6 @@
 - decode.c : @IMPROVEMENT check if the "RGBA" vs "BGRA" problem is platform-specific, more specifically, if it has to do with "XRGB8888" on wayland, or with endianess.
 - decode.c : calculate the constants based on the display's size + all contants in general
 - dyn_arr.c : @OPTIMIZATION check if $2$ is a reasonable scale factor, or add a macro to change it
-- tests/main.c : @IMPROVEMENT check if this strategy for argument handling is good
 - platform.h : @FEATURE add a function to get monitor resolution (or maybe a function to get the monitor size and position)
 - renderer.c : @FIX, @OPTIMIZATION the circle looks weird, it likelly has to do with the loops tho i'm not certain
 - renderer.c : @IMPROVEMENT maybe there's a way to unify normal and transparen shapes without losing performance
@@ -66,7 +65,8 @@ We won't need audio for this project
 - [ ] Mac platform layer? (Sounds like a pain for little gain)
 
 ### Math Library (shared)
-- [ ] Basic utilities (clamp, 2D lerp, etc.)
+- [x] Basic utilities (clamp, round, fast operations, etc.)
+- [x] Tests for basic utilities
 - [ ] ...
 
 ### Data Structures (shared)
