@@ -1,5 +1,13 @@
 ### Temp:
 - There is a problem (?) when loading certain AV1 videos that creashed `dav1d_motion_vectors_capture` as "Access violation". This is weird as it only happened on one video, but I'll check that out latter
+- Error pointed out by the video libraries on GNU + Linux:
+> \[mov,mp4,m4a,3gp,3g2,mj2 @ 0x56501b7ec080] stream 0, timescale not set
+>
+> \[mov,mp4,m4a,3gp,3g2,mj2 @ 0x56501b7ec080] Stream #2: not enough frames to estimate rate; consider increasing probesize
+>
+> \[mov,mp4,m4a,3gp,3g2,mj2 @ 0x56501b7ec080] Could not find codec parameters for stream 2 (Video: mjpeg, none): unspecified size
+>
+> Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (5000000) options
 
 #### Per-file basis
 - main.c : @FIX the problems woth the UI framerate are already showing when highlighing the zoom area
