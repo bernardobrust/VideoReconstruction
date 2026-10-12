@@ -12,19 +12,19 @@
 #include "renderer.h"
 
 // Playback controls (Fixed 1/8 step)
-local f64 playback_speed = 1.0, speed_step = 0.125;
-local bool paused = false, slow_down, speed_up;
+f64 playback_speed = 1.0, speed_step = 0.125;
+bool paused = false, slow_down, speed_up;
 
-local DynArr *zoom_stack = NULL;
-local u32 *clean_frame_buffer = NULL;
-local s32 *scale_x_map = NULL;
-local s32 scale_x_map_cap = 0;
-local RendererPlex *current_rp = NULL;
+DynArr *zoom_stack = NULL;
+u32 *clean_frame_buffer = NULL;
+s32 *scale_x_map = NULL;
+s32 scale_x_map_cap = 0;
+RendererPlex *current_rp = NULL;
 
-local bool is_dragging = false, needs_paused_redraw = true;
-local s32 drag_start_x = 0, drag_start_y = 0, drag_cur_x = 0, drag_cur_y = 0;
+bool is_dragging = false, needs_paused_redraw = true;
+s32 drag_start_x = 0, drag_start_y = 0, drag_cur_x = 0, drag_cur_y = 0;
 
-local const u32 fill_color
+const u32 fill_color
     = 1684327679; // precomputed from rgba (100, 180, 255, 100)
 
 typedef struct
@@ -182,7 +182,7 @@ operations_render_paused (PlatformState *p, RendererPlex *rp)
   needs_paused_redraw = false;
 }
 
-inline void
+void
 process_input (PlatformState *p)
 {
   if (input_is_key_pressed (ESC))

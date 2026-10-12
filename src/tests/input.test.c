@@ -2,6 +2,7 @@
 #include "input.h"
 #include "astf.h"
 #include "input.test.h"
+#include "platform.h"
 
 void
 input_all_tests (void)
@@ -47,6 +48,31 @@ input_all_tests (void)
   input_get_mouse_pos (&x, &y);
   assert_equal (12, x);
   assert_equal (-7, y);
+
+  // Platform event dispatcher mouse tracking
+  event_queue = *dyn_arr_init (16, sizeof (PlatformEvent));
+  platform_event_push (MouseMove, 42, 99);
+  platform_dispatch_events ();
+  input_get_mouse_pos (&x, &y);
+  assert_equal (42, x);
+  assert_equal (99, y);
+
+  platform_event_push (MouseLeftPress, 100, 200);
+  platform_dispatch_events ();
+  input_get_mouse_pos (&x, &y);
+  assert_equal (100, x);
+  assert_equal (200, y);
+  assert_true (input_is_mouse_button_pressed (MOUSE_LEFT));
+  assert_true (input_is_mouse_button_just_pressed (MOUSE_LEFT));
+
+  platform_event_push (MouseLeftRelease, 150, 250);
+  platform_dispatch_events ();
+  input_get_mouse_pos (&x, &y);
+
+  assert_equal (150, x);
+  assert_equal (250, y);
+  assert_false (input_is_mouse_button_pressed (MOUSE_LEFT));
+  assert_true (input_is_mouse_button_just_released (MOUSE_LEFT));
 
   retrieve_results ();
 }

@@ -67,6 +67,9 @@ enum
   X11_EVENT_MASK_KEY_RELEASE = 1 << 1,
   X11_EVENT_MASK_BUTTON_PRESS = 1 << 2,
   X11_EVENT_MASK_BUTTON_RELEASE = 1 << 3,
+  X11_EVENT_MASK_ENTER_WINDOW = 1 << 4,
+  X11_EVENT_MASK_POINTER_MOTION = 1 << 6,
+  X11_EVENT_MASK_BUTTON_MOTION = 1 << 13,
   X11_EVENT_MASK_EXPOSURE = 1 << 15,
   X11_EVENT_MASK_STRUCTURE_NOTIFY = 1 << 17,
   X11_GC_FOREGROUND = 1 << 2,
@@ -439,11 +442,13 @@ create_window (InternalState *state, s32 x, s32 y, s32 w, s32 h)
   write_u16_le (body + 14, (u16)h);
   write_u16_le (body + 18, X11_INPUT_OUTPUT);
   write_u32_le (body + 24, X11_CW_BACK_PIXEL | X11_CW_EVENT_MASK);
-  write_u32_le (body + 32,
-                X11_EVENT_MASK_EXPOSURE | X11_EVENT_MASK_STRUCTURE_NOTIFY
-                    | X11_EVENT_MASK_KEY_PRESS | X11_EVENT_MASK_KEY_RELEASE
-                    | X11_EVENT_MASK_BUTTON_PRESS
-                    | X11_EVENT_MASK_BUTTON_RELEASE);
+  write_u32_le (
+      body + 32,
+      X11_EVENT_MASK_EXPOSURE | X11_EVENT_MASK_STRUCTURE_NOTIFY
+          | X11_EVENT_MASK_KEY_PRESS | X11_EVENT_MASK_KEY_RELEASE
+          | X11_EVENT_MASK_BUTTON_PRESS | X11_EVENT_MASK_BUTTON_RELEASE
+          | X11_EVENT_MASK_ENTER_WINDOW | X11_EVENT_MASK_POINTER_MOTION
+          | X11_EVENT_MASK_BUTTON_MOTION);
   write_u32_le (body + 20, state->root_visual);
 
   return send_request (state, 1, (u8)state->depth, body, sizeof (body));
@@ -537,6 +542,12 @@ dispatch_event (PlatformState *platform_state, const u8 event[32])
 
       if (valid)
         platform_event_push (ev, 0, 0);
+    }
+  else if (type == 6 || type == 7)
+    {
+      s16 mx = (s16)read_u16_le (event + 24),
+          my = (s16)read_u16_le (event + 26);
+      platform_event_push (MouseMove, mx, my);
     }
   else if (type == 4 || type == 5)
     {

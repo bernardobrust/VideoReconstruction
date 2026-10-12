@@ -96,6 +96,9 @@ typedef struct
   s32 fd;
   byte *image_buffer;
 
+  s32 mouse_x;
+  s32 mouse_y;
+
   _Alignas (16) byte read_buf[8192];
   u64 read_buf_len;
 } InternalState;
@@ -848,8 +851,11 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
         { // enter: serial, surface, x, y
           buf_read_u32 (msg, msg_len);
           buf_read_u32 (msg, msg_len);
-          buf_read_u32 (msg, msg_len);
-          buf_read_u32 (msg, msg_len);
+          s32 sx = (s32)buf_read_u32 (msg, msg_len) / 256,
+              sy = (s32)buf_read_u32 (msg, msg_len) / 256;
+          state->mouse_x = sx;
+          state->mouse_y = sy;
+          platform_event_push (MouseMove, sx, sy);
         }
       else if (opcode == 1)
         {
@@ -857,9 +863,13 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
           buf_read_u32 (msg, msg_len);
         }
       else if (opcode == 2)
-        {
-          for (s32 i = 0; i < 3; ++i)
-            buf_read_u32 (msg, msg_len);
+        { // motion: time, x, y
+          buf_read_u32 (msg, msg_len);
+          s32 sx = (s32)buf_read_u32 (msg, msg_len) / 256,
+              sy = (s32)buf_read_u32 (msg, msg_len) / 256;
+          state->mouse_x = sx;
+          state->mouse_y = sy;
+          platform_event_push (MouseMove, sx, sy);
         }
       else if (opcode == 3)
         {
@@ -876,7 +886,7 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
           else
             valid = false;
           if (valid)
-            platform_event_push (ev, 0, 0);
+            platform_event_push (ev, state->mouse_x, state->mouse_y);
         }
       else if (opcode == 4 || opcode == 5)
         {
