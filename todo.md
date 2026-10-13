@@ -1,31 +1,15 @@
-### Temp:
-- There is a problem (?) when loading certain AV1 videos that creashed `dav1d_motion_vectors_capture` as "Access violation". This is weird as it only happened on one video, but I'll check that out latter
-- Error pointed out by the video libraries on GNU + Linux:
-> \[mov,mp4,m4a,3gp,3g2,mj2 @ 0x56501b7ec080] stream 0, timescale not set
->
-> \[mov,mp4,m4a,3gp,3g2,mj2 @ 0x56501b7ec080] Stream #2: not enough frames to estimate rate; consider increasing probesize
->
-> \[mov,mp4,m4a,3gp,3g2,mj2 @ 0x56501b7ec080] Could not find codec parameters for stream 2 (Video: mjpeg, none): unspecified size
->
-> Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (5000000) options
-
-#### Per-file basis
-- main.c : @FIX the problems woth the UI framerate are already showing when highlighing the zoom area
+## Notes
+### Per-file basis
+- main.c : @FIX the problems with the UI framerate are already showing when highlighing the zoom area and pressing commands
 - decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
 - decode.c : @IMPROVEMENT check if the "RGBA" vs "BGRA" problem is platform-specific, more specifically, if it has to do with "XRGB8888" on wayland, or with endianess.
-- decode.c : calculate the constants based on the display's size + all contants in general
+- decode.c : @IMPROVEMENT calculate the constants based on the display's size + all contants in general
 - dyn_arr.c : @OPTIMIZATION check if $2$ is a reasonable scale factor, or add a macro to change it
-- platform.h : @FEATURE add a function to get monitor resolution (or maybe a function to get the monitor size and position)
 - renderer.c : @FIX, @OPTIMIZATION the circle looks weird, it likelly has to do with the loops tho i'm not certain
-- renderer.c : @IMPROVEMENT maybe there's a way to unify normal and transparen shapes without losing performance
 - basic.c : @IMPROVEMENT `_Generic` macro for `clamp` functions?
 - nob.c : @FIX for some reason when pulling libraries for the first time it may successfully pull but not compile, requiering nob to be ran a second time
 
-### Performance
-- For now the main bottleneck is the decode -> send image buffer to display loop, which is not paralelized. We can improve this latter by using a queue of decoded frames and a separate thread for the renderer
-- Keep in mind that we NEED the entire get video data -> render to be fast enough to support live video streams, so we need it to support arbitrary frame and bit rates
-- The transparent shape drawing is a massive performance bottleneck, we need to optimize it. Maybe we can use a different approach for this, like using a separate buffer for the transparent shapes and then blending it with the video frame
-
+## Checklists
 ### Modified libraries
 - [ ] Hack libdav1d (and FFmpeg as a consequence) to export compression data:
 	- [x] MVs
@@ -62,14 +46,21 @@ We'll add a lot more stuff here as the project advances
 - [ ] Get testing data (I have some mock videos but we'll need more latter)
 - [ ] Translation units of `shared` and individual projects via inclusion of `.c` files
 
+### Performance
+- [ ] Separate threads for rendering and video decoding
+- [ ] Cache the decoded frames
+- [ ] Paralelized renderer
+
 ### Platform Layer (shared)
 We won't need audio for this project
 
 - [x] Raw X11 platform Layer
 - [x] Raw Wayland platform Layer
 - [x] Windows platform layer
+- [ ] Get monitor resolution
 - [ ] Floating windows on window managers
 - [ ] Full screen support
+- [ ] OS independent threading
 - [ ] Mac platform layer? (Sounds like a pain for little gain)
 
 ### Math Library (shared)
@@ -98,7 +89,6 @@ Should we test the rendering primitives?
 - [x] Draw frame of a video
 - [x] Draw transparent rectangle on top of frame (and arrow)
 - [ ] Scale video resolution to pane dimensions
-- [ ] Paralelize the renderer
 
 ### Systems (inspector)
 - [x] Event system (key presses and UI buttons)
@@ -120,11 +110,9 @@ Should we test the rendering primitives?
 - [ ] Video timeline
 - [ ] Side-by-side frame comparison (basic)
 - [ ] Side-by-side frame comparison (mapping block translations)
+- [ ] Config file with preferences (such as video cache size)
 
 ### Extra (inspector)
 - [ ] Test coverage (like Like FFmpeg's FATE but a lot simpler)
-- [ ] Paralelized build?
+- [ ] Paralelized build (?)
 - [ ] Data analysis
-
-### Documentation (both)
-- [ ] Maybe explain the geometry of the renderer better?
