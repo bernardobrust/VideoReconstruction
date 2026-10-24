@@ -1,5 +1,6 @@
 #pragma once
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,12 +74,10 @@ scale_image_region (u32 *src, s32 src_w, s32 src_h, s32 zx, s32 zy, s32 zw,
     {
       // Yes, realloc is the best approach here
       s32 *tmp = realloc (scale_x_map, (size_t)dst_w * sizeof (*scale_x_map));
+      assert (tmp != NULL);
 
-      if (tmp != NULL)
-        {
-          scale_x_map = tmp;
-          scale_x_map_cap = dst_w;
-        }
+      scale_x_map = tmp;
+      scale_x_map_cap = dst_w;
     }
 
   // Precompute 1D horizontal map to remove division and multiplication in the
@@ -113,7 +112,7 @@ draw_selection_box (s32 x1, s32 y1, s32 x2, s32 y2, RendererPlex *rp)
   draw_rectangle_t (min_x, min_y, max_x, max_y, fill_color, rp);
 }
 
-bool
+void
 operations_init (RendererPlex *rp)
 {
   current_rp = rp;
@@ -121,20 +120,16 @@ operations_init (RendererPlex *rp)
   size_t buffer_size = (size_t)rp->w * rp->h * sizeof (*clean_frame_buffer);
 
   clean_frame_buffer = malloc (buffer_size);
-  if (!clean_frame_buffer)
-    return false;
+  assert (clean_frame_buffer != NULL);
 
   zoom_stack = dyn_arr_init (4, sizeof (ZoomRect));
-  if (!zoom_stack)
-    return false;
+  assert (zoom_stack != NULL);
 
   ZoomRect base_rect = { 0, 0, rp->w, rp->h };
   dyn_arr_push (zoom_stack, &base_rect);
 
   is_dragging = false;
   needs_paused_redraw = true;
-
-  return true;
 }
 
 void

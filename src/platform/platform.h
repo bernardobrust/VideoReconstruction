@@ -65,7 +65,7 @@ platform_event_push (EventType type, s32 x, s32 y)
   dyn_arr_push (&event_queue, &ev);
 }
 
-bool platform_init (PlatformState *platform_state, const byte *window_name,
+void platform_init (PlatformState *platform_state, const byte *window_name,
                     s32 x, s32 y, s32 w, s32 h, byte *image_buffer);
 void platform_shutdown (PlatformState *platform_state);
 

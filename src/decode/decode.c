@@ -1,5 +1,6 @@
 #include "decode.h"
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -85,11 +86,7 @@ VideoPlex *
 init_video (byte *video_file)
 {
   VideoPlex *vp = (VideoPlex *)malloc (sizeof (VideoPlex));
-  if (!vp)
-    {
-      fprintf (stderr, "Could not allocate VideoPlex.\n");
-      return NULL;
-    }
+  assert (vp != NULL);
 
   vp->fmt = NULL;
   if (avformat_open_input (&vp->fmt, video_file, NULL, NULL) < 0)
@@ -132,11 +129,7 @@ init_video (byte *video_file)
     }
 
   vp->codec = avcodec_alloc_context3 (vp->decoder);
-  if (!vp->codec)
-    {
-      fprintf (stderr, "Could not allocate codec context.\n");
-      return NULL;
-    }
+  assert (vp->codec != NULL);
 
   if (avcodec_parameters_to_context (vp->codec, vp->stream->codecpar) < 0)
     {
@@ -157,18 +150,10 @@ init_video (byte *video_file)
 #endif
 
   vp->frame = av_frame_alloc ();
-  if (!vp->frame)
-    {
-      fprintf (stderr, "Could not allocate frame\n");
-      return NULL;
-    }
+  assert (vp->frame != NULL);
 
   vp->packet = av_packet_alloc ();
-  if (!vp->packet)
-    {
-      fprintf (stderr, "Could not allocate packet\n");
-      return NULL;
-    }
+  assert (vp->packet != NULL);
 
   return vp;
 }
@@ -267,12 +252,7 @@ decode_next_frame (VideoPlex *vp, RendererPlex *rp)
   // Using RGBA was swapping the colors, so we use BGRA instead.
   struct SwsContext *sws = sws_getContext (w, h, format, w, h, AV_PIX_FMT_BGRA,
                                            SWS_BILINEAR, NULL, NULL, NULL);
-
-  if (!sws)
-    {
-      fprintf (stderr, "Could not create scaler.\n");
-      return -2;
-    }
+  assert (sws != NULL);
 
   u8 *dst_data[4] = { (u8 *)rp->image_buffer, NULL, NULL, NULL };
   s32 dst_linesize[4] = { w * 4, 0, 0, 0 };

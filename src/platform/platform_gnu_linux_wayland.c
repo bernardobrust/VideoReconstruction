@@ -987,7 +987,7 @@ read_and_dispatch (PlatformState *platform_state, bool block)
 // ----------------------------------------------------------------
 
 // Platform layer
-bool
+void
 platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
                s32 y, s32 w, s32 h, byte *image_buffer)
 {
@@ -1014,8 +1014,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   srand (tv.tv_sec * 1000 * 1000 + tv.tv_usec);
 
   s32 fd = display_connect ();
-  if (fd == -1)
-    return false;
+  assert (fd != -1);
 
   state->fd = fd;
   state->image_buffer = image_buffer;
@@ -1047,8 +1046,6 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   while (state->state != STATE_SURFACE_ACKED_CONFIGURE)
     read_and_dispatch (platform_state, true);
-
-  return true;
 }
 
 void

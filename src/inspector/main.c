@@ -58,11 +58,8 @@ main (s32 argc, byte **argv)
 
   // Initialize the renderer
   RendererPlex *rp = init_renderer (w, h);
-  if (!rp)
-    return EXIT_FAILURE;
 
-  if (!operations_init (rp))
-    return EXIT_FAILURE;
+  operations_init (rp);
 
   // decode_next_frame prints the error
   if (decode_next_frame (vp, rp) != 0)

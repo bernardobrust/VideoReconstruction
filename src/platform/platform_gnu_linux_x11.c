@@ -9,6 +9,7 @@
 #define _POSIX_C_SOURCE 200112L
 #define _DEFAULT_SOURCE
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -196,9 +197,9 @@ read_xauthority (u8 token[16])
 
           lengths[i] = read_u16_be (length_buf);
           fields[i] = malloc (lengths[i] == 0 ? 1 : lengths[i]);
+          assert (fields[i] != NULL);
 
-          if (fields[i] == NULL
-              || fread (fields[i], 1, lengths[i], file) != lengths[i])
+          if (fread (fields[i], 1, lengths[i], file) != lengths[i])
             {
               valid = false;
               break;
@@ -297,9 +298,7 @@ send_request (InternalState *state, u8 opcode, u8 detail, const u8 *body,
     return false;
 
   u8 *request = calloc (1, size);
-
-  if (request == NULL)
-    return false;
+  assert (request != NULL);
 
   request[0] = opcode;
   request[1] = detail;
@@ -352,9 +351,7 @@ intern_atom (InternalState *state, const byte *name, u32 *atom)
   u64 name_length = strlen (name),
       body_size = 4 + round_up ((u32)name_length, 4);
   u8 *body = calloc (1, body_size);
-
-  if (body == NULL)
-    return false;
+  assert (body != NULL);
 
   write_u16_le (body, (u16)name_length);
 
@@ -378,9 +375,7 @@ query_extension (InternalState *state, const byte *name, u8 *major_opcode)
   u64 name_length = strlen (name),
       body_size = 4 + round_up ((u32)name_length, 4);
   u8 *body = calloc (1, body_size);
-
-  if (body == NULL)
-    return false;
+  assert (body != NULL);
 
   write_u16_le (body, (u16)name_length);
 
@@ -408,9 +403,7 @@ set_title (InternalState *state, const byte *title)
   u64 title_length = strlen (title),
       body_size = 20 + round_up ((u32)title_length, 4);
   u8 *body = calloc (1, body_size);
-
-  if (body == NULL)
-    return false;
+  assert (body != NULL);
 
   write_u32_le (body, state->window);
   write_u32_le (body + 4, X11_ATOM_WM_NAME);
@@ -568,16 +561,14 @@ dispatch_event (PlatformState *platform_state, const u8 event[32])
 
 // ----------------------------------------------------------------
 // Platform layer
-bool
+void
 platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
                s32 y, s32 w, s32 h, byte *image_buffer)
 {
-  if (w <= 0 || h <= 0 || w > USHRT_MAX || h > USHRT_MAX)
-    return false;
+  assert (w > 0 && h > 0 && w <= USHRT_MAX && h <= USHRT_MAX);
 
   InternalState *state = calloc (1, sizeof (*state));
-  if (state == NULL)
-    return false;
+  assert (state != NULL);
 
   event_queue = *dyn_arr_init (16, sizeof (PlatformEvent));
   state->fd = display_connect ();
@@ -585,7 +576,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   if (state->fd < 0)
     {
       free (state);
-      return false;
+      return;
     }
 
   u8 token[16] = { 0 };
@@ -596,9 +587,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   u64 setup_size
       = 12 + round_up (auth_name_length, 4) + round_up (auth_data_length, 4);
   u8 *setup = calloc (1, setup_size);
-
-  if (setup == NULL)
-    goto fail;
+  assert (setup != NULL);
 
   setup[0] = 'l';
 
@@ -624,13 +613,13 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   u64 additional_size = (size_t)read_u16_le (prefix + 6) * 4;
   u8 *additional = malloc (additional_size);
+  assert (additional != NULL);
 
-  if (prefix[0] != 1 || additional == NULL
-      || !read_all (state->fd, additional, additional_size))
+  if (prefix[0] != 1 || !read_all (state->fd, additional, additional_size))
     {
       if (prefix[0] != 1)
         fprintf (stderr, "X11 setup failed: %.*s\n", (int)prefix[1],
-                 additional == NULL ? "" : (byte *)additional);
+                 (byte *)additional);
       free (additional);
       goto fail;
     }
@@ -743,18 +732,16 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
                                 (u8)(state->window >> 24) },
                         4))
     goto fail_with_state;
-  return true;
+  return;
 
 fail_with_state:
   platform_shutdown (platform_state);
-
-  return false;
+  return;
 
 fail:
   close (state->fd);
   free (state);
-
-  return false;
+  return;
 }
 
 void
@@ -917,9 +904,7 @@ platform_present (PlatformState *platform_state)
       u32 chunk_height = state->height - y < rows ? state->height - y : rows;
       u64 image_size = (size_t)row_bytes * chunk_height;
       u8 *body = calloc (1, 20 + image_size);
-
-      if (body == NULL)
-        return;
+      assert (body != NULL);
 
       write_u32_le (body, state->window);
       write_u32_le (body + 4, state->gc);

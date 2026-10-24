@@ -76,15 +76,12 @@ RendererPlex *
 init_renderer (s32 w, s32 h)
 {
   RendererPlex *rp = (RendererPlex *)malloc (sizeof (RendererPlex));
-  if (!rp)
-    {
-      fprintf (stderr, "Could not allocate RendererPlex.\n");
-      return NULL;
-    }
+  assert (rp != NULL);
 
   rp->w = w;
   rp->h = h;
   rp->image_buffer = (u32 *)malloc (w * h * sizeof (u32));
+  assert (rp->image_buffer != NULL);
 
   return rp;
 }

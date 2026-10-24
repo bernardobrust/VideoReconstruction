@@ -22,6 +22,9 @@
 **Software/CPU rendering**
 - [olive.c](https://github.com/tsoding/olive.c), inspired
 
+**UI**
+- [caching-an-immediate-mode-ui](https://blickeditor.com/blog/caching-an-immediate-mode-ui), inspiered
+
 ### Tooling
 **Profiling**
 - [Intel VTune Profiler](https://www.intel.com/content/www/us/en/developer/tools/oneapi/vtune-profiler.html), used

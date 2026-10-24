@@ -12,6 +12,7 @@
 
 #include <timeapi.h>
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -308,19 +309,15 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
   return DefWindowProcA (hwnd, msg, w_param, l_param);
 }
 
-bool
+void
 platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
                s32 y, s32 w, s32 h, byte *image_buffer)
 {
-  if (platform_state == NULL)
-    return false;
-
-  if (w <= 0 || h <= 0)
-    return false;
+  assert (platform_state != NULL);
+  assert (w > 0 && h > 0);
 
   InternalState *state = (InternalState *)calloc (1, sizeof (InternalState));
-  if (state == NULL)
-    return false;
+  assert (state != NULL);
 
   event_queue = *dyn_arr_init (16, sizeof (PlatformEvent));
 
@@ -364,24 +361,10 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
       0, class_name,
       window_name != NULL ? window_name : "Video Reconstruction", style, pos_x,
       pos_y, window_w, window_h, NULL, NULL, instance, platform_state);
-
-  if (hwnd == NULL)
-    {
-      if (state->time_period_set)
-        timeEndPeriod (1);
-      free (state);
-      return false;
-    }
+  assert (hwnd != NULL);
 
   HDC hdc = GetDC (hwnd);
-  if (hdc == NULL)
-    {
-      DestroyWindow (hwnd);
-      if (state->time_period_set)
-        timeEndPeriod (1);
-      free (state);
-      return false;
-    }
+  assert (hdc != NULL);
 
   SetStretchBltMode (hdc, COLORONCOLOR);
 
@@ -403,8 +386,6 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   ShowWindow (hwnd, SW_SHOW);
   UpdateWindow (hwnd);
-
-  return true;
 }
 
 void
