@@ -49,6 +49,7 @@ We'll add a lot more stuff here as the project advances
 ### Performance
 - [ ] Separate threads for rendering and video decoding
 - [ ] Cache the decoded frames
+- [ ] Cache the UI
 - [ ] Paralelized renderer
 
 ### Platform Layer (shared)
@@ -57,8 +58,7 @@ We won't need audio for this project
 - [x] Raw X11 platform Layer
 - [x] Raw Wayland platform Layer
 - [x] Windows platform layer
-- [ ] Get monitor resolution
-- [ ] Floating windows on window managers
+- [ ] Get screen resolution function
 - [ ] Full screen support
 - [ ] OS independent threading
 - [ ] Mac platform layer? (Sounds like a pain for little gain)
@@ -72,7 +72,7 @@ We won't need audio for this project
 - [x] Dynamic array
 - [x] Dynamic array tests
 - [x] Move tests to separate testing file for shared code
-- [ ] ...
+- [ ] Add others latter as needed ...
 
 ### Renderer (CPU / software renderer) (shared)
 Should we test the rendering primitives?
@@ -89,6 +89,7 @@ Should we test the rendering primitives?
 - [x] Draw frame of a video
 - [x] Draw transparent rectangle on top of frame (and arrow)
 - [ ] Scale video resolution to pane dimensions
+- [ ] Make UI fit well in the window (responsive measures)
 
 ### Systems (inspector)
 - [x] Event system (key presses and UI buttons)
