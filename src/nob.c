@@ -47,6 +47,7 @@ windows_mod_libs_exist (void)
          && nob_file_exists (LIBS_DIR "windows/lib/avformat.lib")
          && nob_file_exists (LIBS_DIR "windows/lib/avutil.lib")
          && nob_file_exists (LIBS_DIR "windows/lib/swscale.lib")
+         && nob_file_exists (LIBS_DIR "windows/lib/libdav1d.a")
          && nob_file_exists (LIBS_DIR "windows/include/libavcodec/avcodec.h");
 }
 
@@ -55,8 +56,8 @@ pull_windows_mod_libs (void)
 {
   const byte *zip_path = BUILD_DIR "windows_mod_libs.zip";
 
-  // If this does not work as expected check if the macro is pointing to the
-  // latest version and that the file was zipped corectly
+  // If this does not work as expected, check that the macro points to the
+  // latest version and that the archive was created correctly.
   nob_log (NOB_INFO, "Pulling modified libraries from %s",
            WINDOWS_MOD_LIBS_URL);
 
@@ -88,6 +89,12 @@ pull_windows_mod_libs (void)
   nob_cmd_free (cmd);
 
   nob_delete_file (zip_path);
+  if (!windows_mod_libs_exist ())
+    {
+      nob_log (NOB_ERROR, "Downloaded Windows library bundle is incomplete");
+      return false;
+    }
+
   nob_log (NOB_INFO, "Successfully pulled and extracted modified libraries!");
   return true;
 }
@@ -369,16 +376,16 @@ main (s32 argc, byte **argv)
           s32 response = getchar ();
           if (response == 'y' || response == 'Y' || response == '\n'
               || response == '\r')
-            if (!pull_windows_mod_libs ())
-              return EXIT_FAILURE;
-            else
-              {
-                nob_log (
-                    NOB_ERROR,
-                    "Modified libraries are required to build on Windows");
-
+            {
+              if (!pull_windows_mod_libs ())
                 return EXIT_FAILURE;
-              }
+            }
+          else
+            {
+              nob_log (NOB_ERROR,
+                       "Modified libraries are required to build on Windows");
+              return EXIT_FAILURE;
+            }
         }
 
       nob_cmd_append (&compile_cmd, "/Ilib/windows/include");
@@ -403,16 +410,17 @@ main (s32 argc, byte **argv)
           s32 response = getchar ();
           if (response == 'y' || response == 'Y' || response == '\n'
               || response == '\r')
-            if (!pull_linux_mod_libs ())
-              return EXIT_FAILURE;
-            else
-              {
-                nob_log (
-                    NOB_ERROR,
-                    "Modified libraries are required to build on GNU + Linux");
-
+            {
+              if (!pull_linux_mod_libs ())
                 return EXIT_FAILURE;
-              }
+            }
+          else
+            {
+              nob_log (
+                  NOB_ERROR,
+                  "Modified libraries are required to build on GNU + Linux");
+              return EXIT_FAILURE;
+            }
         }
 
       nob_cmd_append (&compile_cmd, "-Llib/gnu_linux/lib", "-lavformat",

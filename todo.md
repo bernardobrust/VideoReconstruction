@@ -1,12 +1,8 @@
 ## Notes
 ### Per-file basis
-- main.c : @FIX the problems with the UI framerate are already showing when highlighing the zoom area and pressing commands
-- decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
-- decode.c : @IMPROVEMENT check if the "RGBA" vs "BGRA" problem is platform-specific, more specifically, if it has to do with "XRGB8888" on wayland, or with endianess.
-- dyn_arr.c : @OPTIMIZATION check if $2$ is a reasonable scale factor, or add a macro to change it
-- renderer.c : @FIX, @OPTIMIZATION the circle looks weird, it likelly has to do with the loops tho i'm not certain
-- basic.c : @IMPROVEMENT `_Generic` macro for `clamp` functions?
-- nob.c : @FIX for some reason when pulling libraries for the first time it may successfully pull but not compile, requiering nob to be ran a second time
+- main.c : @FIX UI framerate problems are noticeable when highlighting the zoom area and pressing commands
+- decode.c : @OPTIMIZATION check whether dereferencing `vp` repeatedly is worth replacing with temporary variables
+- decode.c : @IMPROVEMENT check whether the "RGBA" vs. "BGRA" issue is platform-specific, possibly related to "XRGB8888" on Wayland or to endianness.
 
 ## Checklists
 ### Modified libraries
@@ -15,7 +11,7 @@
 	- [ ] Transforms
 	- [ ] Intra prediction
 	- [ ] ...
-- [ ] Build a sample program to check that, likelly a test file
+- [ ] Build a sample program to check that, likely a test file
 - [ ] Generate the patches for the changes made and add them to a `lib/patches` dir in order to keep modifications explicit
 - [x] Change the decoder to use the modified versions of the libs
 
@@ -41,15 +37,14 @@ We'll add a lot more stuff here as the project advances
 - [x] Modified library integration for Windows
 - [x] Modified library integration for GNU + Linux (I'll likely do this from a native machine to make sure every step works)
 - [ ] Check the compilation flags of the libraries, optimize as much as possible
-- [ ] Auto updates?
-- [ ] Get testing data (I have some mock videos but we'll need more latter)
+- [ ] Get testing data (I have some mock videos, but we'll need more later)
 - [ ] Translation units of `shared` and individual projects via inclusion of `.c` files
 
 ### Performance
 - [ ] Separate threads for rendering and video decoding
 - [ ] Cache the decoded frames
 - [ ] Cache the UI
-- [ ] Paralelized renderer
+- [ ] Parallelized renderer
 
 ### Platform Layer (shared)
 We won't need audio for this project
@@ -72,7 +67,7 @@ We won't need audio for this project
 - [x] Dynamic array tests
 - [x] Move tests to separate testing file for shared code
 - [x] Arena + tests
-- [ ] Add others latter as needed ...
+- [ ] Add others later as needed ...
 
 ### Renderer (CPU / software renderer) (shared)
 Should we test the rendering primitives?
@@ -84,7 +79,7 @@ Should we test the rendering primitives?
 - [x] Draw rotated rectangle (with angle and with orientation)
 - [x] Draw arrow
 - [x] Framerate stability on video framerate
-- [ ] UI fixed framerate (right now we syncronize to the video's frame rate)
+- [ ] UI fixed framerate (right now we synchronize to the video's frame rate)
 - [ ] Draw text
 - [x] Draw frame of a video
 - [x] Draw transparent rectangle on top of frame (and arrow)
@@ -103,7 +98,7 @@ Should we test the rendering primitives?
 - [x] Zoom-in and Zoom-out
 - [ ] Scale/downscale video to a given WxH
 - [x] Render motion vectors on top of the frame
-- [ ] Render motion vectors per block (a.k.a hightlight the block)
+- [ ] Render motion vectors per block (a.k.a. highlight the block)
 - [x] Modify vector color based on magnitude (better than scaling the arrow)
 - [ ] More compression data...
 - [ ] Next and previous frame
@@ -115,5 +110,5 @@ Should we test the rendering primitives?
 
 ### Extra (inspector)
 - [ ] Test coverage (like Like FFmpeg's FATE but a lot simpler)
-- [ ] Paralelized build (?)
+- [ ] Parallelized build (?)
 - [ ] Data analysis

@@ -143,6 +143,30 @@ renderer_test_circles (void)
   assert_equal (color, pixels[2 * TEST_W]);
   assert_equal (0, pixels[6 * TEST_W + 6]);
 
+  memset (pixels, 0, sizeof pixels);
+  const u32 translucent = 0x800000FF;
+  draw_circle_t (3, 3, 1, translucent, &rp);
+  assert_equal (blend_rgba_pixel (translucent, 0), pixels[3 * TEST_W + 3]);
+
+  enum
+  {
+    GUARD_SIZE = 32
+  };
+  const u32 guard_color = 0xDEADBEEF;
+  u32 guarded[TEST_PIXELS + 2 * GUARD_SIZE];
+  for (s32 i = 0; i < TEST_PIXELS + 2 * GUARD_SIZE; ++i)
+    guarded[i] = guard_color;
+  u32 *guarded_pixels = guarded + GUARD_SIZE;
+  memset (guarded_pixels, 0, TEST_PIXELS * sizeof (*guarded_pixels));
+  RendererPlex guarded_rp = { TEST_W, TEST_H, guarded_pixels };
+  draw_circle_t (0, 0, 2, translucent, &guarded_rp);
+  draw_circle_t (TEST_W - 1, TEST_H - 1, 2, translucent, &guarded_rp);
+  for (s32 i = 0; i < GUARD_SIZE; ++i)
+    {
+      assert_equal (guard_color, guarded[i]);
+      assert_equal (guard_color, guarded[GUARD_SIZE + TEST_PIXELS + i]);
+    }
+
   retrieve_results ();
 }
 

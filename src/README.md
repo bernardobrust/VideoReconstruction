@@ -17,7 +17,7 @@ The first time you compile you will have to generate the build tool, simply run 
 Now you can compile the project with:
 `./nob(.exe) -target TARGET -platform PLATFORM -mode MODE`
 
-On GNU + Linux and Windows, the platform libraries are pulled if they are not found. You will be asked if you want to download them now; accept for the project to build
+The platform libraries are pulled if they are not found. You will be asked if you want to download them now; accept for the project to build
 
 The parameters are as follows:
 - TARGET: inspector | reconstructor | tests (see below) | pull (see below)
@@ -31,10 +31,10 @@ Both GNU + Linux back-ends speak their display protocols directly, so no X11 or 
 
 Pulling libs without a specific platform (a.k.a just `-target pull`) will pull for the OS you are using, if you want to specify you can use `pull-windows-libs` or `pull-gnu-linux-libs`
 
-The generated executable will be in the form ""TARGET_MODE_PLATFORM(.exe)"" in the `build/` directory. Exemple: `build/inspector_release_gnu_linux_x11` or `build\inspector_debug_windows.exe`
+The generated executable will be in the form `TARGET_MODE_PLATFORM(.exe)` in the `build/` directory. Example: `build/inspector_release_gnu_linux_x11` or `build\inspector_debug_windows.exe`.
 
 ### Running:
-You can tun the inspector using the executable and passing a video path:
+You can run the inspector by passing a video path to the executable:
 `build/inspector_...(.exe) video_path`
 
 ### Testing:
@@ -54,12 +54,12 @@ List of tests (to be expanded):
 # Structure
 ### Common code (shared across inspector and reconstructor)
 This includes the following directories:
-1. `platform`, with the platform layers for GNU + Linux (X11 and Wayland) and Windows (unimplemented)
+1. `platform`, with the platform layers for GNU + Linux (X11 and Wayland) and Windows
 2. `input`, input system
 3. `renderer`, the source code for the software renderer
 4. `ds`, the data structures used in the projects
 5. `math`, the mathematical functions and objects used in the code
-6. `lib`, third-party code used in the project, on windows the modified libraries are already avaliable
+6. `lib`, third-party code used in the project; the modified Windows libraries are included
 7. `test_files`, files used to test the correctness of the programs. For now this is empty as I didn't write any tests that directly require video data, but I recommend checking the sources for where to get some testing data.
 
 The following are present in `lib/` (the `.h` files are in there):
@@ -71,10 +71,8 @@ The following are present in `lib/` (the `.h` files are in there):
 ### Inspector
 The inspector is a tool to visualize compression data of the videos, such as color channels, chroma channels and inter prediction. See more [here](inspector/)
 
-### Reconstructor (way latter)
+### Reconstructor (later)
 The reconstructor is a tool to reconstruct 3d models from video data using computer vision. See more on the ideas file [here](../ideas.md)
 
 # Profiling
 In this project we use both `perf` and "Intel VTune Profiler" (check [sources](../sources.md)). Profiling data is not uploaded to GitHub as it's hardware dependent and can be extracted with ease.
-
-Information relevat to performance can be found on the [TODO list](../todo.md)
