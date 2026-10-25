@@ -100,6 +100,8 @@ typedef struct
   u32 screen_width;
   u32 screen_height;
   bool fullscreen;
+  u8 *request_buffer;
+  u64 request_capacity;
   u16 max_request_words;
   u32 width;
   u32 height;
@@ -302,23 +304,18 @@ send_request (InternalState *state, u8 opcode, u8 detail, const u8 *body,
 {
   u64 size = 4 + body_size;
 
-  if (size % 4 != 0 || size / 4 > state->max_request_words)
-    return false;
+  assert (size % 4 == 0 && size / 4 <= state->max_request_words);
+  assert (state->request_buffer != NULL && size <= state->request_capacity);
 
-  u8 *request = calloc (1, size);
-  assert (request != NULL);
+  u8 *request = state->request_buffer;
 
   request[0] = opcode;
   request[1] = detail;
 
   write_u16_le (request + 2, (u16)(size / 4));
 
-  memcpy (request + 4, body, body_size);
-  bool result = send_all (state->fd, request, size);
-
-  free (request);
-
-  return result;
+  memmove (request + 4, body, body_size);
+  return send_all (state->fd, request, size);
 }
 
 local bool
@@ -578,15 +575,17 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 {
   assert (w > 0 && h > 0 && w <= USHRT_MAX && h <= USHRT_MAX);
 
-  InternalState *state = calloc (1, sizeof (*state));
+  InternalState *state = platform_storage_init (
+      platform_state, sizeof (*state), _Alignof (InternalState), 512u * 1024u);
   assert (state != NULL);
-
-  event_queue = *dyn_arr_init (16, sizeof (PlatformEvent));
+  platform_state->internal_state = state;
+  state->fd = -1;
+  state->shmid = -1;
   state->fd = display_connect ();
 
   if (state->fd < 0)
     {
-      free (state);
+      platform_shutdown (platform_state);
       return;
     }
 
@@ -644,6 +643,10 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   state->resource_base = read_u32_le (additional + 4);
   state->resource_mask = read_u32_le (additional + 8);
   state->max_request_words = read_u16_le (additional + 18);
+  state->request_capacity = (u64)state->max_request_words * 4;
+  state->request_buffer
+      = arena_alloc (&platform_state->arena, state->request_capacity, 4);
+  assert (state->request_buffer != NULL);
 
   u32 vendor_length = read_u16_le (additional + 16),
       root_count = additional[20], format_count = additional[21];
@@ -755,8 +758,7 @@ fail_with_state:
   return;
 
 fail:
-  close (state->fd);
-  free (state);
+  platform_shutdown (platform_state);
   return;
 }
 
@@ -790,8 +792,7 @@ platform_shutdown (PlatformState *platform_state)
     }
 
   close (state->fd);
-  free (state);
-
+  platform_storage_release (platform_state);
   platform_state->internal_state = NULL;
   platform_state->running = false;
 }
@@ -954,8 +955,8 @@ platform_present (PlatformState *platform_state)
     {
       u32 chunk_height = state->height - y < rows ? state->height - y : rows;
       u64 image_size = (size_t)row_bytes * chunk_height;
-      u8 *body = calloc (1, 20 + image_size);
-      assert (body != NULL);
+      u8 *body = state->request_buffer + 4;
+      memset (body, 0, (size_t)(20 + image_size));
 
       write_u32_le (body, state->window);
       write_u32_le (body + 4, state->gc);
@@ -971,7 +972,6 @@ platform_present (PlatformState *platform_state)
 
       bool sent
           = send_request (state, 72, X11_Z_PIXMAP, body, 20 + image_size);
-      free (body);
 
       if (!sent)
         {

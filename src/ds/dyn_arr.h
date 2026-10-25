@@ -10,16 +10,21 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 #include "macros.h"
 
 typedef struct
 {
   s32 cap, len, stride;
   void *data;
+  bool fixed_capacity;
 } DynArr;
 
 DynArr *dyn_arr_init (s32 initial_cap, s32 stride);
 void dyn_arr_free (DynArr *xs);
+DynArr dyn_arr_init_fixed (void *storage, s32 capacity, s32 stride);
+bool dyn_arr_try_push (DynArr *xs, void *new_elem);
 
 void *dyn_arr_get (DynArr *xs, s32 where);
 void dyn_arr_set (DynArr *xs, s32 where, void *val);

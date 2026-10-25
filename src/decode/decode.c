@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <libavutil/frame.h>
 #include <libavutil/imgutils.h>
@@ -93,23 +94,24 @@ process_side_data (const AVFrame *frame, RendererPlex *rp)
 }
 
 VideoPlex *
-init_video (byte *video_file)
+init_video (Arena *arena, byte *video_file)
 {
-  VideoPlex *vp = (VideoPlex *)malloc (sizeof (VideoPlex));
+  assert (arena != NULL);
+  VideoPlex *vp = arena_alloc (arena, sizeof (*vp), _Alignof (VideoPlex));
   assert (vp != NULL);
+  memset (vp, 0, sizeof (*vp));
 
-  vp->fmt = NULL;
   if (avformat_open_input (&vp->fmt, video_file, NULL, NULL) < 0)
     {
       fprintf (stderr, "Could not open video file.\n");
-      return NULL;
+      goto fail;
     }
 
   if (avformat_find_stream_info (vp->fmt, NULL) < 0)
     {
       fprintf (stderr,
                "Could not find stream info. Is the file correctly encoded?\n");
-      return NULL;
+      goto fail;
     }
 
   vp->video_stream = -1;
@@ -126,7 +128,7 @@ init_video (byte *video_file)
     {
       fprintf (stderr,
                "No video stream found. Is the file correctly encoded?\n");
-      return NULL;
+      goto fail;
     }
 
   vp->stream = vp->fmt->streams[vp->video_stream];
@@ -135,7 +137,7 @@ init_video (byte *video_file)
     {
       fprintf (stderr, "No decoder found, did you install the FFmpeg "
                        "libraries corectly?\n");
-      return NULL;
+      goto fail;
     }
 
   vp->codec = avcodec_alloc_context3 (vp->decoder);
@@ -144,7 +146,7 @@ init_video (byte *video_file)
   if (avcodec_parameters_to_context (vp->codec, vp->stream->codecpar) < 0)
     {
       fprintf (stderr, "Could not copy codec parameters.\n");
-      return NULL;
+      goto fail;
     }
 
   // Important: we need to set the export_mvs flag to get motion vectors
@@ -152,7 +154,7 @@ init_video (byte *video_file)
   if (avcodec_open2 (vp->codec, vp->decoder, NULL) < 0)
     {
       fprintf (stderr, "Could not open decoder\n");
-      return NULL;
+      goto fail;
     }
 
 #ifndef NDEBUG
@@ -166,6 +168,22 @@ init_video (byte *video_file)
   assert (vp->packet != NULL);
 
   return vp;
+
+fail:
+  shutdown_video (vp);
+  return NULL;
+}
+
+void
+shutdown_video (VideoPlex *vp)
+{
+  assert (vp != NULL);
+  if (vp->sws != NULL)
+    sws_freeContext (vp->sws);
+  av_packet_free (&vp->packet);
+  av_frame_free (&vp->frame);
+  avcodec_free_context (&vp->codec);
+  avformat_close_input (&vp->fmt);
 }
 
 // We may want to factor the scaling out of here
@@ -260,17 +278,15 @@ decode_next_frame (VideoPlex *vp, RendererPlex *rp)
   s32 w = vp->codec->width, h = vp->codec->height, format = vp->frame->format;
 
   // Using RGBA was swapping the colors, so we use BGRA instead.
-  struct SwsContext *sws = sws_getContext (w, h, format, w, h, AV_PIX_FMT_BGRA,
-                                           SWS_BILINEAR, NULL, NULL, NULL);
-  assert (sws != NULL);
+  vp->sws = sws_getCachedContext (vp->sws, w, h, format, w, h, AV_PIX_FMT_BGRA,
+                                  SWS_BILINEAR, NULL, NULL, NULL);
+  assert (vp->sws != NULL);
 
   u8 *dst_data[4] = { (u8 *)rp->image_buffer, NULL, NULL, NULL };
   s32 dst_linesize[4] = { w * 4, 0, 0, 0 };
 
-  sws_scale (sws, (const u8 *const *)vp->frame->data, vp->frame->linesize, 0,
-             h, dst_data, dst_linesize);
-
-  sws_freeContext (sws);
+  sws_scale (vp->sws, (const u8 *const *)vp->frame->data, vp->frame->linesize,
+             0, h, dst_data, dst_linesize);
 
   process_side_data (vp->frame, rp);
 

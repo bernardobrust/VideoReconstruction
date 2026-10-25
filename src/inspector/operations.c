@@ -16,10 +16,25 @@
 f64 playback_speed = 1.0, speed_step = 0.125;
 bool paused = false, fullscreen = false, slow_down, speed_up;
 
-DynArr *zoom_stack = NULL;
+typedef struct
+{
+    s32 x, y, w, h;
+} ZoomRect;
+
+typedef struct
+{
+    ZoomRect *items;
+    s32 len, cap;
+} ZoomStack;
+
+enum
+{
+    MAX_ZOOM_LEVELS = 256
+};
+
+ZoomStack zoom_stack = { 0 };
 u32 *clean_frame_buffer = NULL;
 s32 *scale_x_map = NULL;
-s32 scale_x_map_cap = 0;
 RendererPlex *current_rp = NULL;
 
 bool is_dragging = false, needs_paused_redraw = true;
@@ -28,19 +43,52 @@ s32 drag_start_x = 0, drag_start_y = 0, drag_cur_x = 0, drag_cur_y = 0;
 const u32 fill_color
 = 1684327679; // precomputed from rgba (100, 180, 255, 100)
 
-typedef struct
+local void
+add_array_size (u64 *total, u64 count, u64 element_size)
 {
-    s32 x, y, w, h;
-} ZoomRect;
+    assert (element_size > 0);
+    assert (count <= (UINT64_MAX - *total) / element_size);
+    *total += count * element_size;
+}
+
+u64
+operations_memory_required (s32 w, s32 h)
+{
+    assert (w > 0 && h > 0);
+    assert ((u64)w <= UINT64_MAX / (u64)h / sizeof (u32));
+    
+    u64 pixels = (u64)w * (u64)h, total = 128;
+    add_array_size (&total, 1, sizeof (RendererPlex));
+    add_array_size (&total, pixels * 2, sizeof (u32));
+    add_array_size (&total, (u64)w, sizeof (s32));
+    add_array_size (&total, MAX_ZOOM_LEVELS, sizeof (ZoomRect));
+    
+    return total;
+}
+
+local void
+push_zoom (ZoomRect rect)
+{
+    if (zoom_stack.len >= zoom_stack.cap)
+    {
+        assert (zoom_stack.len > 1);
+        
+        memmove (zoom_stack.items + 1, zoom_stack.items + 2,
+                 (zoom_stack.len - 2) * sizeof (*zoom_stack.items));
+        --zoom_stack.len;
+    }
+    zoom_stack.items[zoom_stack.len++] = rect;
+}
 
 inline local ZoomRect
 get_current_zoom (void)
 {
-    if (zoom_stack && zoom_stack->len > 0)
-        return *(ZoomRect *)dyn_arr_get (zoom_stack, zoom_stack->len - 1);
+    if (zoom_stack.len > 0)
+        return zoom_stack.items[zoom_stack.len - 1];
     
     ZoomRect def = { 0, 0, current_rp ? current_rp->w : 0,
         current_rp ? current_rp->h : 0 };
+    
     return def;
 }
 
@@ -70,16 +118,6 @@ scale_image_region (u32 *src, s32 src_w, s32 src_h, s32 zx, s32 zy, s32 zw,
     if (zy + zh > src_h)
         zh = src_h - zy;
     
-    if (scale_x_map_cap < dst_w)
-    {
-        // Yes, realloc is the best approach here
-        s32 *tmp = realloc (scale_x_map, (size_t)dst_w * sizeof (*scale_x_map));
-        assert (tmp != NULL);
-        
-        scale_x_map = tmp;
-        scale_x_map_cap = dst_w;
-    }
-    
     // Precompute 1D horizontal map to remove division and multiplication in the
     // inner row loop
     for (s32 x = 0; x < dst_w; ++x)
@@ -106,27 +144,32 @@ scale_image_region (u32 *src, s32 src_w, s32 src_h, s32 zx, s32 zy, s32 zw,
 inline local void
 draw_selection_box (s32 x1, s32 y1, s32 x2, s32 y2, RendererPlex *rp)
 {
-    s32 min_x = MIN (x1, x2), max_x = MAX (x1, x2), min_y = MIN (y1, y2),
-    max_y = MAX (y1, y2);
+    s32 min_x = MIN (x1, x2), max_x = MAX (x1, x2);
+    s32 min_y = MIN (y1, y2), max_y = MAX (y1, y2);
     
     draw_rectangle_t (min_x, min_y, max_x, max_y, fill_color, rp);
 }
 
 void
-operations_init (RendererPlex *rp)
+operations_init (RendererPlex *rp, Arena *arena)
 {
+    assert (rp != NULL && arena != NULL);
     current_rp = rp;
     
-    size_t buffer_size = (size_t)rp->w * rp->h * sizeof (*clean_frame_buffer);
-    
-    clean_frame_buffer = malloc (buffer_size);
-    assert (clean_frame_buffer != NULL);
-    
-    zoom_stack = dyn_arr_init (4, sizeof (ZoomRect));
-    assert (zoom_stack != NULL);
+    u64 buffer_size = (u64)rp->w * (u64)rp->h * sizeof (*clean_frame_buffer);
+    clean_frame_buffer = arena_alloc (arena, buffer_size, _Alignof (u32));
+    scale_x_map = arena_alloc (arena, (u64)rp->w * sizeof (*scale_x_map),
+                               _Alignof (s32));
+    zoom_stack.cap = MAX_ZOOM_LEVELS;
+    zoom_stack.items
+        = arena_alloc (arena, (u64)zoom_stack.cap * sizeof (*zoom_stack.items),
+                       _Alignof (ZoomRect));
+    zoom_stack.len = 0;
+    assert (clean_frame_buffer != NULL && scale_x_map != NULL
+            && zoom_stack.items != NULL);
     
     ZoomRect base_rect = { 0, 0, rp->w, rp->h };
-    dyn_arr_push (zoom_stack, &base_rect);
+    push_zoom (base_rect);
     
     is_dragging = false;
     needs_paused_redraw = true;
@@ -229,13 +272,13 @@ process_input (PlatformState *p)
             is_dragging = false;
             needs_paused_redraw = true;
         }
-        else if (zoom_stack && zoom_stack->len > 1)
+        else if (zoom_stack.len > 1)
         {
-            dyn_arr_pop (zoom_stack);
+            --zoom_stack.len;
 #ifndef NDEBUG
             ZoomRect cur = get_current_zoom ();
             printf ("Zoom out (undo): [%d, %d, %dx%d] (zoom level: %d)\n", cur.x,
-                    cur.y, cur.w, cur.h, zoom_stack->len - 1);
+                    cur.y, cur.w, cur.h, (s32)zoom_stack.len - 1);
 #endif
             needs_paused_redraw = true;
         }
@@ -319,10 +362,11 @@ process_input (PlatformState *p)
                             || new_h != cur.h))
                 {
                     ZoomRect next_zoom = { new_x1, new_y1, new_w, new_h };
-                    dyn_arr_push (zoom_stack, &next_zoom);
+                    push_zoom (next_zoom);
 #ifndef NDEBUG
                     printf ("Zoom in: [%d, %d, %dx%d] (zoom level: %d)\n",
-                            new_x1, new_y1, new_w, new_h, zoom_stack->len - 1);
+                            new_x1, new_y1, new_w, new_h,
+                            (s32)zoom_stack.len - 1);
 #endif
                 }
             }

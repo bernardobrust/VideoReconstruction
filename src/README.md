@@ -44,6 +44,7 @@ Testing can be performed with either a whitelist or a blacklist:
 **Not providing any option will run all of the tests.**
 
 List of tests (to be expanded):
+- arena: alignment, bounds, and release behavior
 - dyn_arr: dynamic array tests
 - math: macro, numeric helper, and geometry tests
 - input: input state tests

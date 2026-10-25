@@ -323,10 +323,10 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   assert (platform_state != NULL);
   assert (w > 0 && h > 0);
 
-  InternalState *state = (InternalState *)calloc (1, sizeof (InternalState));
+  InternalState *state = platform_storage_init (
+      platform_state, sizeof (*state), _Alignof (InternalState), 128u * 1024u);
   assert (state != NULL);
-
-  event_queue = *dyn_arr_init (16, sizeof (PlatformEvent));
+  platform_state->internal_state = state;
 
   win32_init_perf_frequency ();
   win32_enable_dpi_awareness ();
@@ -345,7 +345,11 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   wc.hCursor = LoadCursorA (NULL, IDC_ARROW);
   wc.lpszClassName = class_name;
 
-  RegisterClassExA (&wc);
+  if (!RegisterClassExA (&wc) && GetLastError () != ERROR_CLASS_ALREADY_EXISTS)
+    {
+      platform_shutdown (platform_state);
+      return;
+    }
 
   RECT window_rect = { 0, 0, w, h };
   DWORD style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
@@ -368,10 +372,19 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
       0, class_name,
       window_name != NULL ? window_name : "Video Reconstruction", style, pos_x,
       pos_y, window_w, window_h, NULL, NULL, instance, platform_state);
-  assert (hwnd != NULL);
+  if (hwnd == NULL)
+    {
+      platform_shutdown (platform_state);
+      return;
+    }
 
   HDC hdc = GetDC (hwnd);
-  assert (hdc != NULL);
+  if (hdc == NULL)
+    {
+      state->hwnd = hwnd;
+      platform_shutdown (platform_state);
+      return;
+    }
 
   SetStretchBltMode (hdc, COLORONCOLOR);
 
@@ -425,11 +438,9 @@ platform_shutdown (PlatformState *platform_state)
       state->time_period_set = false;
     }
 
-  free (state);
+  platform_storage_release (platform_state);
   platform_state->internal_state = NULL;
   platform_state->running = false;
-
-  dyn_arr_free (&event_queue);
 }
 
 bool

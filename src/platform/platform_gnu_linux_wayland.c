@@ -1000,14 +1000,12 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   (void)x;
   (void)y;
 
-  platform_state->internal_state = malloc (sizeof (InternalState));
-  assert (platform_state->internal_state != NULL
-          && "Failed to allocate memory from internal state");
-
-  event_queue = *dyn_arr_init (16, sizeof (PlatformEvent));
-
-  InternalState *state = (InternalState *)platform_state->internal_state;
-  memset (state, 0, sizeof (InternalState));
+  InternalState *state = platform_storage_init (
+      platform_state, sizeof (*state), _Alignof (InternalState), 128u * 1024u);
+  assert (state != NULL);
+  platform_state->internal_state = state;
+  state->fd = -1;
+  state->shm_fd = -1;
 
   struct timeval tv;
   tv.tv_sec = 0;
@@ -1019,7 +1017,11 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   srand (tv.tv_sec * 1000 * 1000 + tv.tv_usec);
 
   s32 fd = display_connect ();
-  assert (fd != -1);
+  if (fd == -1)
+    {
+      platform_shutdown (platform_state);
+      return;
+    }
 
   state->fd = fd;
   state->image_buffer = image_buffer;
@@ -1069,8 +1071,7 @@ platform_shutdown (PlatformState *platform_state)
   if (state->fd != -1)
     close (state->fd);
 
-  free (state);
-  dyn_arr_free (&event_queue);
+  platform_storage_release (platform_state);
   platform_state->internal_state = NULL;
 }
 

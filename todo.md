@@ -3,7 +3,6 @@
 - main.c : @FIX the problems with the UI framerate are already showing when highlighing the zoom area and pressing commands
 - decode.c : @OPTIMIZATION check if dereferencing `vp` every time is worth it, or create temp vars and set them all latter
 - decode.c : @IMPROVEMENT check if the "RGBA" vs "BGRA" problem is platform-specific, more specifically, if it has to do with "XRGB8888" on wayland, or with endianess.
-- decode.c : @IMPROVEMENT calculate the constants based on the display's size + all contants in general
 - dyn_arr.c : @OPTIMIZATION check if $2$ is a reasonable scale factor, or add a macro to change it
 - renderer.c : @FIX, @OPTIMIZATION the circle looks weird, it likelly has to do with the loops tho i'm not certain
 - basic.c : @IMPROVEMENT `_Generic` macro for `clamp` functions?
@@ -72,6 +71,7 @@ We won't need audio for this project
 - [x] Dynamic array
 - [x] Dynamic array tests
 - [x] Move tests to separate testing file for shared code
+- [x] Arena + tests
 - [ ] Add others latter as needed ...
 
 ### Renderer (CPU / software renderer) (shared)

@@ -12,7 +12,7 @@ typedef struct
   u32 *image_buffer;
 } RendererPlex;
 
-RendererPlex *init_renderer (s32 w, s32 h);
+RendererPlex *init_renderer (Arena *arena, s32 w, s32 h);
 
 // Utility
 u32 rgba (u32 r, u32 g, u32 b, u32 a);

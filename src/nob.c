@@ -310,13 +310,14 @@ main (s32 argc, byte **argv)
   if (str_eq (*target, "tests"))
     {
       nob_cmd_append (&compile_cmd, "tests/dyn_arr.test.c");
+      nob_cmd_append (&compile_cmd, "tests/arena.test.c");
       nob_cmd_append (&compile_cmd, "tests/math.test.c");
       nob_cmd_append (&compile_cmd, "tests/input.test.c");
       nob_cmd_append (&compile_cmd, "tests/utility.test.c");
       nob_cmd_append (&compile_cmd, "tests/renderer.test.c");
     }
   else
-    nob_cmd_append (&compile_cmd, "ds/dyn_arr.c");
+    nob_cmd_append (&compile_cmd, "ds/dyn_arr.c", "ds/arena.c");
 
   // Platform utilities
   nob_cmd_append (&compile_cmd, "platform/utility.c");
