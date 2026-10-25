@@ -23,3 +23,4 @@ Then use the following commands:
 - SPACE: Pauses/unpauses the video
 - DOWN ARROW: Decrease playback speed (down to 1/8th of the video's normal playback rate)
 - UP ARROW: Increase playback speed (up to the normal playback rate)
+- F: Toggle full screen

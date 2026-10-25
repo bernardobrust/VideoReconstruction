@@ -44,6 +44,7 @@ enum X11KeyValues
   KEY_UP = 103 + 8,
   KEY_DOWN = 108 + 8,
   KEY_SPACE = 57 + 8,
+  KEY_F = 33 + 8,
 };
 
 enum
@@ -73,6 +74,8 @@ enum
   X11_EVENT_MASK_BUTTON_MOTION = 1 << 13,
   X11_EVENT_MASK_EXPOSURE = 1 << 15,
   X11_EVENT_MASK_STRUCTURE_NOTIFY = 1 << 17,
+  X11_EVENT_MASK_SUBSTRUCTURE_NOTIFY = 1 << 19,
+  X11_EVENT_MASK_SUBSTRUCTURE_REDIRECT = 1 << 20,
   X11_GC_FOREGROUND = 1 << 2,
   X11_QUERY_EXTENSION = 98,
   X11_SHM_ATTACH = 1,
@@ -92,6 +95,11 @@ typedef struct
   u32 resource_counter;
   u32 wm_protocols;
   u32 wm_delete_window;
+  u32 net_wm_state;
+  u32 net_wm_state_fullscreen;
+  u32 screen_width;
+  u32 screen_height;
+  bool fullscreen;
   u16 max_request_words;
   u32 width;
   u32 height;
@@ -528,6 +536,9 @@ dispatch_event (PlatformState *platform_state, const u8 event[32])
         case KEY_SPACE:
           ev = is_press ? KeySpacePress : KeySpaceRelease;
           break;
+        case KEY_F:
+          ev = is_press ? KeyFPress : KeyFRelease;
+          break;
         default:
           valid = false;
           break;
@@ -654,6 +665,8 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
     }
 
   state->root = read_u32_le (additional + offset);
+  state->screen_width = read_u16_le (additional + offset + 20);
+  state->screen_height = read_u16_le (additional + offset + 22);
   state->root_visual = read_u32_le (additional + offset + 32);
   state->depth = additional[offset + 38];
   state->bits_per_pixel = 32;
@@ -708,7 +721,10 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   if (!create_window (state, x, y, w, h) || !set_title (state, window_name)
       || !intern_atom (state, "WM_PROTOCOLS", &state->wm_protocols)
-      || !intern_atom (state, "WM_DELETE_WINDOW", &state->wm_delete_window))
+      || !intern_atom (state, "WM_DELETE_WINDOW", &state->wm_delete_window)
+      || !intern_atom (state, "_NET_WM_STATE", &state->net_wm_state)
+      || !intern_atom (state, "_NET_WM_STATE_FULLSCREEN",
+                       &state->net_wm_state_fullscreen))
     goto fail_with_state;
 
   if (state->has_shm && state->shmid >= 0)
@@ -845,6 +861,41 @@ void
 platform_stop (PlatformState *platform_state)
 {
   platform_state->running = false;
+}
+
+ScreenResolution
+platform_get_screen_resolution (PlatformState *platform_state)
+{
+  ScreenResolution resolution = { 0, 0 };
+  if (platform_state == NULL || platform_state->internal_state == NULL)
+    return resolution;
+  InternalState *state = platform_state->internal_state;
+  resolution.width = (s32)state->screen_width;
+  resolution.height = (s32)state->screen_height;
+  return resolution;
+}
+
+void
+platform_set_fullscreen (PlatformState *platform_state, bool fullscreen)
+{
+  if (platform_state == NULL || platform_state->internal_state == NULL)
+    return;
+  InternalState *state = platform_state->internal_state;
+  if (state->fullscreen == fullscreen)
+    return;
+
+  u8 body[40] = { 0 };
+  write_u32_le (body, state->root);
+  write_u32_le (body + 8, X11_EVENT_MASK_SUBSTRUCTURE_REDIRECT
+                              | X11_EVENT_MASK_SUBSTRUCTURE_NOTIFY);
+  write_u32_le (body + 12, state->window);
+  write_u32_le (body + 16, state->net_wm_state);
+  body[20] = 32;
+  write_u32_le (body + 24, fullscreen ? 1 : 0);
+  write_u32_le (body + 28, state->net_wm_state_fullscreen);
+  write_u32_le (body + 36, 1);
+  if (send_request (state, 25, 0, body, sizeof (body)))
+    state->fullscreen = fullscreen;
 }
 
 void

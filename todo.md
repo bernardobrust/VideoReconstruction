@@ -58,8 +58,8 @@ We won't need audio for this project
 - [x] Raw X11 platform Layer
 - [x] Raw Wayland platform Layer
 - [x] Windows platform layer
-- [ ] Get screen resolution function
-- [ ] Full screen support
+- [x] Get screen resolution function
+- [x] Full screen support
 - [ ] OS independent threading
 - [ ] Mac platform layer? (Sounds like a pain for little gain)
 

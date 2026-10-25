@@ -55,6 +55,8 @@ global const u16 xdg_wm_base_get_xdg_surface_opcode = 2;
 global const u16 wl_shm_pool_create_buffer_opcode = 0;
 global const u16 wl_surface_attach_opcode = 1;
 global const u16 xdg_surface_get_toplevel_opcode = 1;
+global const u16 xdg_toplevel_set_fullscreen_opcode = 11;
+global const u16 xdg_toplevel_unset_fullscreen_opcode = 12;
 global const u16 wl_surface_commit_opcode = 6;
 global const u16 wl_display_error_event = 0;
 global const u32 format_xrgb8888 = 1;
@@ -822,6 +824,9 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
             case 57:
               ev = is_press ? KeySpacePress : KeySpaceRelease;
               break;
+            case 33:
+              ev = is_press ? KeyFPress : KeyFRelease;
+              break;
             default:
               valid = false;
               break;
@@ -1082,6 +1087,37 @@ void
 platform_stop (PlatformState *platform_state)
 {
   platform_state->running = false;
+}
+
+ScreenResolution
+platform_get_screen_resolution (PlatformState *platform_state)
+{
+  (void)platform_state;
+  ScreenResolution unsupported = { 0, 0 };
+  return unsupported;
+}
+
+void
+platform_set_fullscreen (PlatformState *platform_state, bool fullscreen)
+{
+  if (platform_state == NULL || platform_state->internal_state == NULL)
+    return;
+  InternalState *state = platform_state->internal_state;
+  if (state->xdg_toplevel == 0)
+    return;
+
+  byte msg[12] = "";
+  u64 msg_size = 0;
+  buf_write_u32 (msg, &msg_size, sizeof (msg), state->xdg_toplevel);
+  buf_write_u16 (msg, &msg_size, sizeof (msg),
+                 fullscreen ? xdg_toplevel_set_fullscreen_opcode
+                            : xdg_toplevel_unset_fullscreen_opcode);
+  buf_write_u16 (msg, &msg_size, sizeof (msg),
+                 fullscreen ? header_size + sizeof (u32) : header_size);
+  if (fullscreen)
+    buf_write_u32 (msg, &msg_size, sizeof (msg), 0);
+  if ((s64)msg_size != send (state->fd, msg, msg_size, 0))
+    platform_state->running = false;
 }
 
 void

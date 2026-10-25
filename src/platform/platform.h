@@ -9,48 +9,54 @@
 
 typedef struct
 {
-  void *internal_state;
-  bool running;
+    void *internal_state;
+    bool running;
 } PlatformState;
+
+typedef struct
+{
+    s32 width, height;
+} ScreenResolution;
 
 typedef enum
 {
-  KeyCtrlPress,
-  KeyCtrlRelease,
-  KeyShiftPress,
-  KeyShiftRelease,
-  KeyEscPress,
-  KeyEscRelease,
-  KeyOnePress,
-  KeyOneRelease,
-  KeyTwoPress,
-  KeyTwoRelease,
-  KeyThreePress,
-  KeyThreeRelease,
-  KeyPPress,
-  KeyPRelease,
-  KeyLeftPress,
-  KeyLeftRelease,
-  KeyRightPress,
-  KeyRightRelease,
-  KeyUpPress,
-  KeyUpRelease,
-  KeyDownPress,
-  KeyDownRelease,
-  KeySpacePress,
-  KeySpaceRelease,
-  MouseLeftPress,
-  MouseLeftRelease,
-  MouseRightPress,
-  MouseRightRelease,
-  MouseMove,
+    KeyCtrlPress,
+    KeyCtrlRelease,
+    KeyShiftPress,
+    KeyShiftRelease,
+    KeyEscPress,
+    KeyEscRelease,
+    KeyOnePress,
+    KeyOneRelease,
+    KeyTwoPress,
+    KeyTwoRelease,
+    KeyThreePress,
+    KeyThreeRelease,
+    KeyPPress,
+    KeyPRelease,
+    KeyLeftPress,
+    KeyLeftRelease,
+    KeyRightPress,
+    KeyRightRelease,
+    KeyUpPress,
+    KeyUpRelease,
+    KeyDownPress,
+    KeyDownRelease,
+    KeySpacePress,
+    KeySpaceRelease,
+    KeyFPress,
+    KeyFRelease,
+    MouseLeftPress,
+    MouseLeftRelease,
+    MouseRightPress,
+    MouseRightRelease,
+    MouseMove,
 } EventType;
 
 typedef struct
 {
-  EventType type;
-  s32 x;
-  s32 y;
+    EventType type;
+    s32 x, y;
 } PlatformEvent;
 
 // platform_update will push the events onto the queue, from where
@@ -61,8 +67,8 @@ extern DynArr event_queue;
 static inline void
 platform_event_push (EventType type, s32 x, s32 y)
 {
-  PlatformEvent ev = { type, x, y };
-  dyn_arr_push (&event_queue, &ev);
+    PlatformEvent ev = { type, x, y };
+    dyn_arr_push (&event_queue, &ev);
 }
 
 void platform_init (PlatformState *platform_state, const byte *window_name,
@@ -72,6 +78,9 @@ void platform_shutdown (PlatformState *platform_state);
 bool platform_update (PlatformState *platform_state);
 void platform_dispatch_events (void);
 void platform_present (PlatformState *platform_state);
+ScreenResolution
+platform_get_screen_resolution (PlatformState *platform_state);
+void platform_set_fullscreen (PlatformState *platform_state, bool fullscreen);
 
 f64 platform_get_time (void);
 void platform_sleep (f64 ms);

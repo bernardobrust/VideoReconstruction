@@ -4,6 +4,7 @@
 #include <libavformat/avformat.h>
 
 #include "macros.h"
+#include "platform.h"
 #include "renderer.h"
 
 typedef struct
@@ -20,3 +21,4 @@ typedef struct
 
 VideoPlex *init_video (byte *video_file);
 s32 decode_next_frame (VideoPlex *vp, RendererPlex *rp);
+void decode_set_display_resolution (ScreenResolution resolution);

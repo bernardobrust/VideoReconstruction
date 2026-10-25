@@ -34,6 +34,9 @@ typedef struct
   byte *image_buffer;
   BITMAPINFO bitmap_info;
   bool time_period_set;
+  bool fullscreen;
+  DWORD windowed_style;
+  WINDOWPLACEMENT windowed_placement;
 } InternalState;
 
 global LARGE_INTEGER win32_perf_frequency;
@@ -197,6 +200,9 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
           case VK_SPACE:
             ev = is_press ? KeySpacePress : KeySpaceRelease;
             break;
+          case 'F':
+            ev = is_press ? KeyFPress : KeyFRelease;
+            break;
           default:
             valid = false;
             break;
@@ -297,6 +303,7 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
         platform_event_push (KeyUpRelease, 0, 0);
         platform_event_push (KeyDownRelease, 0, 0);
         platform_event_push (KeySpaceRelease, 0, 0);
+        platform_event_push (KeyFRelease, 0, 0);
         platform_event_push (MouseLeftRelease, 0, 0);
         platform_event_push (MouseRightRelease, 0, 0);
         return 0;
@@ -369,6 +376,9 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   SetStretchBltMode (hdc, COLORONCOLOR);
 
   state->hwnd = hwnd;
+  state->windowed_style = style & ~WS_VISIBLE;
+  state->windowed_placement.length = sizeof (WINDOWPLACEMENT);
+  GetWindowPlacement (hwnd, &state->windowed_placement);
   state->hdc = hdc;
   state->width = w;
   state->height = h;
@@ -461,6 +471,56 @@ platform_present (PlatformState *platform_state)
   StretchDIBits (state->hdc, 0, 0, client_w, client_h, 0, 0, state->width,
                  state->height, state->image_buffer, &state->bitmap_info,
                  DIB_RGB_COLORS, SRCCOPY);
+}
+
+ScreenResolution
+platform_get_screen_resolution (PlatformState *platform_state)
+{
+  (void)platform_state;
+  ScreenResolution resolution
+      = { GetSystemMetrics (SM_CXSCREEN), GetSystemMetrics (SM_CYSCREEN) };
+  return resolution;
+}
+
+void
+platform_set_fullscreen (PlatformState *platform_state, bool fullscreen)
+{
+  if (platform_state == NULL || platform_state->internal_state == NULL)
+    return;
+  InternalState *state = platform_state->internal_state;
+  if (state->fullscreen == fullscreen)
+    return;
+
+  if (fullscreen)
+    {
+      state->windowed_placement.length = sizeof (WINDOWPLACEMENT);
+      GetWindowPlacement (state->hwnd, &state->windowed_placement);
+      state->windowed_style
+          = (DWORD)GetWindowLongPtrA (state->hwnd, GWL_STYLE);
+      HMONITOR monitor
+          = MonitorFromWindow (state->hwnd, MONITOR_DEFAULTTONEAREST);
+      MONITORINFO info = { 0 };
+      info.cbSize = sizeof (info);
+      if (!GetMonitorInfoA (monitor, &info))
+        return;
+      SetWindowLongPtrA (
+          state->hwnd, GWL_STYLE,
+          (state->windowed_style & ~(WS_OVERLAPPEDWINDOW | WS_VISIBLE))
+              | WS_POPUP);
+      SetWindowPos (state->hwnd, HWND_TOP, info.rcMonitor.left,
+                    info.rcMonitor.top,
+                    info.rcMonitor.right - info.rcMonitor.left,
+                    info.rcMonitor.bottom - info.rcMonitor.top,
+                    SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+    }
+  else
+    {
+      SetWindowLongPtrA (state->hwnd, GWL_STYLE, state->windowed_style);
+      SetWindowPlacement (state->hwnd, &state->windowed_placement);
+      SetWindowPos (state->hwnd, NULL, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+    }
+  state->fullscreen = fullscreen;
 }
 
 double

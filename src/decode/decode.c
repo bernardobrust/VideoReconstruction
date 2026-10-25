@@ -15,7 +15,17 @@
 
 // We may want to calculate these based on the display's dimentions
 const f32 MAX_MOTION_MAGNITUDE = 90.0f;
-const f32 MAX_DISPLAY_LENGTH = 15.0f;
+f32 MAX_DISPLAY_LENGTH = 15.0f;
+
+void
+decode_set_display_resolution (ScreenResolution resolution)
+{
+  if (resolution.width > 0 && resolution.height > 0)
+    MAX_DISPLAY_LENGTH
+        = (f32)(resolution.width < resolution.height ? resolution.width
+                                                     : resolution.height)
+          / 48.0f;
+}
 
 // Drawing the motion vectors
 // I don't really know if this should be in the decode, renderer would probably
