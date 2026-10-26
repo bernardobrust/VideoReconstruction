@@ -1,7 +1,4 @@
 ## Notes
-- Useles bool functions for threading
-- @VALIDATION check if the posix threading back-end also works
-
 ### Per-file basis
 - main.c : @FIX UI framerate problems are noticeable when highlighting the zoom area and pressing commands
 - decode.c : @OPTIMIZATION check whether dereferencing `vp` repeatedly is worth replacing with temporary variables

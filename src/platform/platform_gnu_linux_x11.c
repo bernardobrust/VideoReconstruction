@@ -835,7 +835,11 @@ platform_update (PlatformState *platform_state)
       // X11 represents key auto-repeat as a release followed by a press with
       // the same keycode and timestamp. Treat that pair as a continued hold;
       // forwarding the release would briefly clear the input state each time
-      // the server repeats the key.
+      // the server repeats the key. Keep a trailing release until we can tell
+      // whether its matching press arrived in the next socket read.
+      if ((state->read_buf[0] & 0x7f) == 3 && state->read_len == 32)
+        break;
+
       if ((state->read_buf[0] & 0x7f) == 3 && state->read_len >= 64
           && (state->read_buf[32] & 0x7f) == 2
           && state->read_buf[1] == state->read_buf[33]
@@ -887,14 +891,15 @@ platform_set_fullscreen (PlatformState *platform_state, bool fullscreen)
 
   u8 body[40] = { 0 };
   write_u32_le (body, state->root);
-  write_u32_le (body + 8, X11_EVENT_MASK_SUBSTRUCTURE_REDIRECT
+  write_u32_le (body + 4, X11_EVENT_MASK_SUBSTRUCTURE_REDIRECT
                               | X11_EVENT_MASK_SUBSTRUCTURE_NOTIFY);
+  body[8] = X11_EVENT_CLIENT_MESSAGE;
+  body[9] = 32;
   write_u32_le (body + 12, state->window);
   write_u32_le (body + 16, state->net_wm_state);
-  body[20] = 32;
-  write_u32_le (body + 24, fullscreen ? 1 : 0);
-  write_u32_le (body + 28, state->net_wm_state_fullscreen);
-  write_u32_le (body + 36, 1);
+  write_u32_le (body + 20, fullscreen ? 1 : 0);
+  write_u32_le (body + 24, state->net_wm_state_fullscreen);
+  write_u32_le (body + 32, 1);
   if (send_request (state, 25, 0, body, sizeof (body)))
     state->fullscreen = fullscreen;
 }
