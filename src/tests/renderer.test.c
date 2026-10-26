@@ -50,6 +50,14 @@ renderer_test_lines_and_rectangles (void)
 
   draw_hline (0, 6, -1, 0xFFFFFFFF, &rp);
   draw_hline (0, 6, TEST_H, 0xFFFFFFFF, &rp);
+  draw_hline (-5, 20, 6, 0xFFABCDEF, &rp);
+  for (s32 x = 0; x < TEST_W; ++x)
+    assert_equal (0xFFABCDEF, pixels[6 * TEST_W + x]);
+
+  draw_hline (-5, -1, 4, 0xFFFFFFFF, &rp);
+  draw_hline (TEST_W, TEST_W + 4, 4, 0xFFFFFFFF, &rp);
+  for (s32 x = 0; x < TEST_W; ++x)
+    assert_equal (x <= 3 ? 0xFF040506 : 0, pixels[3 * TEST_W + x]);
 
   assert_equal (0, pixels[0]);
 
@@ -72,6 +80,12 @@ renderer_test_lines_and_rectangles (void)
   memset (pixels, 0, sizeof pixels);
   draw_rectangle (3, 1, 3, 5, 0xFFFFFFFF, &rp);
   assert_equal (0, pixels[1 * TEST_W + 3]);
+
+  memset (pixels, 0, sizeof pixels);
+  draw_rectangle (-20, -20, -1, -1, 0xFFFFFFFF, &rp);
+  draw_rectangle (TEST_W, TEST_H, TEST_W + 2, TEST_H + 2, 0xFFFFFFFF, &rp);
+  for (s32 i = 0; i < TEST_PIXELS; ++i)
+    assert_equal (0, pixels[i]);
 
   retrieve_results ();
 }
@@ -108,6 +122,14 @@ renderer_test_triangles (void)
   assert_equal (color, pixels[1 * TEST_W]);
   assert_equal (color, pixels[3 * TEST_W]);
   assert_equal (0, pixels[6 * TEST_W + 6]);
+
+  memset (pixels, 0, sizeof pixels);
+  draw_circle (3, 3, 2, color, &rp);
+  assert_equal (color, pixels[1 * TEST_W + 3]);
+  assert_equal (color, pixels[5 * TEST_W + 3]);
+  assert_equal (color, pixels[3 * TEST_W + 1]);
+  assert_equal (color, pixels[3 * TEST_W + 5]);
+  assert_equal (0, pixels[0]);
 
   retrieve_results ();
 }
@@ -185,6 +207,12 @@ renderer_test_transformed_shapes (void)
   assert_equal (0, pixels[0]);
 
   memset (pixels, 0, sizeof pixels);
+  draw_rotated_rectangle (3, 3, 4, 2, 1.57079632679f, color, &rp);
+  assert_equal (color, pixels[3 * TEST_W + 3]);
+  assert_equal (color, pixels[2 * TEST_W + 3]);
+  assert_equal (0, pixels[0]);
+
+  memset (pixels, 0, sizeof pixels);
   draw_rotated_oriented_rectangle (1, 3, 5, 3, 2, color, &rp);
 
   assert_true (pixels[3 * TEST_W + 3] == color
@@ -214,6 +242,7 @@ renderer_test_transparency (void)
 
   draw_rectangle_t (1, 1, 3, 3, 0xFFFF0000, &rp);
   assert_equal (0xFFFF0000, pixels[2 * TEST_W + 2]);
+  assert_equal (0xFF204060, pixels[0]);
 
   for (s32 i = 0; i < TEST_PIXELS; ++i)
     pixels[i] = 0xFF0000FF;
@@ -255,10 +284,21 @@ renderer_transparency_tests (void)
 void
 renderer_all_tests (void)
 {
+  start_group ("Renderer Color Tests");
   renderer_color_tests ();
+  end_group ();
+
+  start_group ("Renderer Rasterization Tests");
   renderer_raster_tests ();
+  end_group ();
+
+  start_group ("Renderer Geometry Tests");
   renderer_geometry_tests ();
+  end_group ();
+
+  start_group ("Renderer Transparency Tests");
   renderer_transparency_tests ();
+  end_group ();
 }
 
 // Just for good practice

@@ -17,6 +17,10 @@ math_test_min_max (void)
   assert_equal (-4, MIN3 (2, -4, 0));
   assert_equal (6, MAX3 (2, 4, 6));
   assert_equal (4, MAX3 (0, 4, -6));
+  assert_equal (3, MIN (5, 3));
+  assert_equal (5, MAX (3, 5));
+  assert_equal (-8, MIN3 (-8, -4, -6));
+  assert_equal (9, MAX3 (7, 9, 8));
 
   retrieve_results ();
 }
@@ -31,12 +35,16 @@ math_test_bit_and_string_macros (void)
   assert_equal (4, ROUNDUP_4 (4));
   assert_equal (8, ROUNDUP_4 (5));
   assert_equal (16, ROUNDUP_4 (15));
+  assert_equal (16, ROUNDUP_4 (16));
+  assert_equal (32, ROUNDUP_4 (29));
   assert_equal (4, CSTRING_LEN ("test"));
   assert_equal (0, CSTRING_LEN (""));
   assert_equal (0, DIV_255 (0));
   assert_equal (1, DIV_255 (255));
   assert_equal (127, DIV_255 (127 * 255));
   assert_equal (255, DIV_255 (255 * 255));
+  assert_equal (0, DIV_255 (254));
+  assert_equal (2, DIV_255 (2 * 255));
 
   retrieve_results ();
 }
@@ -52,6 +60,12 @@ math_test_clamp (void)
   assert_equal (4, clamp_s32 (9, -2, 4));
   assert_equal (2, clamp_s32 (2, -2, 4));
   assert_equal (7, clamp_s32 (0, 7, 7));
+  assert_equal (-5, clamp_s32 (-5, -10, 10));
+  assert_equal (0, clamp_s32 (0, -10, 10));
+  assert_approx (-5.0, clamp_f32 (-5.0f, -5.0f, 5.0f), 1e-6);
+  assert_approx (-5.0, clamp_f32 (-10.0f, -5.0f, 5.0f), 1e-6);
+  assert_approx (0.0, clamp_f32 (0.0f, -5.0f, 5.0f), 1e-6);
+  assert_approx (5.0, clamp_f32 (10.0f, -5.0f, 5.0f), 1e-6);
   assert_approx (0.0, clamp_f32 (-1.0f, 0.0f, 5.0f), 1e-6);
   assert_approx (0.0, clamp_f32 (0.0f, 0.0f, 5.0f), 1e-6);
   assert_approx (5.0, clamp_f32 (5.0f, 0.0f, 5.0f), 1e-6);
@@ -72,6 +86,11 @@ math_test_hypot (void)
   assert_approx (5.0, hypot_f32 (-3.0f, 4.0f), 0.3);
   assert_approx (5.0, hypot_f32 (3.0f, -4.0f), 0.3);
   assert_approx (10.0, hypot_f32 (10.0f, 0.0f), 1e-6);
+  assert_approx (10.0, hypot_f32 (0.0f, -10.0f), 1e-6);
+  assert_approx (5.4, hypot_f32 (4.0f, 4.0f), 0.3);
+  assert_approx (10.8, hypot_f32 (8.0f, 8.0f), 0.6);
+  assert_approx ((f64)hypot_f32 (3.0f, 4.0f),
+                 (f64)hypot_f32 (-3.0f, -4.0f), 1e-6);
   assert_approx ((f64)hypot_f32 (3.0f, 4.0f), (f64)hypot_f32 (4.0f, 3.0f),
                  1e-6);
   assert_true (hypot_f32 (3.0f, 4.0f) > 4.7f);
@@ -92,6 +111,10 @@ math_test_determinant (void)
   assert_equal (1, determinant_ab_ap_s32 (10, 20, 12, 21, 11, 20));
   assert_equal (0, determinant_ab_ap_s32 (3, -4, 3, -4, 9, 10));
   assert_equal (0, determinant_ab_ap_s32 (1, 1, 3, 3, 5, 5));
+  assert_equal (-2, determinant_ab_ap_s32 (10, 20, 12, 20, 10, 21));
+  assert_equal (1, determinant_ab_ap_s32 (10, 20, 11, 21, 11, 20));
+  assert_equal (-1, determinant_ab_ap_s32 (11, 21, 10, 20, 11, 20));
+  assert_equal (-2, determinant_ab_ap_s32 (100, -40, 102, -40, 100, -39));
 
   retrieve_results ();
 }
@@ -119,7 +142,15 @@ math_geometry_tests (void)
 void
 math_all_tests (void)
 {
+  start_group ("Math Macro Tests");
   math_macro_tests ();
+  end_group ();
+
+  start_group ("Math Function Tests");
   math_function_tests ();
+  end_group ();
+
+  start_group ("Math Geometry Tests");
   math_geometry_tests ();
+  end_group ();
 }

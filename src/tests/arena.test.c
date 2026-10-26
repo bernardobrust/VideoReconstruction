@@ -31,6 +31,33 @@ arena_test_alignment_and_capacity (void)
 }
 
 static void
+arena_test_sequential_allocations (void)
+{
+  start_test_suite ("Arena sequential allocations and padding");
+
+  Arena arena = { 0 };
+  arena_init (&arena, 256);
+
+  u8 *first = arena_alloc (&arena, 3, 1);
+  u32 *second = arena_alloc (&arena, sizeof (*second), _Alignof (u32));
+  u64 *third = arena_alloc (&arena, sizeof (*third), _Alignof (u64));
+
+  assert_not_null (first);
+  assert_not_null (second);
+  assert_not_null (third);
+  assert_true ((uintptr_t)second % _Alignof (u32) == 0);
+  assert_true ((uintptr_t)third % _Alignof (u64) == 0);
+  assert_true ((ubyte *)second >= first + 3);
+  assert_true ((ubyte *)third >= (ubyte *)second + sizeof (*second));
+  assert_true (arena.used >= 3 + sizeof (*second) + sizeof (*third));
+  assert_true (arena.used < arena.capacity);
+
+  arena_release (&arena);
+
+  retrieve_results ();
+}
+
+static void
 arena_test_release (void)
 {
   start_test_suite ("Arena release");
@@ -49,6 +76,11 @@ arena_test_release (void)
 void
 arena_all_tests (void)
 {
+  start_group ("Arena Tests");
+
   arena_test_alignment_and_capacity ();
+  arena_test_sequential_allocations ();
   arena_test_release ();
+
+  end_group ();
 }

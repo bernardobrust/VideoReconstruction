@@ -14,7 +14,7 @@ enum
 {
   FRAME_TEST_COUNT = 128,
   FRAME_TEST_CAPACITY = 3,
-  POOL_TEST_ROWS = 19,
+  POOL_TEST_MAX_ROWS = 20,
   POOL_TEST_WORKERS = 4
 };
 
@@ -67,6 +67,14 @@ typedef struct
 } RowsTestContext;
 
 local void
+thread_test_entry (void *arg)
+{
+  s32 *value = arg;
+
+  *value = 42;
+}
+
+local void
 fill_rows (void *arg, s32 first_row, s32 end_row)
 {
   RowsTestContext *context = arg;
@@ -78,7 +86,7 @@ fill_rows (void *arg, s32 first_row, s32 end_row)
 local void
 renderer_pool_test (void)
 {
-  start_test_suite ("Renderer worker pool: disjoint row coverage");
+  start_test_suite ("Renderer worker pool: partitioning and repeated runs");
 
   Arena arena = { 0 };
   arena_init (&arena, 64 * 1024);
@@ -91,28 +99,60 @@ renderer_pool_test (void)
   (void)initialized;
   (void)serial_initialized;
 
-  u32 pixels[POOL_TEST_ROWS * 7] = { 0 };
-  u32 serial_pixels[POOL_TEST_ROWS * 7] = { 0 };
-  RowsTestContext context = { pixels, 7 };
-  RowsTestContext serial_context = { serial_pixels, 7 };
+  enum
+  {
+    TEST_WIDTH = 7,
+    TEST_ROW_CASES = 5
+  };
 
-  fill_rows (&serial_context, 0, POOL_TEST_ROWS);
-  renderer_pool_run_rows (&pool, POOL_TEST_ROWS, fill_rows, &context);
+  const s32 row_counts[TEST_ROW_CASES] = { 1, 2, 3, 19, POOL_TEST_MAX_ROWS };
+  u32 pixels[POOL_TEST_MAX_ROWS * TEST_WIDTH] = { 0 };
+  u32 serial_pixels[POOL_TEST_MAX_ROWS * TEST_WIDTH] = { 0 };
+  RowsTestContext context = { pixels, TEST_WIDTH };
+  RowsTestContext serial_context = { serial_pixels, TEST_WIDTH };
 
-  assert_equal (0, memcmp (serial_pixels, pixels, sizeof pixels));
+  for (s32 test_index = 0; test_index < TEST_ROW_CASES; ++test_index)
+    {
+      s32 row_count = row_counts[test_index];
+      size_t used_bytes = (size_t)row_count * TEST_WIDTH * sizeof (u32);
 
-  for (s32 y = 0; y < POOL_TEST_ROWS; ++y)
-    for (s32 x = 0; x < context.width; ++x)
-      assert_equal ((u32)(y + 1), pixels[y * context.width + x]);
+      memset (pixels, 0, sizeof pixels);
+      memset (serial_pixels, 0, sizeof serial_pixels);
 
-  memset (pixels, 0, sizeof pixels);
-  renderer_pool_run_rows (&serial_pool, POOL_TEST_ROWS, fill_rows, &context);
+      fill_rows (&serial_context, 0, row_count);
+      renderer_pool_run_rows (&pool, row_count, fill_rows, &context);
 
-  assert_equal (0, memcmp (serial_pixels, pixels, sizeof pixels));
+      assert_equal (0, memcmp (serial_pixels, pixels, used_bytes));
+
+      memset (pixels, 0, sizeof pixels);
+      renderer_pool_run_rows (&serial_pool, row_count, fill_rows, &context);
+
+      assert_equal (0, memcmp (serial_pixels, pixels, used_bytes));
+
+      for (s32 y = 0; y < row_count; ++y)
+        for (s32 x = 0; x < TEST_WIDTH; ++x)
+          assert_equal ((u32)(y + 1), pixels[y * TEST_WIDTH + x]);
+    }
 
   renderer_pool_shutdown (&serial_pool);
   renderer_pool_shutdown (&pool);
   arena_release (&arena);
+
+  retrieve_results ();
+}
+
+local void
+platform_thread_start_and_join_test (void)
+{
+  start_test_suite ("Platform thread: start, execute, and join");
+
+  PlatformThread thread;
+  s32 value = 0;
+  bool started = platform_thread_start (&thread, thread_test_entry, &value);
+
+  assert_true (started);
+  platform_thread_join (&thread);
+  assert_equal (42, value);
 
   retrieve_results ();
 }
@@ -157,13 +197,51 @@ frame_queue_test_order_and_capacity (void)
   retrieve_results ();
 }
 
+local void
+frame_queue_test_finish_and_stop (void)
+{
+  start_test_suite ("Frame queue: finish, drain, and stop states");
+
+  Arena arena = { 0 };
+  arena_init (&arena, 64 * 1024);
+  FrameQueue queue;
+  FrameQueueFrame frame;
+  frame_queue_init (&queue, &arena, 2, 2, 1);
+
+  assert_false (frame_queue_should_stop (&queue));
+  assert_true (frame_queue_acquire_write (&queue, &frame));
+
+  frame.renderer->image_buffer[0] = 1234;
+  frame_queue_publish (&queue, frame);
+  frame_queue_finish (&queue, 1);
+
+  assert_true (frame_queue_take (&queue, &frame));
+  assert_equal (1234, frame.renderer->image_buffer[0]);
+  
+  frame_queue_release (&queue, frame);
+  assert_false (frame_queue_take (&queue, &frame));
+  assert_equal (1, frame_queue_result (&queue));
+  assert_false (frame_queue_acquire_write (&queue, &frame));
+
+  frame_queue_stop (&queue);
+  assert_true (frame_queue_should_stop (&queue));
+  assert_false (frame_queue_acquire_write (&queue, &frame));
+
+  frame_queue_destroy (&queue);
+  arena_release (&arena);
+
+  retrieve_results ();
+}
+
 void
 threading_all_tests (void)
 {
   start_group ("Threading and Pipeline Tests");
 
   platform_core_count_test ();
+  platform_thread_start_and_join_test ();
   frame_queue_test_order_and_capacity ();
+  frame_queue_test_finish_and_stop ();
   renderer_pool_test ();
   
   end_group ();

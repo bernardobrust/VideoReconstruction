@@ -111,56 +111,17 @@ main (s32 argc, byte **argv)
   start_testing ();
 
   if (dyn_arr)
-    {
-      start_group ("Dynamic Array Tests");
-      dyn_arr_all_tests ();
-      end_group ();
-    }
+    dyn_arr_all_tests ();
   if (arena)
-    {
-      start_group ("Arena Tests");
-      arena_all_tests ();
-      end_group ();
-    }
+    arena_all_tests ();
   if (math)
-    {
-      start_group ("Math Macro Tests");
-      math_macro_tests ();
-      end_group ();
-      start_group ("Math Function Tests");
-      math_function_tests ();
-      end_group ();
-      start_group ("Math Geometry Tests");
-      math_geometry_tests ();
-      end_group ();
-    }
+    math_all_tests ();
   if (input)
-    {
-      start_group ("Input Tests");
-      input_all_tests ();
-      end_group ();
-    }
+    input_all_tests ();
   if (utility)
-    {
-      start_group ("Platform Utility Tests");
-      utility_all_tests ();
-      end_group ();
-    }
+    utility_all_tests ();
   if (renderer)
-    {
-      start_group ("Renderer Color Tests");
-      renderer_color_tests ();
-      end_group ();
-      start_group ("Renderer Rasterization Tests");
-      renderer_raster_tests ();
-      end_group ();
-      start_group ("Renderer Geometry Tests");
-      renderer_geometry_tests ();
-      end_group ();
-      start_group ("Renderer Transparency Tests");
-      renderer_transparency_tests ();
-      end_group ();
-    }
+    renderer_all_tests ();
   if (threading)
     threading_all_tests ();
 

@@ -44,6 +44,7 @@ dyn_arr_test_init (void)
 
   dyn_arr_free (xs);
   dyn_arr_free (xs2);
+
   retrieve_results ();
 }
 
@@ -80,6 +81,7 @@ dyn_arr_test_get (void)
 
   dyn_arr_free (xs);
   dyn_arr_free (xs2);
+
   retrieve_results ();
 }
 
@@ -124,6 +126,7 @@ dyn_arr_test_set (void)
 
   dyn_arr_free (xs);
   dyn_arr_free (xs2);
+
   retrieve_results ();
 }
 
@@ -182,6 +185,7 @@ dyn_arr_test_push (void)
 
   dyn_arr_free (xs);
   dyn_arr_free (xs2);
+
   retrieve_results ();
 }
 
@@ -232,6 +236,7 @@ dyn_arr_test_insert (void)
 
   dyn_arr_free (xs);
   dyn_arr_free (xs2);
+
   retrieve_results ();
 }
 
@@ -265,6 +270,7 @@ dyn_arr_test_pop (void)
   // -----------------------------------------------------------
 
   dyn_arr_free (xs);
+
   retrieve_results ();
 }
 
@@ -318,12 +324,15 @@ dyn_arr_test_delete (void)
 
   dyn_arr_free (xs);
   dyn_arr_free (xs2);
+
   retrieve_results ();
 }
 
 void
 dyn_arr_all_tests (void)
 {
+  start_group ("Dynamic Array Tests");
+
   dyn_arr_test_init ();
   dyn_arr_test_get ();
   dyn_arr_test_set ();
@@ -331,4 +340,6 @@ dyn_arr_all_tests (void)
   dyn_arr_test_insert ();
   dyn_arr_test_pop ();
   dyn_arr_test_delete ();
+
+  end_group ();
 }
