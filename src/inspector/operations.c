@@ -8,11 +8,12 @@
 #include "basic.h"
 #include "dyn_arr.h"
 #include "input.h"
+#include "operations.h"
 #include "performance.h"
 #include "platform.h"
 #include "renderer.h"
+#include "renderer_pool.h"
 
-// Playback controls (Fixed 1/8 step)
 f64 playback_speed = 1.0, speed_step = 0.125;
 bool paused = false, fullscreen = false, slow_down, speed_up;
 
@@ -29,7 +30,7 @@ typedef struct
 
 enum
 {
-  MAX_ZOOM_LEVELS = 256
+  MAX_ZOOM_LEVELS = 16
 };
 
 ZoomStack zoom_stack = { 0 };
@@ -48,6 +49,7 @@ add_array_size (u64 *total, u64 count, u64 element_size)
 {
   assert (element_size > 0);
   assert (count <= (UINT64_MAX - *total) / element_size);
+
   *total += count * element_size;
 }
 
@@ -77,6 +79,7 @@ push_zoom (ZoomRect rect)
                (zoom_stack.len - 2) * sizeof (*zoom_stack.items));
       --zoom_stack.len;
     }
+
   zoom_stack.items[zoom_stack.len++] = rect;
 }
 
@@ -92,17 +95,55 @@ get_current_zoom (void)
   return def;
 }
 
+typedef struct
+{
+  u32 *src, *dst;
+  s32 src_w, src_h, dst_w, dst_h, zx, zy, zw, zh;
+  s32 *x_map;
+  bool fast_copy;
+} ScaleRowsContext;
+
+local void
+scale_image_rows (void *arg, s32 first_row, s32 end_row)
+{
+  ScaleRowsContext *context;
+  u32 *src_row, *dst_row;
+  s32 x, y, sy;
+
+  context = arg;
+  for (y = first_row; y < end_row; ++y)
+    {
+      src_row = context->src;
+      dst_row = context->dst + (u64)y * context->dst_w;
+
+      if (context->fast_copy)
+        {
+          memcpy (dst_row, src_row + (u64)y * context->src_w,
+                  (u64)context->dst_w * sizeof (*dst_row));
+          continue;
+        }
+
+      sy = context->zy + (s32)(((s64)y * context->zh) / context->dst_h);
+      if (sy >= context->src_h)
+        sy = context->src_h - 1;
+
+      src_row += (u64)sy * context->src_w;
+
+      for (x = 0; x < context->dst_w; ++x)
+        dst_row[x] = src_row[context->x_map[x]];
+    }
+}
+
 local void
 scale_image_region (u32 *src, s32 src_w, s32 src_h, s32 zx, s32 zy, s32 zw,
-                    s32 zh, u32 *dst, s32 dst_w, s32 dst_h)
+                    s32 zh, u32 *dst, s32 dst_w, s32 dst_h, RendererPool *pool)
 {
-  // 1:1 unzoomed fast path
-  if (unlikely (zx == 0 && zy == 0 && zw == dst_w && zh == dst_h
-                && src_w == dst_w && src_h == dst_h))
-    {
-      memcpy (dst, src, dst_w * dst_h * sizeof (u32));
-      return;
-    }
+  bool fast_copy;
+  s32 x, sx;
+  ScaleRowsContext context;
+
+  fast_copy = zx == 0 && zy == 0 && zw == dst_w && zh == dst_h
+              && src_w == dst_w && src_h == dst_h;
 
   // We could clamp, but this seams faster (I didn't bechmark yet)
   if (zx < 0)
@@ -118,27 +159,24 @@ scale_image_region (u32 *src, s32 src_w, s32 src_h, s32 zx, s32 zy, s32 zw,
   if (zy + zh > src_h)
     zh = src_h - zy;
 
-  // Precompute 1D horizontal map to remove division and multiplication in the
-  // inner row loop
-  for (s32 x = 0; x < dst_w; ++x)
+  if (likely (!fast_copy))
     {
-      s32 sx = zx + (s32)(((s64)x * zw) / dst_w);
-      if (sx >= src_w)
-        sx = src_w - 1;
-      scale_x_map[x] = sx;
+      for (x = 0; x < dst_w; ++x)
+        {
+          sx = zx + (s32)(((s64)x * zw) / dst_w);
+          if (sx >= src_w)
+            sx = src_w - 1;
+          scale_x_map[x] = sx;
+        }
     }
 
-  for (s32 y = 0; y < dst_h; ++y)
-    {
-      s32 sy = zy + (s32)(((s64)y * zh) / dst_h);
-      if (sy >= src_h)
-        sy = src_h - 1;
-
-      u32 *src_row = src + sy * src_w, *dst_row = dst + y * dst_w;
-
-      for (s32 x = 0; x < dst_w; ++x)
-        dst_row[x] = src_row[scale_x_map[x]];
-    }
+  context
+      = (ScaleRowsContext){ src, dst, src_w, src_h, dst_w,       dst_h,
+                            zx,  zy,  zw,    zh,    scale_x_map, fast_copy };
+  if (pool != NULL)
+    renderer_pool_run_rows (pool, dst_h, scale_image_rows, &context);
+  else
+    scale_image_rows (&context, 0, dst_h);
 }
 
 inline local void
@@ -154,6 +192,7 @@ void
 operations_init (RendererPlex *rp, Arena *arena)
 {
   assert (rp != NULL && arena != NULL);
+
   current_rp = rp;
 
   u64 buffer_size = (u64)rp->w * (u64)rp->h * sizeof (*clean_frame_buffer);
@@ -165,6 +204,7 @@ operations_init (RendererPlex *rp, Arena *arena)
       = arena_alloc (arena, (u64)zoom_stack.cap * sizeof (*zoom_stack.items),
                      _Alignof (ZoomRect));
   zoom_stack.len = 0;
+
   assert (clean_frame_buffer != NULL && scale_x_map != NULL
           && zoom_stack.items != NULL);
 
@@ -185,20 +225,42 @@ operations_on_frame_decoded (RendererPlex *rp)
 }
 
 void
-operations_apply_zoom (RendererPlex *rp)
+operations_get_render_state (OperationsRenderState *state)
 {
+  assert (state != NULL);
+
+  ZoomRect zoom;
+
+  zoom = get_current_zoom ();
+  state->zoom_x = zoom.x;
+  state->zoom_y = zoom.y;
+  state->zoom_w = zoom.w;
+  state->zoom_h = zoom.h;
+  state->is_dragging = is_dragging;
+  state->drag_start_x = drag_start_x;
+  state->drag_start_y = drag_start_y;
+  state->drag_cur_x = drag_cur_x;
+  state->drag_cur_y = drag_cur_y;
+}
+
+void
+operations_apply_zoom (RendererPlex *rp, RendererPool *pool,
+                       const OperationsRenderState *state)
+{
+  assert (state != NULL);
+
   if (!clean_frame_buffer || !rp)
     return;
 
   operations_on_frame_decoded (rp);
 
-  ZoomRect cur = get_current_zoom ();
-  scale_image_region (clean_frame_buffer, rp->w, rp->h, cur.x, cur.y, cur.w,
-                      cur.h, rp->image_buffer, rp->w, rp->h);
+  scale_image_region (clean_frame_buffer, rp->w, rp->h, state->zoom_x,
+                      state->zoom_y, state->zoom_w, state->zoom_h,
+                      rp->image_buffer, rp->w, rp->h, pool);
 
-  if (is_dragging)
-    draw_selection_box (drag_start_x, drag_start_y, drag_cur_x, drag_cur_y,
-                        rp);
+  if (state->is_dragging)
+    draw_selection_box (state->drag_start_x, state->drag_start_y,
+                        state->drag_cur_x, state->drag_cur_y, rp);
 }
 
 void
@@ -210,7 +272,7 @@ operations_render_paused (PlatformState *p, RendererPlex *rp)
 
   ZoomRect cur = get_current_zoom ();
   scale_image_region (clean_frame_buffer, rp->w, rp->h, cur.x, cur.y, cur.w,
-                      cur.h, rp->image_buffer, rp->w, rp->h);
+                      cur.h, rp->image_buffer, rp->w, rp->h, NULL);
 
   if (is_dragging)
     draw_selection_box (drag_start_x, drag_start_y, drag_cur_x, drag_cur_y,
@@ -232,12 +294,12 @@ process_input (PlatformState *p)
       platform_set_fullscreen (p, fullscreen);
     }
 
-  // Speed up and slow down
+  // Up and Down adjust the multiplier applied to the video's frame cadence
   speed_up = input_is_key_just_pressed (UP);
   if (speed_up)
     {
-      playback_speed += playback_speed >= 1.0 ? 0.0 : speed_step;
-#ifdef DEBUG
+      playback_speed += speed_step;
+#ifndef NDEBUG
       printf ("Playback speed increased to: %f\n", playback_speed);
 #endif
     }
@@ -245,7 +307,7 @@ process_input (PlatformState *p)
   slow_down = input_is_key_just_pressed (DOWN);
   if (slow_down)
     {
-      playback_speed -= playback_speed <= speed_step ? 0 : speed_step;
+      playback_speed = MAX (speed_step, playback_speed - speed_step);
 #ifndef NDEBUG
       printf ("Playback speed decreased to: %f\n", playback_speed);
 #endif

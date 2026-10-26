@@ -1,8 +1,12 @@
 ## Notes
+- Useles bool functions for threading
+- @VALIDATION check if the posix threading back-end also works
+
 ### Per-file basis
 - main.c : @FIX UI framerate problems are noticeable when highlighting the zoom area and pressing commands
 - decode.c : @OPTIMIZATION check whether dereferencing `vp` repeatedly is worth replacing with temporary variables
 - decode.c : @IMPROVEMENT check whether the "RGBA" vs. "BGRA" issue is platform-specific, possibly related to "XRGB8888" on Wayland or to endianness.
+- tests/main.c : @IMPROVEMENT fix test grouping
 
 ## Checklists
 ### Modified libraries
@@ -41,10 +45,11 @@ We'll add a lot more stuff here as the project advances
 - [ ] Translation units of `shared` and individual projects via inclusion of `.c` files
 
 ### Performance
-- [ ] Separate threads for rendering and video decoding
-- [ ] Cache the decoded frames
+- [x] Separate threads for rendering and video decoding
+- [x] Cache the decoded frames
 - [ ] Cache the UI
-- [ ] Parallelized renderer
+- [x] Parallelized renderer
+- [ ] Lock-free paralelism
 
 ### Platform Layer (shared)
 We won't need audio for this project
@@ -54,7 +59,7 @@ We won't need audio for this project
 - [x] Windows platform layer
 - [x] Get screen resolution function
 - [x] Full screen support
-- [ ] OS independent threading
+- [x] OS independent threading
 - [ ] Mac platform layer? (Sounds like a pain for little gain)
 
 ### Math Library (shared)

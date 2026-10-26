@@ -6,13 +6,16 @@
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 
+#include "basic.h"
 #include "decode.h"
+#include "frame_queue.h"
 #include "input.h"
 #include "macros.h"
+#include "operations.h"
 #include "platform.h"
+#include "playback.h"
 #include "renderer.h"
-
-#include "operations.c"
+#include "renderer_pool.h"
 
 s32
 main (s32 argc, byte **argv)
@@ -52,16 +55,37 @@ main (s32 argc, byte **argv)
 
   Arena video_arena = { 0 }, renderer_arena = { 0 };
   PlatformState platform_state = { 0 };
+  InspectorPlayback playback = { 0 };
   VideoPlex *vp = NULL;
   arena_init (&video_arena, sizeof (VideoPlex) + _Alignof (VideoPlex));
 
+  // We'll require a lot of profiling to adjust these values
+  s32 logical_cores = platform_get_logical_core_count (),
+      worker_budget = MAX (0, logical_cores - 3),
+      decoder_threads = MAX (1, worker_budget * 3 / 4);
+
   // Initializing video
-  vp = init_video (&video_arena, video_file);
+  vp = init_video (&video_arena, video_file, decoder_threads);
   if (!vp)
     goto end;
 
   s32 w = vp->codec->width, h = vp->codec->height;
-  u64 renderer_capacity = operations_memory_required (w, h);
+
+  enum
+  {
+    // We'll later get this from a config file
+    DECODED_FRAME_CACHE_CAPACITY = 12
+  };
+
+  // Account for the main, decoder-coordinator, and systems threads first.
+  // The remaining budget is split between dav1d and renderer helper threads,
+  // the systems thread also renders one row range while the pool is active.
+  s32 renderer_workers = MAX (0, worker_budget - decoder_threads);
+  u64 renderer_capacity
+      = operations_memory_required (w, h)
+        + frame_queue_memory_required (w, h, DECODED_FRAME_CACHE_CAPACITY)
+        + (u64)w * h * sizeof (u32)
+        + renderer_pool_memory_required (renderer_workers);
   arena_init (&renderer_arena, renderer_capacity);
 
   // Renderer and inspector buffers share one arena and lifetime.
@@ -72,53 +96,37 @@ main (s32 argc, byte **argv)
                  (byte *)rp->image_buffer);
   if (platform_state.internal_state == NULL)
     goto end;
+
   decode_set_display_resolution (
       platform_get_screen_resolution (&platform_state));
 
-  // decode_next_frame prints the error
-  if (decode_next_frame (vp, rp) != 0)
-    goto end;
-  operations_on_frame_decoded (rp);
-
-  // Stable framerate at video FPS, we'll have a lot of work latter (?) to fix
-  // the fps of the UI
+  // Keep the video's temporal coherence by default, playback speed scales it.
   AVRational video_fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
-  f64 frame_duration_ms = 1000.0 * (f64)video_fps.den / (f64)video_fps.num,
-      next_frame = platform_get_time (), now, remaining;
+  f64 frame_duration_ms
+      = video_fps.num > 0 && video_fps.den > 0
+            ? 1000.0 * (f64)video_fps.den / (f64)video_fps.num
+            : 1000.0 / 30.0;
+
+  if (!inspector_playback_init (&playback, &renderer_arena, vp, rp,
+                                DECODED_FRAME_CACHE_CAPACITY, renderer_workers,
+                                frame_duration_ms))
+    goto end;
 
   result = EXIT_SUCCESS;
   while (platform_update (&platform_state))
     {
-      process_input (&platform_state);
+      inspector_playback_process_input (&playback, &platform_state);
 
-      if (!paused)
-        {
-          now = platform_get_time ();
-          remaining = next_frame - now;
-          if (remaining > 0)
-            platform_sleep (remaining);
+      if (!platform_state.running)
+        break;
+      if (!inspector_playback_update (&playback, &platform_state))
+        break;
 
-          s32 ret = decode_next_frame (vp, rp);
-          if (ret < 0)
-            {
-              result = EXIT_FAILURE;
-              break;
-            }
-          if (ret == 1)
-            break;
-
-          operations_apply_zoom (rp);
-          renderer_present (&platform_state, rp);
-          next_frame
-              = platform_get_time () + frame_duration_ms / playback_speed;
-        }
-      else
-        {
-          // Temp
-          operations_render_paused (&platform_state, rp);
-          platform_sleep (10.0);
-        }
+      platform_sleep (1.0);
     }
+
+  if (inspector_playback_result (&playback) < 0)
+    result = EXIT_FAILURE;
 
 end:
   return result;

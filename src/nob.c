@@ -309,6 +309,10 @@ main (s32 argc, byte **argv)
   strcat (entry_point, "/main.c");
   nob_cmd_append (&compile_cmd, entry_point);
 
+  if (str_eq (*target, "inspector"))
+    nob_cmd_append (&compile_cmd, "inspector/operations.c",
+                    "inspector/playback.c");
+
   // Math
   nob_cmd_append (&compile_cmd, "math/basic.c");
 
@@ -322,12 +326,19 @@ main (s32 argc, byte **argv)
       nob_cmd_append (&compile_cmd, "tests/input.test.c");
       nob_cmd_append (&compile_cmd, "tests/utility.test.c");
       nob_cmd_append (&compile_cmd, "tests/renderer.test.c");
+      nob_cmd_append (&compile_cmd, "tests/threading.test.c");
     }
   else
     nob_cmd_append (&compile_cmd, "ds/dyn_arr.c", "ds/arena.c");
 
   // Platform utilities
   nob_cmd_append (&compile_cmd, "platform/utility.c");
+
+  // Platform threading
+  if (is_windows_platform (*platform))
+    nob_cmd_append (&compile_cmd, "platform/thread_windows.c");
+  else
+    nob_cmd_append (&compile_cmd, "platform/thread_gnu_linux.c");
 
   // Platform layer common code
   if (is_linux_platform (*platform))
@@ -348,17 +359,19 @@ main (s32 argc, byte **argv)
 
   // Renderer
   nob_cmd_append (&compile_cmd, "renderer/renderer.c");
+  nob_cmd_append (&compile_cmd, "renderer/renderer_pool.c");
 
   // Decoder
   nob_cmd_append (&compile_cmd, "decode/decode.c");
+  nob_cmd_append (&compile_cmd, "decode/frame_queue.c");
 
   // Includes
   if (is_windows_platform (*platform))
     nob_cmd_append (&compile_cmd, "/Ilib", "/Ids", "/Iplatform", "/Imath",
-                    "/Irenderer", "/Iinput", "/Idecode");
+                    "/Irenderer", "/Iinput", "/Idecode", "/Iinspector");
   else
     nob_cmd_append (&compile_cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath",
-                    "-Irenderer", "-Iinput", "-Idecode",
+                    "-Irenderer", "-Iinput", "-Idecode", "-Iinspector",
                     "-Ilib/gnu_linux/include");
 
   // Libraries

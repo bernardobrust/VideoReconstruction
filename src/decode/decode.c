@@ -14,7 +14,7 @@
 
 #include "basic.h"
 
-// We may want to calculate these based on the display's dimentions
+// We may want to calculate this based on the display's dimentions
 const f32 MAX_MOTION_MAGNITUDE = 90.0f;
 f32 MAX_DISPLAY_LENGTH = 15.0f;
 
@@ -94,11 +94,13 @@ process_side_data (const AVFrame *frame, RendererPlex *rp)
 }
 
 VideoPlex *
-init_video (Arena *arena, byte *video_file)
+init_video (Arena *arena, byte *video_file, s32 decoder_threads)
 {
-  assert (arena != NULL);
+  assert (arena != NULL && decoder_threads > 0);
+
   VideoPlex *vp = arena_alloc (arena, sizeof (*vp), _Alignof (VideoPlex));
   assert (vp != NULL);
+
   memset (vp, 0, sizeof (*vp));
 
   if (avformat_open_input (&vp->fmt, video_file, NULL, NULL) < 0)
@@ -145,9 +147,14 @@ init_video (Arena *arena, byte *video_file)
 
   if (avcodec_parameters_to_context (vp->codec, vp->stream->codecpar) < 0)
     {
-      fprintf (stderr, "Could not copy codec parameters.\n");
+      fprintf (stderr, "Could not copy codec parameters\n");
       goto fail;
     }
+
+  // FFmpeg's libdav1d wrapper maps thread_count to dav1d's worker count. The
+  // caller budgets this together with the renderer helpers and coordinator
+  // threads so their combined count stays within logical core capacity.
+  vp->codec->thread_count = decoder_threads;
 
   // Important: we need to set the export_mvs flag to get motion vectors
   av_opt_set_int (vp->codec, "flags2", AV_CODEC_FLAG2_EXPORT_MVS, 0);
@@ -170,7 +177,6 @@ init_video (Arena *arena, byte *video_file)
   return vp;
 
 fail:
-  shutdown_video (vp);
   return NULL;
 }
 
@@ -178,8 +184,10 @@ void
 shutdown_video (VideoPlex *vp)
 {
   assert (vp != NULL);
+
   if (vp->sws != NULL)
     sws_freeContext (vp->sws);
+
   av_packet_free (&vp->packet);
   av_frame_free (&vp->frame);
   avcodec_free_context (&vp->codec);
@@ -195,6 +203,7 @@ s32
 decode_next_frame (VideoPlex *vp, RendererPlex *rp)
 {
   bool got_frame = false;
+
   while (!got_frame)
     {
       s32 ret = av_read_frame (vp->fmt, vp->packet);

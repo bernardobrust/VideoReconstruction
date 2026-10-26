@@ -15,6 +15,7 @@
 #include "input.test.h"
 #include "math.test.h"
 #include "renderer.test.h"
+#include "threading.test.h"
 #include "utility.test.h"
 
 #include "macros.h"
@@ -45,13 +46,13 @@ main (s32 argc, byte **argv)
     }
 
   // Tests to run
-  bool dyn_arr, arena, math, input, utility, renderer;
+  bool dyn_arr, arena, math, input, utility, renderer, threading;
 
   // Whitelist
   if (enabled_tests->count > 0)
     {
       dyn_arr = false;
-      arena = math = input = utility = renderer = false;
+      arena = math = input = utility = renderer = threading = false;
 
       for (u64 i = 0; i < enabled_tests->count; ++i)
         {
@@ -72,13 +73,16 @@ main (s32 argc, byte **argv)
           if (renderer == false
               && strcmp (enabled_tests->items[i], "renderer") == 0)
             renderer = true;
+          if (threading == false
+              && strcmp (enabled_tests->items[i], "threading") == 0)
+            threading = true;
         }
     }
   // Blacklist
   else
     {
       dyn_arr = true;
-      arena = math = input = utility = renderer = true;
+      arena = math = input = utility = renderer = threading = true;
 
       for (u64 i = 0; i < disabled_tests->count; ++i)
         {
@@ -98,6 +102,8 @@ main (s32 argc, byte **argv)
             utility = false;
           if (strcmp (disabled_tests->items[i], "renderer") == 0)
             renderer = false;
+          if (strcmp (disabled_tests->items[i], "threading") == 0)
+            threading = false;
         }
     }
 
@@ -155,6 +161,8 @@ main (s32 argc, byte **argv)
       renderer_transparency_tests ();
       end_group ();
     }
+  if (threading)
+    threading_all_tests ();
 
   stop_testing ();
 }

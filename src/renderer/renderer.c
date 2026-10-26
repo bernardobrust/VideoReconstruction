@@ -582,10 +582,12 @@ draw_arrow_t (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
                    (int)righty, color, rp);
 }
 
-// Call platform present to put image then zero out the buffer to clear it
+// Present the current image and keep it available until a newer frame replaces
+// it. The platform buffer is persistent across UI updates.
 void
 renderer_present (PlatformState *platform_state, RendererPlex *rp)
 {
+  assert (rp != NULL);
   platform_present (platform_state);
-  memset (rp->image_buffer, 0, rp->w * rp->h * sizeof (u32));
+  (void)rp;
 }

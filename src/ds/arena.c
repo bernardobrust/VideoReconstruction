@@ -11,7 +11,7 @@ arena_init (Arena *arena, u64 capacity)
   assert (capacity <= SIZE_MAX);
   assert (arena->memory == NULL && arena->capacity == 0 && arena->used == 0);
 
-  ubyte *memory = (ubyte *)malloc ((size_t)capacity);
+  ubyte *memory = (ubyte *)malloc ((u64)capacity);
   assert (memory != NULL);
 
   arena->memory = memory;
@@ -35,14 +35,14 @@ arena_alloc (Arena *arena, u64 size, u64 alignment)
 {
   assert (arena != NULL && arena->memory != NULL && size > 0 && alignment > 0
           && (alignment & (alignment - 1)) == 0);
-
   assert (arena->used <= arena->capacity);
 
   uintptr_t base = (uintptr_t)arena->memory;
   assert (base <= UINTPTR_MAX - arena->used);
+
   uintptr_t current = base + (uintptr_t)arena->used;
-  u64 misalignment = (u64)(current & (uintptr_t)(alignment - 1));
-  u64 padding = (alignment - misalignment) & (alignment - 1);
+  u64 misalignment = (u64)(current & (uintptr_t)(alignment - 1)),
+      padding = (alignment - misalignment) & (alignment - 1);
   assert (padding <= arena->capacity - arena->used);
 
   u64 offset = arena->used + padding;
