@@ -32,6 +32,19 @@ is_windows_platform (const byte *platform)
   return str_eq (platform, "windows");
 }
 
+local const byte *
+detect_platform (void)
+{
+#ifdef _WIN32
+  return "windows";
+#else
+  // This ENV var is guaranteed to be set on Wayland from my reasearch
+  if (getenv ("WAYLAND_DISPLAY") != NULL)
+    return "gnu_linux_wayland";
+  return "gnu_linux_x11";
+#endif
+}
+
 #define WINDOWS_MOD_LIBS_URL                                                  \
   "https://github.com/bernardobrust/VideoReconstruction/releases/download/"   \
   "Experimental/windows_mod_libs.zip"
@@ -57,7 +70,7 @@ pull_windows_mod_libs (void)
   const byte *zip_path = BUILD_DIR "windows_mod_libs.zip";
 
   // If this does not work as expected, check that the macro points to the
-  // latest version and that the archive was created correctly.
+  // latest version and that the archive was created correctly
   nob_log (NOB_INFO, "Pulling modified libraries from %s",
            WINDOWS_MOD_LIBS_URL);
 
@@ -191,6 +204,19 @@ main (s32 argc, byte **argv)
   argc = flag_rest_argc ();
   argv = flag_rest_argv ();
 
+  // Default values
+  if ((*platform)[0] == '\0')
+    {
+      *platform = (byte *) detect_platform ();
+      nob_log (NOB_INFO, "No platform provided; assuming '%s'", *platform);
+    }
+
+  if ((*mode)[0] == '\0')
+    {
+      *mode = "debug";
+      nob_log (NOB_INFO, "No mode provided; assuming '%s'", *mode);
+    }
+
   if ((str_eq (*target, "pull") || str_eq (*target, "pull-libs")
        || str_eq (*target, "pull_libs")))
     {
@@ -222,7 +248,6 @@ main (s32 argc, byte **argv)
       nob_log (NOB_ERROR,
                "Invalid target, use one of "
                "'inspector', 'reconstructor', 'tests' or 'pull_libs'");
-
       return EXIT_FAILURE;
     }
 
@@ -234,7 +259,6 @@ main (s32 argc, byte **argv)
     {
       nob_log (NOB_ERROR, "Invalid platform, use one of "
                           "'gnu_linux_x11', 'gnu_linux_wayland' or 'windows'");
-
       return EXIT_FAILURE;
     }
 
@@ -244,7 +268,6 @@ main (s32 argc, byte **argv)
     {
       nob_log (NOB_ERROR,
                "Invalid build type, use one of 'debug' or 'release'");
-
       return EXIT_FAILURE;
     }
 

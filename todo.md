@@ -109,7 +109,7 @@ Should we test the rendering primitives?
 - [ ] Side-by-side frame comparison (basic)
 - [ ] Side-by-side frame comparison (mapping block translations)
 - [ ] Config file with preferences (such as video cache size)
-- [ ] Option to export data to file
+- [ ] Option to export data to file (plaintext)
 
 ### Extra (inspector)
 - [ ] Test coverage (like Like FFmpeg's FATE but a lot simpler)

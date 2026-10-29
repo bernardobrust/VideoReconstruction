@@ -19,10 +19,9 @@ Now you can compile the project with:
 
 The platform libraries are pulled if they are not found. You will be asked if you want to download them now; accept for the project to build
 
-The parameters are as follows:
 - TARGET: inspector | reconstructor | tests (see below) | pull (see below)
-- PLATFORM: gnu_linux_x11 | gnu_linux_wayland | windows
-- MODE: debug | release
+- PLATFORM (optional, autodetects if not provided): gnu_linux_x11 | gnu_linux_wayland | windows
+- MODE (optional, defaults to debug): debug | release
 
 For example, to build the inspector for GNU + Linux with X11:
 `./nob -target inspector -platform gnu_linux_x11 -mode release`
@@ -50,6 +49,7 @@ List of tests (to be expanded):
 - input: input state tests
 - utility: platform serialization and endian helper tests
 - renderer: color, rasterization, geometry, and transparency tests
+- threading: platform independent multithreading and frame/render pooling tests
 
 # Structure
 ### Common code (shared across inspector and reconstructor)
