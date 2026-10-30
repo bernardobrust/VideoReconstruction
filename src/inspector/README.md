@@ -25,7 +25,7 @@ Then use the following commands:
 - UP ARROW: Increase playback speed (up to the normal playback rate)
 - F: Toggle full screen
 
-**Unimplemented:**
+You can also export the data to a file in this [format](../docs/export_format.md):
 ```bash
-inspector -export (this_video_data) (to_this_file)
+inspector -export (this_video_data) (to_this_file.dat)
 ```
