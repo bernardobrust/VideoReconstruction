@@ -111,7 +111,7 @@ Should we test the rendering primitives?
 - [ ] Side-by-side frame comparison (basic)
 - [ ] Side-by-side frame comparison (mapping block translations)
 - [ ] Config file with preferences (such as video cache size)
-- [ ] Export data to file (plaintext)
+- [x] Export data to file (plaintext)
 - [ ] Export and inspect at the same time
 
 ### Extra (inspector)

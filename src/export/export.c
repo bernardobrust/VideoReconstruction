@@ -207,7 +207,7 @@ vector_values (const ExportMotionVector *mv, f32 *magnitude, f32 *angle,
 local inline u64
 decimal_length_u64 (u64 value)
 {
-  static const u64 powers[] = { 10ULL,
+  persist const u64 powers[] = { 10ULL,
                                 100ULL,
                                 1000ULL,
                                 10000ULL,
@@ -288,7 +288,7 @@ decimal_length_fixed_3 (s64 value, bool negative_zero)
 local inline char *
 append_u64 (char *output, u64 value)
 {
-  static const char digit_pairs[]
+  persist const char digit_pairs[]
       = "00010203040506070809"
         "10111213141516171819"
         "20212223242526272829"
