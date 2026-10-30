@@ -11,6 +11,7 @@
 
 #include "basic.h"
 #include "decode.h"
+#include "export.h"
 #include "frame_queue.h"
 #include "input.h"
 #include "macros.h"
@@ -51,8 +52,6 @@ main (s32 argc, byte **argv)
   // Only export
   else if ((*inspect_video)[0] == '\0')
     {
-      printf ("%zu\n", export->count);
-
       if (export->count != 2)
         {
           fprintf (stderr,
@@ -60,9 +59,9 @@ main (s32 argc, byte **argv)
           return EXIT_FAILURE;
         }
 
-      // return export_data_to (export->items[o], export->items[o]);
-
-      return EXIT_SUCCESS;
+      return export_data_to (export->items[0], export->items[1])
+                 ? EXIT_SUCCESS
+                 : EXIT_FAILURE;
     }
   // Video only
   else if (export->count == 0)

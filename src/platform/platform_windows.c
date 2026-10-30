@@ -617,6 +617,86 @@ platform_file_exists (byte *filepath)
   return 0;
 }
 
+bool
+platform_mapped_file_create (PlatformMappedFile *file, const char *path,
+                             u64 size)
+{
+  HANDLE output, mapping;
+  LARGE_INTEGER length;
+  void *data;
+
+  assert (file != NULL);
+  assert (path != NULL);
+
+  if (size > (u64)SIZE_MAX || size > (u64)INT64_MAX)
+    return false;
+
+  memset (file, 0, sizeof (*file));
+  file->native_file = -1;
+  length.QuadPart = (LONGLONG)size;
+
+  output = CreateFileA (path, GENERIC_READ | GENERIC_WRITE, 0, NULL,
+                        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (output == INVALID_HANDLE_VALUE)
+    return false;
+
+  if (size == 0)
+    {
+      file->native_file = (intptr_t)output;
+      return true;
+    }
+
+  if (!SetFilePointerEx (output, length, NULL, FILE_BEGIN)
+      || !SetEndOfFile (output))
+    {
+      CloseHandle (output);
+
+      return false;
+    }
+
+  mapping = CreateFileMappingA (output, NULL, PAGE_READWRITE,
+                                (DWORD)(size >> 32), (DWORD)size, NULL);
+  if (mapping == NULL)
+    {
+      CloseHandle (output);
+
+      return false;
+    }
+
+  data = MapViewOfFile (mapping, FILE_MAP_WRITE, 0, 0, (SIZE_T)size);
+  if (data == NULL)
+    {
+      CloseHandle (mapping);
+      CloseHandle (output);
+
+      return false;
+    }
+
+  file->data = data;
+  file->size = size;
+  file->native_file = (intptr_t)output;
+  file->native_mapping = mapping;
+
+  return true;
+}
+
+void
+platform_mapped_file_close (PlatformMappedFile *file)
+{
+  assert (file != NULL);
+
+  if (file->data != NULL)
+    UnmapViewOfFile (file->data);
+
+  if (file->native_mapping != NULL)
+    CloseHandle ((HANDLE)file->native_mapping);
+
+  if (file->native_file != -1)
+    CloseHandle ((HANDLE)file->native_file);
+
+  memset (file, 0, sizeof (*file));
+}
+
 void
 platform_stop (PlatformState *platform_state)
 {

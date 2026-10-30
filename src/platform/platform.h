@@ -22,6 +22,14 @@ typedef struct
   s32 width, height;
 } ScreenResolution;
 
+typedef struct
+{
+  void *data;
+  u64 size;
+  intptr_t native_file;
+  void *native_mapping;
+} PlatformMappedFile;
+
 typedef enum
 {
   KeyCtrlPress,
@@ -124,5 +132,8 @@ void platform_set_fullscreen (PlatformState *platform_state, bool fullscreen);
 f64 platform_get_time (void);
 void platform_sleep (f64 ms);
 s32 platform_file_exists (byte *filepath);
+bool platform_mapped_file_create (PlatformMappedFile *file, const char *path,
+                                  u64 size);
+void platform_mapped_file_close (PlatformMappedFile *file);
 
 void platform_stop (PlatformState *platform_state);

@@ -14,6 +14,7 @@ test_files
 src/lib/windows
 src/lib/gnu_linux
 *.mp4
+*.dat
 
 # Debug information
 gdb.txt

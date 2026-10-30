@@ -190,6 +190,28 @@ dyn_arr_test_push (void)
 }
 
 void
+dyn_arr_test_bulk_append (void)
+{
+  start_test_suite ("Dynamic array bulk append");
+
+  DynArr64 xs = { 0 };
+  s32 values[] = { 3, 5, 8, 13, 21 };
+
+  assert_true (dyn_arr64_try_init (&xs, 0, sizeof (s32)));
+  assert_true (dyn_arr64_try_append (&xs, values, 3));
+  assert_true (dyn_arr64_try_append (&xs, &values[3], 2));
+
+  assert_equal (5, (s32)xs.len);
+  assert_true (xs.cap >= xs.len);
+  assert_equal (3, ((s32 *)xs.data)[0]);
+  assert_equal (21, ((s32 *)xs.data)[4]);
+
+  dyn_arr64_release (&xs);
+
+  retrieve_results ();
+}
+
+void
 dyn_arr_test_insert (void)
 {
   start_test_suite ("Dynamic array insert");
@@ -337,6 +359,7 @@ dyn_arr_all_tests (void)
   dyn_arr_test_get ();
   dyn_arr_test_set ();
   dyn_arr_test_push ();
+  dyn_arr_test_bulk_append ();
   dyn_arr_test_insert ();
   dyn_arr_test_pop ();
   dyn_arr_test_delete ();

@@ -21,6 +21,20 @@ typedef struct
   bool fixed_capacity;
 } DynArr;
 
+typedef struct
+{
+  u64 cap, len, stride;
+  void *data;
+  bool fixed_capacity;
+} DynArr64;
+
+// Fallible 64 bit array operations for large collections (like the export
+// buffer). These functions initialize and operate on a caller-owned DynArr64
+bool dyn_arr64_try_init (DynArr64 *xs, u64 initial_cap, u64 stride);
+bool dyn_arr64_try_reserve (DynArr64 *xs, u64 min_capacity);
+bool dyn_arr64_try_append (DynArr64 *xs, const void *new_elems, u64 count);
+void dyn_arr64_release (DynArr64 *xs);
+
 DynArr *dyn_arr_init (s32 initial_cap, s32 stride);
 void dyn_arr_free (DynArr *xs);
 DynArr dyn_arr_init_fixed (void *storage, s32 capacity, s32 stride);

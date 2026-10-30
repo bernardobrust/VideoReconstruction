@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // Static is confusing
@@ -14,10 +15,10 @@
 #define persist static
 #define global static
 
-// Fixed data types without weird names
 #define byte char
 #define ubyte unsigned byte
 
+// Fixed data types without weird names
 #define s8 int8_t
 #define u8 uint8_t
 #define s16 int16_t

@@ -388,14 +388,18 @@ main (s32 argc, byte **argv)
   nob_cmd_append (&compile_cmd, "decode/decode.c");
   nob_cmd_append (&compile_cmd, "decode/frame_queue.c");
 
+  // Exporter
+  nob_cmd_append (&compile_cmd, "export/export.c");
+
   // Includes
   if (is_windows_platform (*platform))
     nob_cmd_append (&compile_cmd, "/Ilib", "/Ids", "/Iplatform", "/Imath",
-                    "/Irenderer", "/Iinput", "/Idecode", "/Iinspector");
+                    "/Irenderer", "/Iinput", "/Idecode", "/Iinspector",
+                    "/Iexport");
   else
     nob_cmd_append (&compile_cmd, "-Ilib", "-Ids", "-Iplatform", "-Imath",
                     "-Irenderer", "-Iinput", "-Idecode", "-Iinspector",
-                    "-Ilib/gnu_linux/include");
+                    "-Iexport", "-Ilib/gnu_linux/include");
 
   // Libraries
   if (is_windows_platform (*platform))
