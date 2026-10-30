@@ -14,9 +14,9 @@ The paper for this project is still under development and will be added here as 
 A lot of code is shared, a.k.a is outside of this directory. More documentation will be added here as the project advances.
 
 ### Usage
-After building (see the [README](../README.md) one level up) or downloading the binary (not available yet), you can run it with the following command:
+After building (see the [README](../README.md) one level up) or downloading the binary (not available yet), you can run the inspector it with the following command:
 ```bash
-inspector <video_file>
+inspector -inspect (video_file)
 ```
 
 Then use the following commands:
@@ -24,3 +24,8 @@ Then use the following commands:
 - DOWN ARROW: Decrease playback speed (down to 1/8th of the video's normal playback rate)
 - UP ARROW: Increase playback speed (up to the normal playback rate)
 - F: Toggle full screen
+
+**Unimplemented:**
+```bash
+inspector -export (this_video_data) (to_this_file)
+```

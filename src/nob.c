@@ -207,7 +207,7 @@ main (s32 argc, byte **argv)
   // Default values
   if ((*platform)[0] == '\0')
     {
-      *platform = (byte *) detect_platform ();
+      *platform = (byte *)detect_platform ();
       nob_log (NOB_INFO, "No platform provided; assuming '%s'", *platform);
     }
 

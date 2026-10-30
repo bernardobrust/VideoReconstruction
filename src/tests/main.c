@@ -24,10 +24,9 @@ int
 main (s32 argc, byte **argv)
 {
   // CLI parsing
-  // enabled_tests defines a whitelist
-  // disabled_tests defines a blacklist
-  Flag_List *enabled_tests = flag_list ("enable", "List flag");
-  Flag_List *disabled_tests = flag_list ("disable", "List flag");
+  Flag_List *enabled_tests = flag_list ("enable", "Enabled tests (whitelist)");
+  Flag_List *disabled_tests
+      = flag_list ("disable", "Disabled tests (blacklist)");
 
   if (!flag_parse (argc, argv))
     {
@@ -40,8 +39,9 @@ main (s32 argc, byte **argv)
 
   if (enabled_tests->count > 0 && disabled_tests->count > 0)
     {
-      printf ("Please work with either a whitelist (-enable) or a blacklist "
-              "(-disable)\n");
+      fprintf (stderr,
+               "Please work with either a whitelist (-enable) or a blacklist "
+               "(-disable)\n");
       return EXIT_FAILURE;
     }
 
@@ -51,8 +51,7 @@ main (s32 argc, byte **argv)
   // Whitelist
   if (enabled_tests->count > 0)
     {
-      dyn_arr = false;
-      arena = math = input = utility = renderer = threading = false;
+      dyn_arr = arena = math = input = utility = renderer = threading = false;
 
       for (u64 i = 0; i < enabled_tests->count; ++i)
         {
@@ -81,17 +80,13 @@ main (s32 argc, byte **argv)
   // Blacklist
   else
     {
-      dyn_arr = true;
-      arena = math = input = utility = renderer = threading = true;
+      dyn_arr = arena = math = input = utility = renderer = threading = true;
 
       for (u64 i = 0; i < disabled_tests->count; ++i)
         {
-          if (dyn_arr == true
+          if (dyn_arr == false
               && strcmp (disabled_tests->items[i], "dyn_arr") == 0)
             dyn_arr = false;
-        }
-      for (u64 i = 0; i < disabled_tests->count; ++i)
-        {
           if (strcmp (disabled_tests->items[i], "math") == 0)
             math = false;
           if (strcmp (disabled_tests->items[i], "arena") == 0)

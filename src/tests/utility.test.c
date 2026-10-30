@@ -29,12 +29,10 @@ utility_test_endian_helpers (void)
 
   assert_equal (0x1234, read_u16_le ((u8[]){ 0x34, 0x12 }));
   assert_equal (0x1234, read_u16_be ((u8[]){ 0x12, 0x34 }));
-  assert_equal (0x12345678,
-                read_u32_le ((u8[]){ 0x78, 0x56, 0x34, 0x12 }));
+  assert_equal (0x12345678, read_u32_le ((u8[]){ 0x78, 0x56, 0x34, 0x12 }));
   assert_equal (0, read_u16_le ((u8[]){ 0, 0 }));
   assert_equal (0xFFFF, read_u16_be ((u8[]){ 0xFF, 0xFF }));
-  assert_equal (0xFFFFFFFF,
-                read_u32_le ((u8[]){ 0xFF, 0xFF, 0xFF, 0xFF }));
+  assert_equal (0xFFFFFFFF, read_u32_le ((u8[]){ 0xFF, 0xFF, 0xFF, 0xFF }));
 
   u8 encoded[4] = { 0 };
   write_u16_le (encoded, 0x1234);

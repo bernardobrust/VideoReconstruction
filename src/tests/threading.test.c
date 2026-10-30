@@ -190,7 +190,7 @@ frame_queue_test_order_and_capacity (void)
 
   assert_equal (FRAME_TEST_CAPACITY, queue.capacity);
   assert_equal (1, frame_queue_result (&queue));
-  
+
   frame_queue_destroy (&queue);
   arena_release (&arena);
 
@@ -217,7 +217,7 @@ frame_queue_test_finish_and_stop (void)
 
   assert_true (frame_queue_take (&queue, &frame));
   assert_equal (1234, frame.renderer->image_buffer[0]);
-  
+
   frame_queue_release (&queue, frame);
   assert_false (frame_queue_take (&queue, &frame));
   assert_equal (1, frame_queue_result (&queue));
@@ -243,6 +243,6 @@ threading_all_tests (void)
   frame_queue_test_order_and_capacity ();
   frame_queue_test_finish_and_stop ();
   renderer_pool_test ();
-  
+
   end_group ();
 }

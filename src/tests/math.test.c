@@ -89,8 +89,8 @@ math_test_hypot (void)
   assert_approx (10.0, hypot_f32 (0.0f, -10.0f), 1e-6);
   assert_approx (5.4, hypot_f32 (4.0f, 4.0f), 0.3);
   assert_approx (10.8, hypot_f32 (8.0f, 8.0f), 0.6);
-  assert_approx ((f64)hypot_f32 (3.0f, 4.0f),
-                 (f64)hypot_f32 (-3.0f, -4.0f), 1e-6);
+  assert_approx ((f64)hypot_f32 (3.0f, 4.0f), (f64)hypot_f32 (-3.0f, -4.0f),
+                 1e-6);
   assert_approx ((f64)hypot_f32 (3.0f, 4.0f), (f64)hypot_f32 (4.0f, 3.0f),
                  1e-6);
   assert_true (hypot_f32 (3.0f, 4.0f) > 4.7f);

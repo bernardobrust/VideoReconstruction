@@ -40,6 +40,8 @@ You can run the inspector by passing a video path to the executable:
 Testing can be performed with either a whitelist or a blacklist:
 `./build/tests_...(.exe) -enable TESTS_TO_RUN` or `./build/tests_...(.exe) -disable TESTS_TO_EXCLUDE`
 
+**The `flag.h` version in this project is modified so list flags consume consecutive values until the next flag. For example, pass `-enable arena math`. Repeating a list flag is still supported.**
+
 **Not providing any option will run all of the tests.**
 
 List of tests (to be expanded):

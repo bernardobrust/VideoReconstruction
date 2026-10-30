@@ -6,6 +6,9 @@
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 
+#define FLAG_IMPLEMENTATION
+#include "flag.h"
+
 #include "basic.h"
 #include "decode.h"
 #include "frame_queue.h"
@@ -22,17 +25,60 @@ main (s32 argc, byte **argv)
 {
   s32 result = EXIT_FAILURE;
 
-  // Argument parsing for the video to inspect
-  if (argc <= 1)
-    {
-      fprintf (stderr,
-               "Please provide a path to the video file to inspect.\n");
+  // CLI parsing
+  byte **inspect_video = flag_str ("inspect", "", "Video to inspect");
+  Flag_List *export = flag_list ("export", "Where to export the data to");
 
-      return result;
+  if (!flag_parse (argc, argv))
+    {
+      flag_print_error (stderr);
+      return EXIT_FAILURE;
     }
 
-  byte *video_file = argv[1];
+  argc = flag_rest_argc ();
+  argv = flag_rest_argv ();
+
+  // No arguments
+  if ((*inspect_video)[0] == '\0' && export->count == 0)
+    {
+      fprintf (stderr,
+               "Use either '-export (video file) (data destination file)' or "
+               "'-inspect (video file)'"
+               "\n\t'-export': exports the video data to a "
+               "file\n\t'-inspect' opens the video inspector on that file\n");
+      return EXIT_FAILURE;
+    }
+  // Only export
+  else if ((*inspect_video)[0] == '\0')
+    {
+      printf ("%zu\n", export->count);
+
+      if (export->count != 2)
+        {
+          fprintf (stderr,
+                   "Usage: -export (video file) (data destination file)\n");
+          return EXIT_FAILURE;
+        }
+
+      // return export_data_to (export->items[o], export->items[o]);
+
+      return EXIT_SUCCESS;
+    }
+  // Video only
+  else if (export->count == 0)
+    goto video_only;
+  // We'll latter want to find a way to both export and inspect the video at
+  // once
+  else
+    {
+      fprintf (stderr, "Unimplemented path\n");
+      return EXIT_FAILURE;
+    }
+
+video_only:
+  byte *video_file = *inspect_video;
   s32 file_exists = platform_file_exists (video_file);
+
   if (file_exists == 0)
     {
 #ifndef NDEBUG
