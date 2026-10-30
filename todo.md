@@ -1,9 +1,7 @@
 ## Notes
 ### Per-file basis
-- main.c : @FIX UI framerate problems are noticeable when highlighting the zoom area and pressing commands
-- decode.c : @OPTIMIZATION check whether dereferencing `vp` repeatedly is worth replacing with temporary variables
+- decode.c : @OPTIMIZATION check whether dereferencing `vp` repeatedly is worth replacing with temporary variables (benchmark)
 - decode.c : @IMPROVEMENT check whether the "RGBA" vs. "BGRA" issue is platform-specific, possibly related to "XRGB8888" on Wayland or to endianness.
-- tests/main.c : @IMPROVEMENT fix test grouping
 
 ## Checklists
 ### Modified libraries
@@ -26,7 +24,7 @@ We'll add a lot more stuff here as the project advances
 
 - [x] Write a draft for the paper
 - [x] Update/Improve the paper
-- [ ] Update [ideas](ideas.md) as the project advances
+- [ ] Define a file format for the data
 - [ ] Add the paper (after it gets approved)
 
 ### Build System (shared)
@@ -82,10 +80,11 @@ Should we test the rendering primitives?
 - [x] Draw arrow
 - [x] Framerate stability on video framerate
 - [ ] UI fixed framerate (right now we synchronize to the video's frame rate)
-- [ ] Draw text
+- [ ] Draw text (baked font into a `.h` file)
 - [x] Draw frame of a video
 - [x] Draw transparent rectangle on top of frame (and arrow)
 - [ ] Scale video resolution to pane dimensions
+- [ ] UI
 - [ ] Make UI fit well in the window (responsive measures)
 
 ### Systems (inspector)
