@@ -10,4 +10,4 @@ if [ ! -f "nob" ]; then
     fi
 fi
 
-./nob -target inspector -platform gnu_linux_x11 -mode debug
+./nob -target inspector

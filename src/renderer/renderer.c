@@ -8,8 +8,6 @@
 #include "performance.h"
 #include "renderer.h"
 
-// @OPTIMIZATION SIMD this entire file for optimization
-
 // The 'a' only affects transparent shapes
 u32
 rgba (u32 r, u32 g, u32 b, u32 a)

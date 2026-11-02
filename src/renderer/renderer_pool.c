@@ -60,7 +60,7 @@ renderer_worker (void *arg)
 
       // Each worker receives a disjoint row interval. Once the completion
       // counter reaches the pool size, the caller may safely reuse the
-      // buffers.
+      // buffers
       function (context, first_row, end_row);
 
       platform_mutex_lock (&pool->mutex);
@@ -156,7 +156,7 @@ renderer_pool_run_rows (RendererPool *pool, s32 row_count,
   platform_mutex_unlock (&pool->mutex);
 
   // The systems thread renders the first row range itself. This avoids
-  // dedicating a thread that only waits for the renderer workers to finish.
+  // dedicating a thread that only waits for the renderer workers to finish
   function (context, 0, caller_end);
 
   platform_mutex_lock (&pool->mutex);
@@ -173,8 +173,6 @@ renderer_pool_shutdown (RendererPool *pool)
 {
   assert (pool != NULL);
 
-  s32 i;
-
   if (pool->thread_count == 0)
     return;
 
@@ -185,7 +183,7 @@ renderer_pool_shutdown (RendererPool *pool)
 
   platform_mutex_unlock (&pool->mutex);
 
-  for (i = 0; i < pool->thread_count; ++i)
+  for (s32 i = 0; i < pool->thread_count; ++i)
     platform_thread_join (&pool->threads[i]);
 
   platform_condition_destroy (&pool->work_complete);

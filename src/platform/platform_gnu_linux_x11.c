@@ -354,7 +354,7 @@ local bool
 intern_atom (InternalState *state, const byte *name, u32 *atom)
 {
   u64 name_length = strlen (name),
-      body_size = 4 + round_up ((u32)name_length, 4);
+      body_size = 4 + round_up_to_multiple_u32 ((u32)name_length, 4);
   u8 *body = calloc (1, body_size);
   assert (body != NULL);
 
@@ -378,7 +378,7 @@ local bool
 query_extension (InternalState *state, const byte *name, u8 *major_opcode)
 {
   u64 name_length = strlen (name),
-      body_size = 4 + round_up ((u32)name_length, 4);
+      body_size = 4 + round_up_to_multiple_u32 ((u32)name_length, 4);
   u8 *body = calloc (1, body_size);
   assert (body != NULL);
 
@@ -406,7 +406,7 @@ local bool
 set_title (InternalState *state, const byte *title)
 {
   u64 title_length = strlen (title),
-      body_size = 20 + round_up ((u32)title_length, 4);
+      body_size = 20 + round_up_to_multiple_u32 ((u32)title_length, 4);
   u8 *body = calloc (1, body_size);
   assert (body != NULL);
 
@@ -594,8 +594,8 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   const byte *auth_name = has_token ? "MIT-MAGIC-COOKIE-1" : "";
   u32 auth_name_length = (u32)strlen (auth_name);
   u32 auth_data_length = has_token ? sizeof (token) : 0;
-  u64 setup_size
-      = 12 + round_up (auth_name_length, 4) + round_up (auth_data_length, 4);
+  u64 setup_size = 12 + round_up_to_multiple_u32 (auth_name_length, 4)
+                   + round_up_to_multiple_u32 (auth_data_length, 4);
   u8 *setup = calloc (1, setup_size);
   assert (setup != NULL);
 
@@ -607,7 +607,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   write_u16_le (setup + 8, (u16)auth_data_length);
 
   memcpy (setup + 12, auth_name, auth_name_length);
-  memcpy (setup + 12 + round_up (auth_name_length, 4), token,
+  memcpy (setup + 12 + round_up_to_multiple_u32 (auth_name_length, 4), token,
           auth_data_length);
   bool setup_sent = send_all (state->fd, setup, setup_size);
 
@@ -651,7 +651,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   u32 vendor_length = read_u16_le (additional + 16),
       root_count = additional[20], format_count = additional[21];
 
-  u64 offset = 32 + round_up (vendor_length, 4);
+  u64 offset = 32 + round_up_to_multiple_u32 (vendor_length, 4);
 
   if (root_count == 0 || offset + (size_t)format_count * 8 > additional_size)
     {
@@ -676,12 +676,15 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   state->scanline_pad = 32;
 
   for (u32 i = 0; i < format_count; ++i)
-    if (additional[32 + round_up (vendor_length, 4) + i * 8] == state->depth)
+    if (additional[32 + round_up_to_multiple_u32 (vendor_length, 4) + i * 8]
+        == state->depth)
       {
         state->bits_per_pixel
-            = additional[32 + round_up (vendor_length, 4) + i * 8 + 1];
+            = additional[32 + round_up_to_multiple_u32 (vendor_length, 4)
+                         + i * 8 + 1];
         state->scanline_pad
-            = additional[32 + round_up (vendor_length, 4) + i * 8 + 2];
+            = additional[32 + round_up_to_multiple_u32 (vendor_length, 4)
+                         + i * 8 + 2];
       }
 
   free (additional);
@@ -693,9 +696,10 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   if (query_extension (state, "MIT-SHM", &state->shm_opcode))
     {
-      u32 row_bytes = round_up (state->width * state->bits_per_pixel,
-                                state->scanline_pad)
-                      / 8;
+      u32 row_bytes
+          = round_up_to_multiple_u32 (state->width * state->bits_per_pixel,
+                                      state->scanline_pad)
+            / 8;
       state->shm_size = (size_t)row_bytes * state->height;
       state->shmid = shmget (IPC_PRIVATE, state->shm_size, IPC_CREAT | 0600);
 
@@ -914,7 +918,8 @@ platform_present (PlatformState *platform_state)
 
   u32 bytes_per_pixel = (state->bits_per_pixel + 7) / 8,
       row_bytes
-      = round_up (state->width * state->bits_per_pixel, state->scanline_pad)
+      = round_up_to_multiple_u32 (state->width * state->bits_per_pixel,
+                                  state->scanline_pad)
         / 8;
 
   if (state->has_shm && state->shm_data != NULL)

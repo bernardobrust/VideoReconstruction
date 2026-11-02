@@ -1,10 +1,8 @@
 ## Notes
 - Check if everything also works on GNU Linux
-- Check if threading is adjusted correctly based on core count
 
 ### Per-file basis
-- decode.c : @OPTIMIZATION check whether dereferencing `vp` repeatedly is worth replacing with temporary variables (benchmark)
-- decode.c : @IMPROVEMENT check whether the "RGBA" vs. "BGRA" issue is platform-specific, possibly related to "XRGB8888" on Wayland or to endianness.
+- decode.c : Factor motion vector rendering out to a separate file, maybe even in the inspector source code
 
 ## Checklists
 ### Modified libraries
@@ -47,6 +45,7 @@ We'll add a lot more stuff here as the project advances
 - [x] Cache the decoded frames
 - [ ] Cache the UI
 - [x] Parallelized renderer
+- [ ] SIMD the renderer
 - [ ] Lock-free paralelism (if possible ofc)
 
 ### Platform Layer (shared)

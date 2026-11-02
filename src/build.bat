@@ -14,6 +14,6 @@ if not exist "nob.exe" (
     )
 )
 
-nob.exe -target inspector -platform windows -mode debug
+nob.exe -target inspector
 
 endlocal

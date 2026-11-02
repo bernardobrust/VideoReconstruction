@@ -6,18 +6,18 @@
 #include <string.h>
 
 static void
-utility_test_round_up (void)
+utility_test_round_up_to_multiple_u32 (void)
 {
   start_test_suite ("Platform utility: round up");
 
-  assert_equal (0, round_up (0, 4));
-  assert_equal (4, round_up (1, 4));
-  assert_equal (4, round_up (4, 4));
-  assert_equal (8, round_up (5, 4));
-  assert_equal (8, round_up (7, 4));
-  assert_equal (8, round_up (8, 4));
-  assert_equal (12, round_up (10, 3));
-  assert_equal (15, round_up (13, 5));
+  assert_equal (0, round_up_to_multiple_u32 (0, 4));
+  assert_equal (4, round_up_to_multiple_u32 (1, 4));
+  assert_equal (4, round_up_to_multiple_u32 (4, 4));
+  assert_equal (8, round_up_to_multiple_u32 (5, 4));
+  assert_equal (8, round_up_to_multiple_u32 (7, 4));
+  assert_equal (8, round_up_to_multiple_u32 (8, 4));
+  assert_equal (12, round_up_to_multiple_u32 (10, 3));
+  assert_equal (15, round_up_to_multiple_u32 (13, 5));
 
   retrieve_results ();
 }
@@ -99,7 +99,7 @@ utility_all_tests (void)
 {
   start_group ("Platform Utility Tests");
 
-  utility_test_round_up ();
+  utility_test_round_up_to_multiple_u32 ();
   utility_test_endian_helpers ();
   utility_test_buffer_serialization ();
 

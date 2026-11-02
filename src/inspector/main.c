@@ -87,14 +87,12 @@ video_only:
   else if (file_exists == 1)
     {
       fprintf (stderr, "File does not exist. Is the path correct?\n");
-
       return result;
     }
   else
     {
       fprintf (stderr,
                "Could not access path. Do you have permission to open it?\n");
-
       return result;
     }
 
@@ -104,10 +102,14 @@ video_only:
   VideoPlex *vp = NULL;
   arena_init (&video_arena, sizeof (VideoPlex) + _Alignof (VideoPlex));
 
-  // We'll require a lot of profiling to adjust these values
+  // We'll require a lot of profiling to adjust these values, 3/4 is fine for
+  // now. Account for the main, decoder-coordinator, and systems threads first.
+  // The remaining budget is split between dav1d and renderer helper threads,
+  // the systems thread also renders one row range while the pool is active
   s32 logical_cores = platform_get_logical_core_count (),
       worker_budget = MAX (0, logical_cores - 3),
-      decoder_threads = MAX (1, worker_budget * 3 / 4);
+      decoder_threads = worker_budget > 0 ? MAX (1, worker_budget * 3 / 4) : 0,
+      renderer_workers = MAX (0, worker_budget - decoder_threads);
 
   // Initializing video
   vp = init_video (&video_arena, video_file, decoder_threads);
@@ -119,13 +121,11 @@ video_only:
   enum
   {
     // We'll later get this from a config file
+    // If we assume a completly uncompressed 4K HDR video this comes out to
+    // about 288.75 MiB
     DECODED_FRAME_CACHE_CAPACITY = 12
   };
 
-  // Account for the main, decoder-coordinator, and systems threads first.
-  // The remaining budget is split between dav1d and renderer helper threads,
-  // the systems thread also renders one row range while the pool is active.
-  s32 renderer_workers = MAX (0, worker_budget - decoder_threads);
   u64 renderer_capacity
       = operations_memory_required (w, h)
         + frame_queue_memory_required (w, h, DECODED_FRAME_CACHE_CAPACITY)
@@ -133,7 +133,7 @@ video_only:
         + renderer_pool_memory_required (renderer_workers);
   arena_init (&renderer_arena, renderer_capacity);
 
-  // Renderer and inspector buffers share one arena and lifetime.
+  // Renderer and inspector buffers share one arena and lifetime
   RendererPlex *rp = init_renderer (&renderer_arena, w, h);
   operations_init (rp, &renderer_arena);
 
@@ -145,7 +145,7 @@ video_only:
   decode_set_display_resolution (
       platform_get_screen_resolution (&platform_state));
 
-  // Keep the video's temporal coherence by default, playback speed scales it.
+  // Keep the video's temporal coherence by default, playback speed scales it
   AVRational video_fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
   f64 frame_duration_ms
       = video_fps.num > 0 && video_fps.den > 0

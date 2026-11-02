@@ -3,8 +3,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <libavutil/frame.h>
@@ -15,9 +13,10 @@
 #include "dyn_arr.h"
 #include "platform.h"
 #include "thread.h"
+#include "utility.h"
 
 // Read this from a config file later
-#define EXPORT_BUFFER_SIZE (128 * 1024)
+#define EXPORT_BUFFER_SIZE MEGABYTE (8)
 
 typedef struct
 {
@@ -36,44 +35,58 @@ typedef struct
 typedef struct
 {
   PlatformMappedFile *output;
-  const ExportFrame *frames;
-  const ExportMotionVector *vectors;
+  ExportFrame *frames;
+  ExportMotionVector *vectors;
 
-  u64 first_frame, end_frame;
-  u64 buffered, output_position;
+  u64 first_frame, end_frame, buffered, output_position;
   bool failed;
 
   byte buffer[EXPORT_BUFFER_SIZE];
 } ExportWorker;
 
-local inline void vector_values (const ExportMotionVector *mv, f32 *magnitude,
-                                 f32 *angle, f32 *normalized_x,
-                                 f32 *normalized_y);
-local inline s64 fixed_3_scaled (f32 value);
-local inline u64 vector_line_length (u64 index,
-                                    const ExportMotionVector *mv);
-
-local inline u64
-fixed_3_magnitude (f32 value)
+local inline void
+vector_values (const ExportMotionVector *mv, f32 *magnitude, f32 *angle,
+               f32 *normalized_x, f32 *normalized_y)
 {
-  f64 scaled = fabs ((f64)value) * 1000.0;
-  u64 rounded = (u64)scaled;
-  f64 fraction = scaled - (f64)rounded;
+  f32 dx, dy;
 
-  if (fraction > 0.5 || (fraction == 0.5 && (rounded & 1)))
-    ++rounded;
+  assert (mv != NULL);
+  assert (magnitude != NULL);
+  assert (angle != NULL);
+  assert (normalized_x != NULL);
+  assert (normalized_y != NULL);
 
-  assert (rounded <= INT64_MAX);
+  dx = (f32)(mv->dst_x - mv->src_x);
+  dy = (f32)(mv->dst_y - mv->src_y);
 
-  return rounded;
+  *magnitude = hypotf (dx, dy);
+  *angle = atan2f (dy, dx);
+  *normalized_x = *magnitude == 0.0f ? 0.0f : dx / *magnitude;
+  *normalized_y = *magnitude == 0.0f ? 0.0f : dy / *magnitude;
 }
 
-local inline s64
-fixed_3_scaled (f32 value)
+local inline u64
+vector_line_length (u64 index, const ExportMotionVector *mv)
 {
-  u64 magnitude = fixed_3_magnitude (value);
-
-  return signbit (value) ? -(s64)magnitude : (s64)magnitude;
+  // Please do not question, it works OK?
+  return 3 + decimal_length_u64 (index) + 3 + decimal_length_s32 (mv->src_x)
+         + 2 + decimal_length_s32 (mv->src_y) + 3
+         + decimal_length_s32 (mv->dst_x) + 2 + decimal_length_s32 (mv->dst_y)
+         + 3 + decimal_length_s32 (mv->width) + 2
+         + decimal_length_s32 (mv->height) + 2
+         + decimal_length_s32 (mv->source) + 1
+         + decimal_length_fixed_3 (mv->magnitude_1000,
+                                   (mv->negative_mask & 1) != 0)
+         + 1
+         + decimal_length_fixed_3 (mv->angle_1000,
+                                   (mv->negative_mask & 2) != 0)
+         + 2
+         + decimal_length_fixed_3 (mv->normalized_x_1000,
+                                   (mv->negative_mask & 4) != 0)
+         + 2
+         + decimal_length_fixed_3 (mv->normalized_y_1000,
+                                   (mv->negative_mask & 8) != 0)
+         + 2;
 }
 
 local inline bool
@@ -136,6 +149,10 @@ append_vectors (DynArr64 *vectors, const AVFrame *frame)
   return true;
 }
 
+// Convention:
+// negative = error
+// 0 = ok
+// 1 = end
 local inline s32
 read_decoded_frame (VideoPlex *video, bool *flushing)
 {
@@ -183,122 +200,19 @@ read_decoded_frame (VideoPlex *video, bool *flushing)
     }
 }
 
-local inline void
-vector_values (const ExportMotionVector *mv, f32 *magnitude, f32 *angle,
-               f32 *normalized_x, f32 *normalized_y)
-{
-  f32 dx, dy;
-
-  assert (mv != NULL);
-  assert (magnitude != NULL);
-  assert (angle != NULL);
-  assert (normalized_x != NULL);
-  assert (normalized_y != NULL);
-
-  dx = (f32)(mv->dst_x - mv->src_x);
-  dy = (f32)(mv->dst_y - mv->src_y);
-
-  *magnitude = hypotf (dx, dy);
-  *angle = atan2f (dy, dx);
-  *normalized_x = *magnitude == 0.0f ? 0.0f : dx / *magnitude;
-  *normalized_y = *magnitude == 0.0f ? 0.0f : dy / *magnitude;
-}
-
-local inline u64
-decimal_length_u64 (u64 value)
-{
-  persist const u64 powers[] = { 10ULL,
-                                100ULL,
-                                1000ULL,
-                                10000ULL,
-                                100000ULL,
-                                1000000ULL,
-                                10000000ULL,
-                                100000000ULL,
-                                1000000000ULL,
-                                10000000000ULL,
-                                100000000000ULL,
-                                1000000000000ULL,
-                                10000000000000ULL,
-                                100000000000000ULL,
-                                1000000000000000ULL,
-                                10000000000000000ULL,
-                                100000000000000000ULL,
-                                1000000000000000000ULL,
-                                10000000000000000000ULL };
-  u64 low = 0, high = sizeof (powers) / sizeof (powers[0]);
-
-  while (low < high)
-    {
-      u64 middle = low + (high - low) / 2;
-
-      if (value < powers[middle])
-        high = middle;
-      else
-        low = middle + 1;
-    }
-
-  return low + 1;
-}
-
-local inline u64
-decimal_length_s64 (s64 value)
-{
-  u64 magnitude = value < 0 ? (u64)(-(value + 1)) + 1 : (u64)value;
-
-  return decimal_length_u64 (magnitude) + (value < 0);
-}
-
-local inline u64
-decimal_length_s32 (s32 value)
-{
-  u32 magnitude = value < 0 ? (u32)(-(s64)value) : (u32)value;
-
-  if (magnitude < 10)
-    return 1 + (value < 0);
-  if (magnitude < 100)
-    return 2 + (value < 0);
-  if (magnitude < 1000)
-    return 3 + (value < 0);
-  if (magnitude < 10000)
-    return 4 + (value < 0);
-  if (magnitude < 100000)
-    return 5 + (value < 0);
-  if (magnitude < 1000000)
-    return 6 + (value < 0);
-  if (magnitude < 10000000)
-    return 7 + (value < 0);
-  if (magnitude < 100000000)
-    return 8 + (value < 0);
-  if (magnitude < 1000000000)
-    return 9 + (value < 0);
-
-  return 10 + (value < 0);
-}
-
-local inline u64
-decimal_length_fixed_3 (s64 value, bool negative_zero)
-{
-  u64 magnitude = value < 0 ? (u64)(-(value + 1)) + 1 : (u64)value;
-
-  return decimal_length_u64 (magnitude / 1000) + 4
-         + (value < 0 || negative_zero);
-}
-
 local inline char *
 append_u64 (char *output, u64 value)
 {
-  persist const char digit_pairs[]
-      = "00010203040506070809"
-        "10111213141516171819"
-        "20212223242526272829"
-        "30313233343536373839"
-        "40414243444546474849"
-        "50515253545556575859"
-        "60616263646566676869"
-        "70717273747576777879"
-        "80818283848586878889"
-        "90919293949596979899";
+  persist const char digit_pairs[] = "00010203040506070809"
+                                     "10111213141516171819"
+                                     "20212223242526272829"
+                                     "30313233343536373839"
+                                     "40414243444546474849"
+                                     "50515253545556575859"
+                                     "60616263646566676869"
+                                     "70717273747576777879"
+                                     "80818283848586878889"
+                                     "90919293949596979899";
   char digits[20];
   u64 count = 0;
 
@@ -345,8 +259,8 @@ append_s64 (char *output, s64 value)
 local inline char *
 append_fixed_3 (char *output, s64 value, bool negative_zero)
 {
-  u64 magnitude = value < 0 ? (u64)(-(value + 1)) + 1 : (u64)value;
-  u64 fractional = magnitude % 1000;
+  u64 magnitude = value < 0 ? (u64)(-(value + 1)) + 1 : (u64)value,
+      fractional = magnitude % 1000;
 
   if (value < 0 || negative_zero)
     *output++ = '-';
@@ -363,9 +277,8 @@ append_fixed_3 (char *output, s64 value, bool negative_zero)
 local inline u64
 frame_header_length (u64 index, const ExportFrame *frame)
 {
-  return 6 + decimal_length_u64 (index) + 5
-         + decimal_length_s64 (frame->pts) + 10
-         + decimal_length_u64 (frame->vector_count) + 1;
+  return 6 + decimal_length_u64 (index) + 5 + decimal_length_s64 (frame->pts)
+         + 10 + decimal_length_u64 (frame->vector_count) + 1;
 }
 
 local inline u64
@@ -422,8 +335,8 @@ append_vector (char *output, u64 index, const ExportMotionVector *mv)
   output = append_fixed_3 (output, mv->magnitude_1000,
                            (mv->negative_mask & 1) != 0);
   *output++ = ' ';
-  output = append_fixed_3 (output, mv->angle_1000,
-                           (mv->negative_mask & 2) != 0);
+  output
+      = append_fixed_3 (output, mv->angle_1000, (mv->negative_mask & 2) != 0);
   memcpy (output, " (", 2);
   output += 2;
   output = append_fixed_3 (output, mv->normalized_x_1000,
@@ -436,28 +349,6 @@ append_vector (char *output, u64 index, const ExportMotionVector *mv)
   output += 2;
 
   return output;
-}
-
-local inline u64
-vector_line_length (u64 index, const ExportMotionVector *mv)
-{
-  return 3 + decimal_length_u64 (index) + 3
-         + decimal_length_s32 (mv->src_x) + 2
-         + decimal_length_s32 (mv->src_y) + 3
-         + decimal_length_s32 (mv->dst_x) + 2
-         + decimal_length_s32 (mv->dst_y) + 3
-         + decimal_length_s32 (mv->width) + 2
-         + decimal_length_s32 (mv->height) + 2
-         + decimal_length_s32 (mv->source) + 1
-         + decimal_length_fixed_3 (mv->magnitude_1000,
-                                   (mv->negative_mask & 1) != 0)
-         + 1 + decimal_length_fixed_3 (mv->angle_1000,
-                                       (mv->negative_mask & 2) != 0)
-         + 2 + decimal_length_fixed_3 (mv->normalized_x_1000,
-                                       (mv->negative_mask & 4) != 0)
-         + 2 + decimal_length_fixed_3 (mv->normalized_y_1000,
-                                       (mv->negative_mask & 8) != 0)
-         + 2;
 }
 
 local inline bool
@@ -610,8 +501,7 @@ export_data_to (const char *video_file, const char *data_file)
 {
   Arena arena = { 0 };
   VideoPlex *video = NULL;
-  DynArr64 frame_array = { 0 };
-  DynArr64 vector_array = { 0 };
+  DynArr64 frame_array = { 0 }, vector_array = { 0 };
   bool flushing = false, success = false;
   PlatformMappedFile output = { .native_file = -1 };
   ExportWorker *workers = NULL;
@@ -728,8 +618,8 @@ export_data_to (const char *video_file, const char *data_file)
                && (consumed < target
                    || frame_array.len - frame_index
                           > (u64)(worker_count - i - 1)))
-          consumed += ((ExportFrame *)frame_array.data)[frame_index++]
-                          .output_size;
+          consumed
+              += ((ExportFrame *)frame_array.data)[frame_index++].output_size;
 
         workers[i].output = &output;
         workers[i].frames = (ExportFrame *)frame_array.data;
