@@ -6,6 +6,7 @@
 #include "macros.h"
 #include "platform.h"
 #include "renderer.h"
+#include "renderer_pool.h"
 
 typedef struct
 {
@@ -22,5 +23,7 @@ typedef struct
 
 VideoPlex *init_video (Arena *arena, byte *video_file, s32 decoder_threads);
 void shutdown_video (VideoPlex *vp);
-s32 decode_next_frame (VideoPlex *vp, RendererPlex *rp);
+
+s32 decode_next_frame (VideoPlex *vp, RendererPlex *rp,
+                       RendererPool *renderer_pool);
 void decode_set_display_resolution (ScreenResolution resolution);

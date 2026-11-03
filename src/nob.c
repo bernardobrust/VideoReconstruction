@@ -32,6 +32,62 @@ is_windows_platform (const byte *platform)
   return str_eq (platform, "windows");
 }
 
+local bool
+compiler_supports_sse2 (void)
+{
+#if defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)               \
+    || defined(__SSE2__)
+  return true;
+#else
+  return false;
+#endif
+}
+
+local const byte *
+renderer_avx2_object_path (const byte *platform)
+{
+  return is_windows_platform (platform)
+             ? BUILD_DIR "renderer_simd_avx2.obj"
+             : BUILD_DIR "renderer_simd_avx2.o";
+}
+
+local bool
+compile_renderer_avx2 (const byte *platform, const byte *mode)
+{
+  Nob_Cmd cmd = { 0 };
+
+  if (is_windows_platform (platform))
+    {
+      nob_cmd_append (&cmd, "cl", "/nologo", "/std:c11", "/c", "/arch:AVX2",
+                      "/Iplatform", "/Ids", "/Irenderer");
+
+      if (str_eq (mode, "debug"))
+        nob_cmd_append (&cmd, "/W4", "/external:W0", "/Zi", "/Od");
+      else
+        nob_cmd_append (&cmd, "/O2", "/DNDEBUG");
+
+      nob_cmd_append (&cmd,
+                      "/Fo:" BUILD_DIR "renderer_simd_avx2.obj",
+                      "renderer/renderer_simd_avx2.c");
+    }
+  else
+    {
+      nob_cmd_append (&cmd, "gcc", "--std=c11", "-mavx2", "-c", "-Iplatform",
+                      "-Ids", "-Irenderer");
+
+      if (str_eq (mode, "debug"))
+        nob_cmd_append (&cmd, "-Wall", "-Wextra", "-Werror", "-Wpedantic",
+                        "-ggdb", "-Og");
+      else
+        nob_cmd_append (&cmd, "-Ofast", "-DNDEBUG");
+
+      nob_cmd_append (&cmd, "-o", renderer_avx2_object_path (platform),
+                      "renderer/renderer_simd_avx2.c");
+    }
+
+  return nob_cmd_run (&cmd);
+}
+
 local const byte *
 detect_platform (void)
 {
@@ -382,6 +438,10 @@ main (s32 argc, byte **argv)
 
   // Renderer
   nob_cmd_append (&compile_cmd, "renderer/renderer.c");
+  if (compiler_supports_sse2 ())
+    nob_cmd_append (&compile_cmd, "renderer/renderer_simd.c");
+  else
+    nob_cmd_append (&compile_cmd, "renderer/renderer_scalar.c");
   nob_cmd_append (&compile_cmd, "renderer/renderer_pool.c");
 
   // Decoder
@@ -466,6 +526,14 @@ main (s32 argc, byte **argv)
       nob_cmd_append (&compile_cmd, "-Llib/gnu_linux/lib", "-lavformat",
                       "-lavcodec", "-ldav1d", "-ldl", "-lswscale", "-lavutil",
                       "-lm", "-latomic", "-pthread");
+    }
+
+  if (compiler_supports_sse2 ())
+    {
+      if (!compile_renderer_avx2 (*platform, *mode))
+        return EXIT_FAILURE;
+
+      nob_cmd_append (&compile_cmd, renderer_avx2_object_path (*platform));
     }
 
   if (!nob_cmd_run (&compile_cmd))

@@ -5,6 +5,7 @@
 #include "basic.h"
 #include "performance.h"
 #include "renderer.h"
+#include "renderer_internal.h"
 
 // The 'a' only affects transparent shapes
 u32
@@ -90,6 +91,9 @@ init_renderer (Arena *arena, s32 w, s32 h)
 void
 draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp)
 {
+  s32 width;
+
+  assert (rp != NULL);
   if (y < 0 || y >= rp->h)
     return;
 
@@ -102,12 +106,15 @@ draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp)
       x1 = t;
     }
 
+  if (x1 < 0 || x0 >= rp->w)
+    return;
+
   x0 = clamp_s32 (x0, 0, rp->w - 1);
   x1 = clamp_s32 (x1, 0, rp->w - 1);
 
-  u32 *p = rp->image_buffer + y * rp->w + x0;
-  for (s32 x = x0; x <= x1; ++x)
-    *p++ = color;
+  width = x1 - x0 + 1;
+  renderer_fill_rectangle (rp->image_buffer + y * rp->w + x0, rp->w, width, 1,
+                           color);
 }
 
 // Standard shapes
@@ -116,29 +123,45 @@ draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp)
 // but profiling with VTune pointed that that was highly inefficient. So I
 // decided to use the edge function method, which, being honest, is also easier
 // to reason about.
-void
-draw_triangle (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3, u32 color,
-               RendererPlex *rp)
+local void
+draw_triangle_internal (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3,
+                        u32 color, bool transparent, RendererPlex *rp)
 {
-  s32 min_x = MIN3 (x1, x2, x3), max_x = MAX3 (x1, x2, x3);
-  s32 min_y = MIN3 (y1, y2, y3), max_y = MAX3 (y1, y2, y3);
+  s32 min_x, max_x, min_y, max_y, area, a0, b0, a1, b1, a2, b2;
+  s32 w0_row, w1_row, w2_row, row_width, y, row_offset;
+  RendererTriangleRowFn draw_row;
+
+  assert (rp != NULL);
+
+  if (transparent && (color >> 24) == 0)
+    return;
+
+  min_x = MIN3 (x1, x2, x3);
+  max_x = MAX3 (x1, x2, x3);
+  min_y = MIN3 (y1, y2, y3);
+  max_y = MAX3 (y1, y2, y3);
+
+  if (max_x < 0 || min_x >= rp->w || max_y < 0 || min_y >= rp->h)
+    return;
 
   min_x = clamp_s32 (min_x, 0, rp->w - 1);
   max_x = clamp_s32 (max_x, 0, rp->w - 1);
   min_y = clamp_s32 (min_y, 0, rp->h - 1);
   max_y = clamp_s32 (max_y, 0, rp->h - 1);
 
-  s32 area = determinant_ab_ap_s32 (x1, y1, x2, y2, x3, y3);
+  area = determinant_ab_ap_s32 (x1, y1, x2, y2, x3, y3);
   if (area == 0)
     return;
 
-  s32 a0 = y3 - y2, b0 = x2 - x3;
-  s32 a1 = y1 - y3, b1 = x3 - x1;
-  s32 a2 = y2 - y1, b2 = x1 - x2;
-
-  s32 w0_row = determinant_ab_ap_s32 (x2, y2, x3, y3, min_x, min_y),
-      w1_row = determinant_ab_ap_s32 (x3, y3, x1, y1, min_x, min_y),
-      w2_row = determinant_ab_ap_s32 (x1, y1, x2, y2, min_x, min_y);
+  a0 = y3 - y2;
+  b0 = x2 - x3;
+  a1 = y1 - y3;
+  b1 = x3 - x1;
+  a2 = y2 - y1;
+  b2 = x1 - x2;
+  w0_row = determinant_ab_ap_s32 (x2, y2, x3, y3, min_x, min_y);
+  w1_row = determinant_ab_ap_s32 (x3, y3, x1, y1, min_x, min_y);
+  w2_row = determinant_ab_ap_s32 (x1, y1, x2, y2, min_x, min_y);
 
   // Just invert everything
   if (area < 0)
@@ -154,20 +177,13 @@ draw_triangle (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3, u32 color,
       w2_row = -w2_row;
     }
 
-  for (s32 y = min_y; y <= max_y; ++y)
+  row_width = max_x - min_x + 1;
+  draw_row = renderer_get_triangle_row_renderer (row_width);
+  for (y = min_y; y <= max_y; ++y)
     {
-      s32 w0 = w0_row, w1 = w1_row, w2 = w2_row;
-      s32 row_offset = y * rp->w;
-
-      for (s32 x = min_x; x <= max_x; ++x)
-        {
-          if ((w0 | w1 | w2) >= 0)
-            rp->image_buffer[row_offset + x] = color;
-
-          w0 += a0;
-          w1 += a1;
-          w2 += a2;
-        }
+      row_offset = y * rp->w + min_x;
+      draw_row (rp->image_buffer + row_offset, row_width, color, w0_row,
+                w1_row, w2_row, a0, a1, a2, transparent);
 
       w0_row += b0;
       w1_row += b1;
@@ -176,23 +192,39 @@ draw_triangle (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3, u32 color,
 }
 
 void
+draw_triangle (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3, u32 color,
+               RendererPlex *rp)
+{
+  draw_triangle_internal (x1, y1, x2, y2, x3, y3, color, false, rp);
+}
+
+void
 draw_rectangle (s32 x1, s32 y1, s32 x2, s32 y2, u32 color, RendererPlex *rp)
 {
-  s32 min_x = MIN (x1, x2), max_x = MAX (x1, x2);
-  s32 min_y = MIN (y1, y2), max_y = MAX (y1, y2);
+  s32 min_x, max_x, min_y, max_y, width, height;
 
-  // Clamp to image buffer
+  assert (rp != NULL);
+
+  min_x = MIN (x1, x2);
+  max_x = MAX (x1, x2);
+  min_y = MIN (y1, y2);
+  max_y = MAX (y1, y2);
+
+  if (max_x < 0 || min_x >= rp->w || max_y < 0 || min_y >= rp->h)
+    return;
+
   min_x = clamp_s32 (min_x, 0, rp->w - 1);
   max_x = clamp_s32 (max_x, 0, rp->w - 1);
   min_y = clamp_s32 (min_y, 0, rp->h - 1);
   max_y = clamp_s32 (max_y, 0, rp->h - 1);
 
-  // No need to render
   if ((max_x - min_x) * (max_y - min_y) == 0)
     return;
 
-  for (s32 y = min_y; y <= max_y; ++y)
-    draw_hline (min_x, max_x, y, color, rp);
+  width = max_x - min_x + 1;
+  height = max_y - min_y + 1;
+  renderer_fill_rectangle (rp->image_buffer + min_y * rp->w + min_x, rp->w,
+                           width, height, color);
 }
 
 void
@@ -336,94 +368,52 @@ draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
 // Transparent shapes
 // In these shapes we blend the color passed with the already existing color in
 // the image buffer. The 'a' channel of the color passed is used for blending
-// Moreover, we can't just create a new color from 1 pixel or use "draw_hline"
-// because the color of each pixel is different, so we have to blend each pixel
-// individually
+// All triangle coverage and color writes use the selected renderer backend.
 void
 draw_triangle_t (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3, u32 color,
                  RendererPlex *rp)
 {
-  s32 min_x = MIN3 (x1, x2, x3), max_x = MAX3 (x1, x2, x3);
-  s32 min_y = MIN3 (y1, y2, y3), max_y = MAX3 (y1, y2, y3);
-
-  min_x = clamp_s32 (min_x, 0, rp->w - 1);
-  max_x = clamp_s32 (max_x, 0, rp->w - 1);
-  min_y = clamp_s32 (min_y, 0, rp->h - 1);
-  max_y = clamp_s32 (max_y, 0, rp->h - 1);
-
-  s32 area = determinant_ab_ap_s32 (x1, y1, x2, y2, x3, y3);
-  if (area == 0)
-    return;
-
-  s32 a0 = y3 - y2, b0 = x2 - x3;
-  s32 a1 = y1 - y3, b1 = x3 - x1;
-  s32 a2 = y2 - y1, b2 = x1 - x2;
-
-  s32 w0_row = determinant_ab_ap_s32 (x2, y2, x3, y3, min_x, min_y),
-      w1_row = determinant_ab_ap_s32 (x3, y3, x1, y1, min_x, min_y),
-      w2_row = determinant_ab_ap_s32 (x1, y1, x2, y2, min_x, min_y);
-
-  // Just invert everything
-  if (area < 0)
-    {
-      a0 = -a0;
-      b0 = -b0;
-      w0_row = -w0_row;
-      a1 = -a1;
-      b1 = -b1;
-      w1_row = -w1_row;
-      a2 = -a2;
-      b2 = -b2;
-      w2_row = -w2_row;
-    }
-
-  for (s32 y = min_y; y <= max_y; ++y)
-    {
-      s32 w0 = w0_row, w1 = w1_row, w2 = w2_row;
-      s32 row_offset = y * rp->w;
-
-      for (s32 x = min_x; x <= max_x; ++x)
-        {
-          if ((w0 | w1 | w2) >= 0)
-            rp->image_buffer[row_offset + x]
-                = blend_rgba_pixel (color, rp->image_buffer[row_offset + x]);
-
-          w0 += a0;
-          w1 += a1;
-          w2 += a2;
-        }
-
-      w0_row += b0;
-      w1_row += b1;
-      w2_row += b2;
-    }
+  draw_triangle_internal (x1, y1, x2, y2, x3, y3, color, true, rp);
 }
 
 void
 draw_rectangle_t (s32 x1, s32 y1, s32 x2, s32 y2, u32 color, RendererPlex *rp)
 {
-  s32 min_x = MIN (x1, x2), max_x = MAX (x1, x2);
-  s32 min_y = MIN (y1, y2), max_y = MAX (y1, y2);
+  s32 min_x, max_x, min_y, max_y, width, height;
 
-  // Clamp to image buffer
+  assert (rp != NULL);
+
+  if ((color >> 24) == 0)
+    return;
+
+  min_x = MIN (x1, x2);
+  max_x = MAX (x1, x2);
+  min_y = MIN (y1, y2);
+  max_y = MAX (y1, y2);
+
+  if (max_x < 0 || min_x >= rp->w || max_y < 0 || min_y >= rp->h)
+    return;
+
   min_x = clamp_s32 (min_x, 0, rp->w - 1);
   max_x = clamp_s32 (max_x, 0, rp->w - 1);
   min_y = clamp_s32 (min_y, 0, rp->h - 1);
   max_y = clamp_s32 (max_y, 0, rp->h - 1);
 
-  // No need to render
-  if ((max_x - min_x) * (max_y - min_y) == 0)
+  if (max_x < min_x || max_y < min_y)
     return;
 
-  for (s32 y = min_y; y <= max_y; ++y)
-    for (s32 x = min_x; x <= max_x; ++x)
-      rp->image_buffer[y * rp->w + x]
-          = blend_rgba_pixel (color, rp->image_buffer[y * rp->w + x]);
+  width = max_x - min_x + 1;
+  height = max_y - min_y + 1;
+  renderer_blend_rectangle (rp->image_buffer + min_y * rp->w + min_x, rp->w,
+                            width, height, color);
 }
 
 local void
 draw_hline_t (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp)
 {
+  s32 width;
+
+  assert (rp != NULL);
   if (y < 0 || y >= rp->h || x1 < 0 || x0 >= rp->w)
     return;
 
@@ -432,9 +422,9 @@ draw_hline_t (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp)
   if (x0 > x1)
     return;
 
-  u32 *pixel = rp->image_buffer + y * rp->w + x0;
-  for (s32 x = x0; x <= x1; ++x, ++pixel)
-    *pixel = blend_rgba_pixel (color, *pixel);
+  width = x1 - x0 + 1;
+  renderer_blend_rectangle (rp->image_buffer + y * rp->w + x0, rp->w, width, 1,
+                            color);
 }
 
 void

@@ -11,6 +11,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#if defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)               \
+    || defined(__SSE2__)
+#include <emmintrin.h>
+#define simd128i __m128i
+#endif
+
+#if defined(_M_AVX2) || defined(__AVX2__)
+#include <immintrin.h>
+#define simd256i __m256i
+#endif
+
 // Static is confusing
 #define local static
 #define persist static

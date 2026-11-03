@@ -1,6 +1,7 @@
 #define ASTF_STRIP_PREFIX
 #include "renderer.h"
 #include "astf.h"
+#include "basic.h"
 #include "renderer.test.h"
 
 #include <string.h>
@@ -8,6 +9,73 @@
 #define TEST_W 7
 #define TEST_H 7
 #define TEST_PIXELS (TEST_W * TEST_H)
+
+static void
+renderer_reference_triangle_t (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3,
+                                s32 y3, u32 color, bool transparent,
+                                RendererPlex *rp)
+{
+  s32 min_x, max_x, min_y, max_y, area, a0, b0, a1, b1, a2, b2, w0_row,
+      w1_row, w2_row, x, y;
+
+  min_x = clamp_s32 (MIN3 (x1, x2, x3), 0, rp->w - 1);
+  max_x = clamp_s32 (MAX3 (x1, x2, x3), 0, rp->w - 1);
+  min_y = clamp_s32 (MIN3 (y1, y2, y3), 0, rp->h - 1);
+  max_y = clamp_s32 (MAX3 (y1, y2, y3), 0, rp->h - 1);
+  area = determinant_ab_ap_s32 (x1, y1, x2, y2, x3, y3);
+  if (area == 0)
+    return;
+
+  a0 = y3 - y2;
+  b0 = x2 - x3;
+  a1 = y1 - y3;
+  b1 = x3 - x1;
+  a2 = y2 - y1;
+  b2 = x1 - x2;
+  w0_row = determinant_ab_ap_s32 (x2, y2, x3, y3, min_x, min_y);
+  w1_row = determinant_ab_ap_s32 (x3, y3, x1, y1, min_x, min_y);
+  w2_row = determinant_ab_ap_s32 (x1, y1, x2, y2, min_x, min_y);
+
+  if (area < 0)
+    {
+      a0 = -a0;
+      b0 = -b0;
+      w0_row = -w0_row;
+      a1 = -a1;
+      b1 = -b1;
+      w1_row = -w1_row;
+      a2 = -a2;
+      b2 = -b2;
+      w2_row = -w2_row;
+    }
+
+  for (y = min_y; y <= max_y; ++y)
+    {
+      s32 w0, w1, w2, row_offset;
+
+      w0 = w0_row;
+      w1 = w1_row;
+      w2 = w2_row;
+      row_offset = y * rp->w;
+      for (x = min_x; x <= max_x; ++x)
+        {
+          if ((w0 | w1 | w2) >= 0)
+            rp->image_buffer[row_offset + x]
+                = transparent
+                      ? blend_rgba_pixel (color,
+                                         rp->image_buffer[row_offset + x])
+                      : color;
+
+          w0 += a0;
+          w1 += a1;
+          w2 += a2;
+        }
+
+      w0_row += b0;
+      w1_row += b1;
+      w2_row += b2;
+    }
+}
 
 static void
 renderer_test_colors (void)
@@ -230,12 +298,21 @@ renderer_test_transformed_shapes (void)
 static void
 renderer_test_transparency (void)
 {
+  u32 pixels[TEST_PIXELS], wide_pixels[17], expected[17];
+  u32 triangle_pixels[17 * 17], reference_pixels[17 * 17];
+  RendererPlex rp = { TEST_W, TEST_H, pixels }, wide_rp = { 17, 1, wide_pixels };
+  RendererPlex triangle_rp = { 17, 17, triangle_pixels },
+      reference_rp = { 17, 17, reference_pixels };
+  const s32 triangles[4][6] = { { 1, 1, 15, 3, 4, 15 },
+                                { 15, 3, 1, 1, 4, 15 },
+                                { -4, 1, 12, 3, 2, 16 },
+                                { 2, 2, 10, 10, 16, 16 } };
+  s32 i, triangle, pixel;
+
   start_test_suite ("Renderer transparency: alpha and compositing");
 
-  u32 pixels[TEST_PIXELS];
-  for (s32 i = 0; i < TEST_PIXELS; ++i)
+  for (i = 0; i < TEST_PIXELS; ++i)
     pixels[i] = 0xFF204060;
-  RendererPlex rp = { TEST_W, TEST_H, pixels };
 
   draw_rectangle_t (1, 1, 3, 3, 0x00112233, &rp);
   assert_equal (0xFF204060, pixels[2 * TEST_W + 2]);
@@ -244,13 +321,58 @@ renderer_test_transparency (void)
   assert_equal (0xFFFF0000, pixels[2 * TEST_W + 2]);
   assert_equal (0xFF204060, pixels[0]);
 
-  for (s32 i = 0; i < TEST_PIXELS; ++i)
+  for (i = 0; i < TEST_PIXELS; ++i)
     pixels[i] = 0xFF0000FF;
 
   draw_rectangle_t (1, 1, 3, 3, 0x80FF0000, &rp);
 
   assert_equal (0x8080007F, pixels[2 * TEST_W + 2]);
   assert_equal (0xFF0000FF, pixels[0]);
+
+  for (i = 0; i < 17; ++i)
+    {
+      wide_pixels[i] = 0xFF000000 | (u32)i * 0x00010101;
+      expected[i] = blend_rgba_pixel (0x8090A0B0, wide_pixels[i]);
+    }
+
+  draw_rectangle_t (0, 0, 16, 0, 0x8090A0B0, &wide_rp);
+
+  for (i = 0; i < 17; ++i)
+    assert_equal (expected[i], wide_pixels[i]);
+
+  draw_hline (0, 16, 0, 0xFFABCDEF, &wide_rp);
+  for (i = 0; i < 17; ++i)
+    assert_equal (0xFFABCDEF, wide_pixels[i]);
+
+  for (triangle = 0; triangle < 4; ++triangle)
+    {
+      for (pixel = 0; pixel < 17 * 17; ++pixel)
+        triangle_pixels[pixel] = reference_pixels[pixel]
+            = 0xFF000000 | ((u32)pixel * 0x00010101 & 0x00FFFFFF);
+
+      renderer_reference_triangle_t (
+          triangles[triangle][0], triangles[triangle][1],
+          triangles[triangle][2], triangles[triangle][3],
+          triangles[triangle][4], triangles[triangle][5], 0x7780C040, true,
+          &reference_rp);
+      draw_triangle_t (triangles[triangle][0], triangles[triangle][1],
+                       triangles[triangle][2], triangles[triangle][3],
+                       triangles[triangle][4], triangles[triangle][5],
+                       0x7780C040, &triangle_rp);
+
+      for (pixel = 0; pixel < 17 * 17; ++pixel)
+        assert_equal (reference_pixels[pixel], triangle_pixels[pixel]);
+    }
+
+  for (pixel = 0; pixel < 17 * 17; ++pixel)
+    triangle_pixels[pixel] = reference_pixels[pixel]
+        = 0xFF000000 | ((u32)pixel * 0x00010101 & 0x00FFFFFF);
+
+  renderer_reference_triangle_t (1, 1, 15, 3, 4, 15, 0xFF80C040, false,
+                                 &reference_rp);
+  draw_triangle (1, 1, 15, 3, 4, 15, 0xFF80C040, &triangle_rp);
+  for (pixel = 0; pixel < 17 * 17; ++pixel)
+    assert_equal (reference_pixels[pixel], triangle_pixels[pixel]);
 
   retrieve_results ();
 }

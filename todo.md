@@ -1,5 +1,8 @@
 ## Notes
-- Check if everything also works on GNU Linux
+Check if everything also works on GNU Linux
+
+A lot of refactoring:
+- Extract drawing stuff from the decode
 
 ### Per-file basis
 - decode.c : Factor motion vector rendering out to a separate file, maybe even in the inspector source code
@@ -45,7 +48,7 @@ We'll add a lot more stuff here as the project advances
 - [x] Cache the decoded frames
 - [ ] Cache the UI
 - [x] Parallelized renderer
-- [ ] SIMD the renderer
+- [x] SIMD the renderer
 - [ ] Lock-free paralelism (if possible ofc)
 
 ### Platform Layer (shared)

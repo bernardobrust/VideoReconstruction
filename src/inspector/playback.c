@@ -19,7 +19,8 @@ decoder_thread (void *arg)
       if (!frame_queue_acquire_write (&playback->decoded_frames, &frame))
         return;
 
-      result = decode_next_frame (playback->video, frame.renderer);
+      result = decode_next_frame (playback->video, frame.renderer,
+                                  &playback->renderer_pool);
       if (result == 0)
         frame_queue_publish (&playback->decoded_frames, frame);
       else

@@ -28,16 +28,117 @@ decode_set_display_resolution (ScreenResolution resolution)
           / 48.0f;
 }
 
-// Drawing the motion vectors
-// I don't really know if this should be in the decode, renderer would probably
-// be better
-local void
-process_side_data (const AVFrame *frame, RendererPlex *rp)
+typedef struct
 {
-  AVFrameSideData *sd
-      = av_frame_get_side_data (frame, AV_FRAME_DATA_MOTION_VECTORS);
+  const AVMotionVector *mvs;
+  RendererPlex *frame_renderer;
+  s32 count;
+} MotionVectorRenderContext;
 
-  if (!sd)
+// Each worker renders a disjoint set of rows, while iterating motion vectors
+// in the same order. This preserves the sequential result where overlays meet
+local void
+process_motion_vector (const AVMotionVector *mv, RendererPlex *rp,
+                       s32 row_offset)
+{
+  const s32 thickness = 2, arrow_margin = 4;
+  s32 cx, cy, startx, starty, raw_endx, raw_endy, arrow_min_y, arrow_max_y,
+      endx, endy;
+  f32 dx, dy, raw_len, normalized, motion_factor, display_len, scale;
+  u32 color, block_color, arrow_color;
+  bool block_intersects, arrow_intersects;
+
+  cx = (s32)(mv->w / 2);
+  cy = (s32)(mv->h / 2);
+
+  if (mv->source > 0)
+    {
+      startx = (s32)mv->dst_x + cx;
+      starty = (s32)mv->dst_y + cy;
+      raw_endx = (s32)mv->src_x + cx;
+      raw_endy = (s32)mv->src_y + cy;
+    }
+  else
+    {
+      startx = (s32)mv->src_x + cx;
+      starty = (s32)mv->src_y + cy;
+      raw_endx = (s32)mv->dst_x + cx;
+      raw_endy = (s32)mv->dst_y + cy;
+    }
+
+  // The arrow head and shaft extend only a few pixels beyond the vector line.
+  // This conservative bound avoids repeating geometry work on other row
+  // partitions while still allowing an arrow to cross a partition boundary
+  arrow_min_y = MIN (starty, raw_endy) - arrow_margin;
+  arrow_max_y = MAX (starty, raw_endy) + arrow_margin;
+  block_intersects = (s32)mv->dst_y < row_offset + rp->h
+                     && (s32)mv->dst_y + (s32)mv->h > row_offset;
+  arrow_intersects
+      = arrow_max_y >= row_offset && arrow_min_y < row_offset + rp->h;
+  if (!block_intersects && !arrow_intersects)
+    return;
+
+  dx = (f32)(raw_endx - startx);
+  dy = (f32)(raw_endy - starty);
+  starty -= row_offset;
+  raw_len = hypot_f32 (dx, dy);
+  normalized = clamp_f32 (raw_len / MAX_MOTION_MAGNITUDE, 0.0f, 1.0f);
+  motion_factor = sqrtf (normalized);
+  color = interpolate_color_br (motion_factor);
+  block_color = (color & 0x00FFFFFF) | (48u << 24);
+  arrow_color = (color & 0x00FFFFFF) | (104u << 24);
+
+  if (block_intersects)
+    draw_rectangle_t ((s32)mv->dst_x, (s32)mv->dst_y - row_offset,
+                      (s32)mv->dst_x + (s32)mv->w - 1,
+                      (s32)mv->dst_y + (s32)mv->h - 1 - row_offset,
+                      block_color, rp);
+
+  if (raw_len == 0.0f)
+    return;
+
+  display_len = MIN (raw_len, MAX_DISPLAY_LENGTH);
+  scale = display_len / raw_len;
+  endx = startx + (s32)roundf (dx * scale);
+  endy = starty + (s32)roundf (dy * scale);
+  draw_arrow_t (startx, starty, endx, endy, thickness, arrow_color, rp);
+}
+
+local void
+process_motion_vector_rows (void *arg, s32 first_row, s32 end_row)
+{
+  MotionVectorRenderContext *context;
+  RendererPlex row_renderer;
+  s32 i;
+
+  context = arg;
+  assert (context != NULL && first_row >= 0
+          && end_row <= context->frame_renderer->h);
+
+  if (first_row >= end_row)
+    return;
+
+  row_renderer.w = context->frame_renderer->w;
+  row_renderer.h = end_row - first_row;
+  row_renderer.image_buffer
+      = context->frame_renderer->image_buffer + first_row * row_renderer.w;
+
+  for (i = 0; i < context->count; ++i)
+    process_motion_vector (&context->mvs[i], &row_renderer, first_row);
+}
+
+local void
+process_side_data (const AVFrame *frame, RendererPlex *rp,
+                   RendererPool *renderer_pool)
+{
+  AVFrameSideData *sd;
+  MotionVectorRenderContext context;
+  u64 vector_count;
+
+  assert (frame != NULL && rp != NULL && renderer_pool != NULL);
+  sd = av_frame_get_side_data (frame, AV_FRAME_DATA_MOTION_VECTORS);
+
+  if (sd == NULL)
     {
 #ifndef NDEBUG
       printf ("No side data for this frame: %" PRId64 "\n", frame->pts);
@@ -45,58 +146,16 @@ process_side_data (const AVFrame *frame, RendererPlex *rp)
       return;
     }
 
-  const AVMotionVector *mvs = (const AVMotionVector *)sd->data;
-  s32 nb_mvs = (s32)(sd->size / sizeof (*mvs));
+  assert (sd->size % sizeof (AVMotionVector) == 0);
+  vector_count = sd->size / sizeof (AVMotionVector);
+  assert (vector_count <= INT32_MAX);
+  context.mvs = (const AVMotionVector *)sd->data;
+  context.frame_renderer = rp;
+  context.count = (s32)vector_count;
 
-  const s32 thickness = 2;
-
-  for (s32 i = 0; i < nb_mvs; ++i)
-    {
-      const AVMotionVector *mv = &mvs[i];
-
-      s32 cx = (s32)(mv->w / 2), cy = (s32)(mv->h / 2);
-      s32 startx, starty, raw_endx, raw_endy;
-
-      // Swap if needed
-      if (mv->source > 0)
-        {
-          startx = (s32)mv->dst_x + cx;
-          starty = (s32)mv->dst_y + cy;
-          raw_endx = (s32)mv->src_x + cx;
-          raw_endy = (s32)mv->src_y + cy;
-        }
-      else
-        {
-          startx = (s32)mv->src_x + cx;
-          starty = (s32)mv->src_y + cy;
-          raw_endx = (s32)mv->dst_x + cx;
-          raw_endy = (s32)mv->dst_y + cy;
-        }
-
-      f32 dx = (f32)(raw_endx - startx), dy = (f32)(raw_endy - starty);
-      f32 raw_len = hypot_f32 (dx, dy);
-      f32 normalized = clamp_f32 (raw_len / MAX_MOTION_MAGNITUDE, 0.0f, 1.0f),
-          motion_factor = sqrtf (normalized);
-      u32 color = interpolate_color_br (motion_factor);
-      u32 block_color = (color & 0x00FFFFFF) | (48u << 24);
-      u32 arrow_color = (color & 0x00FFFFFF) | (104u << 24);
-
-      // Block color
-      draw_rectangle_t ((s32)mv->dst_x, (s32)mv->dst_y,
-                        (s32)mv->dst_x + (s32)mv->w - 1,
-                        (s32)mv->dst_y + (s32)mv->h - 1, block_color, rp);
-
-      // 0 size has no arrow, but the block still shows its zero magnitude.
-      if (raw_len == 0.0f)
-        continue;
-
-      f32 display_len = MIN (raw_len, MAX_DISPLAY_LENGTH),
-          scale = display_len / raw_len;
-      s32 endx = startx + (s32)roundf (dx * scale),
-          endy = starty + (s32)roundf (dy * scale);
-
-      draw_arrow_t (startx, starty, endx, endy, thickness, arrow_color, rp);
-    }
+  if (context.count > 0)
+    renderer_pool_run_rows (renderer_pool, rp->h,
+                            process_motion_vector_rows, &context);
 }
 
 VideoPlex *
@@ -210,9 +269,12 @@ shutdown_video (VideoPlex *vp)
 // 0 = ok
 // 1 = end
 s32
-decode_next_frame (VideoPlex *vp, RendererPlex *rp)
+decode_next_frame (VideoPlex *vp, RendererPlex *rp,
+                   RendererPool *renderer_pool)
 {
   bool got_frame = false;
+
+  assert (vp != NULL && rp != NULL && renderer_pool != NULL);
 
   while (!got_frame)
     {
@@ -307,7 +369,7 @@ decode_next_frame (VideoPlex *vp, RendererPlex *rp)
   sws_scale (vp->sws, (const u8 *const *)vp->frame->data, vp->frame->linesize,
              0, h, dst_data, dst_linesize);
 
-  process_side_data (vp->frame, rp);
+  process_side_data (vp->frame, rp, renderer_pool);
 
   return 0;
 }

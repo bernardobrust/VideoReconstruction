@@ -102,14 +102,15 @@ video_only:
   VideoPlex *vp = NULL;
   arena_init (&video_arena, sizeof (VideoPlex) + _Alignof (VideoPlex));
 
-  // We'll require a lot of profiling to adjust these values, 1/2 is fine for
-  // now. Account for the main, decoder-coordinator, and systems threads first.
-  // The remaining budget is split between dav1d and renderer helper threads,
-  // the systems thread also renders one row range while the pool is active
+  // Reserve the main, decoder-coordinator, and systems threads. The remaining
+  // helper budget supports up to three dav1d workers and two renderer workers.
   s32 logical_cores = platform_get_logical_core_count (),
       worker_budget = MAX (0, logical_cores - 3),
-      decoder_threads = worker_budget > 0 ? MAX (1, worker_budget * 1 / 2) : 0,
-      renderer_workers = MAX (0, worker_budget - decoder_threads);
+      decoder_threads = MIN (3, (worker_budget * 3 + 2) / 5),
+      renderer_workers
+      = MAX (0, MIN (2, worker_budget - decoder_threads));
+  if (decoder_threads == 0)
+    decoder_threads = 1;
 
   // Initializing video
   vp = init_video (&video_arena, video_file, decoder_threads);
@@ -121,7 +122,7 @@ video_only:
   enum
   {
     // We'll later get this from a config file
-    DECODED_FRAME_CACHE_MEGABYTES = 256
+    DECODED_FRAME_CACHE_MEGABYTES = 1024
   };
 
   s32 decoded_frame_cache_capacity = frame_queue_capacity_for_megabytes (

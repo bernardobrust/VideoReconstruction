@@ -100,6 +100,7 @@ renderer_pool_init (RendererPool *pool, Arena *arena, s32 thread_count)
   assert (pool->threads != NULL && workers != NULL);
 
   platform_mutex_init (&pool->mutex);
+  platform_mutex_init (&pool->run_mutex);
   platform_condition_init (&pool->work_available);
   platform_condition_init (&pool->work_complete);
 
@@ -122,6 +123,7 @@ renderer_pool_init (RendererPool *pool, Arena *arena, s32 thread_count)
 
           platform_condition_destroy (&pool->work_complete);
           platform_condition_destroy (&pool->work_available);
+          platform_mutex_destroy (&pool->run_mutex);
           platform_mutex_destroy (&pool->mutex);
 
           return false;
@@ -146,6 +148,7 @@ renderer_pool_run_rows (RendererPool *pool, s32 row_count,
       return;
     }
 
+  platform_mutex_lock (&pool->run_mutex);
   platform_mutex_lock (&pool->mutex);
 
   assert (pool->completed_threads == 0);
@@ -171,6 +174,7 @@ renderer_pool_run_rows (RendererPool *pool, s32 row_count,
   pool->completed_threads = 0;
 
   platform_mutex_unlock (&pool->mutex);
+  platform_mutex_unlock (&pool->run_mutex);
 }
 
 void
@@ -193,5 +197,6 @@ renderer_pool_shutdown (RendererPool *pool)
 
   platform_condition_destroy (&pool->work_complete);
   platform_condition_destroy (&pool->work_available);
+  platform_mutex_destroy (&pool->run_mutex);
   platform_mutex_destroy (&pool->mutex);
 }
