@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <string.h>
 
+#include "basic.h"
+
 u64
 frame_queue_memory_required (s32 w, s32 h, s32 capacity)
 {
@@ -19,6 +21,29 @@ frame_queue_memory_required (s32 w, s32 h, s32 capacity)
           && frame_bytes <= (UINT64_MAX - metadata) / (u64)capacity);
 
   return metadata + (u64)capacity * frame_bytes;
+}
+
+s32
+frame_queue_capacity_for_megabytes (s32 w, s32 h, s32 megabytes)
+{
+  u64 budget, per_frame, overhead_per_frame, capacity_u64;
+  s32 capacity;
+
+  assert (w > 0 && h > 0 && megabytes > 0);
+  assert ((u64)megabytes <= UINT64_MAX / (1024 * 1024));
+
+  assert ((u64)megabytes <= UINT64_MAX / MEGABYTE (1));
+  budget = (u64)megabytes * MEGABYTE (1);
+  per_frame = (u64)w * (u64)h * sizeof (u32);
+  overhead_per_frame = sizeof (RendererPlex) + sizeof (s32) + sizeof (bool);
+
+  if (budget <= 256 || per_frame > UINT64_MAX - overhead_per_frame)
+    return 1;
+
+  capacity_u64 = (budget - 256) / (per_frame + overhead_per_frame);
+  capacity = (s32)MIN (capacity_u64, INT32_MAX);
+
+  return MAX (capacity, 1);
 }
 
 void

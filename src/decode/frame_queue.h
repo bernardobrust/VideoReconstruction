@@ -22,6 +22,7 @@ typedef struct
 } FrameQueueFrame;
 
 u64 frame_queue_memory_required (s32 w, s32 h, s32 capacity);
+s32 frame_queue_capacity_for_megabytes (s32 w, s32 h, s32 megabytes);
 
 void frame_queue_init (FrameQueue *queue, Arena *arena, s32 w, s32 h,
                        s32 capacity);

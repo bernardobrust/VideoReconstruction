@@ -3,7 +3,6 @@
 
 ### Per-file basis
 - decode.c : Factor motion vector rendering out to a separate file, maybe even in the inspector source code
-- main.c : change cache to use MiB instead of frame count
 
 ## Checklists
 ### Modified libraries

@@ -121,14 +121,15 @@ video_only:
   enum
   {
     // We'll later get this from a config file
-    // If we assume a completly uncompressed 4K HDR video this comes out to
-    // about 288.75 MiB
-    DECODED_FRAME_CACHE_CAPACITY = 12
+    DECODED_FRAME_CACHE_MEGABYTES = 256
   };
+
+  s32 decoded_frame_cache_capacity = frame_queue_capacity_for_megabytes (
+      w, h, DECODED_FRAME_CACHE_MEGABYTES);
 
   u64 renderer_capacity
       = operations_memory_required (w, h)
-        + frame_queue_memory_required (w, h, DECODED_FRAME_CACHE_CAPACITY)
+        + frame_queue_memory_required (w, h, decoded_frame_cache_capacity)
         + (u64)w * h * sizeof (u32)
         + renderer_pool_memory_required (renderer_workers);
   arena_init (&renderer_arena, renderer_capacity);
@@ -153,7 +154,7 @@ video_only:
             : 1000.0 / 30.0;
 
   if (!inspector_playback_init (&playback, &renderer_arena, vp, rp,
-                                DECODED_FRAME_CACHE_CAPACITY, renderer_workers,
+                                decoded_frame_cache_capacity, renderer_workers,
                                 frame_duration_ms))
     goto end;
 
