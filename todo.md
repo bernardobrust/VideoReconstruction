@@ -1,9 +1,6 @@
 ## Notes
 Check if everything also works on GNU Linux
 
-A lot of refactoring:
-- Extract drawing stuff from the decode
-
 ### Per-file basis
 - decode.c : Factor motion vector rendering out to a separate file, maybe even in the inspector source code
 
@@ -103,7 +100,7 @@ Should we test the rendering primitives?
 - [x] Slow down and speed up
 - [x] Zoom-in and Zoom-out
 - [ ] Panning
-- [ ] Hide data overlay
+- [x] Hide data overlay
 - [ ] Scale/downscale video to a given WxH
 - [ ] Frame information (requires fonts working)
 - [x] Render motion vectors on top of the frame

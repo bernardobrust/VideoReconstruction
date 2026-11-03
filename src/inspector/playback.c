@@ -5,12 +5,18 @@
 
 #include "basic.h"
 #include "operations.h"
+#include <libavutil/frame.h>
+#include <libavutil/motion_vector.h>
 
 local void
 decoder_thread (void *arg)
 {
   InspectorPlayback *playback;
   FrameQueueFrame frame;
+  AVFrameSideData *side_data;
+  AVMotionVector *motion_vectors;
+  u64 motion_vector_count_u64;
+  s32 motion_vector_count;
   s32 result;
 
   playback = arg;
@@ -19,10 +25,25 @@ decoder_thread (void *arg)
       if (!frame_queue_acquire_write (&playback->decoded_frames, &frame))
         return;
 
-      result = decode_next_frame (playback->video, frame.renderer,
-                                  &playback->renderer_pool);
+      result = decode_next_frame (playback->video, frame.renderer);
       if (result == 0)
-        frame_queue_publish (&playback->decoded_frames, frame);
+        {
+          side_data = av_frame_get_side_data (
+              playback->video->frame, AV_FRAME_DATA_MOTION_VECTORS);
+          motion_vectors = side_data != NULL
+                              ? (AVMotionVector *)side_data->data
+                              : NULL;
+          motion_vector_count_u64
+              = side_data != NULL
+                    ? side_data->size / sizeof (*motion_vectors)
+                    : 0;
+          assert (motion_vector_count_u64 <= INT32_MAX);
+          motion_vector_count = (s32)motion_vector_count_u64;
+          frame_queue_copy_motion_vectors (&playback->decoded_frames, &frame,
+                                          motion_vectors,
+                                          motion_vector_count);
+          frame_queue_publish (&playback->decoded_frames, frame);
+        }
       else
         {
           frame_queue_release (&playback->decoded_frames, frame);
@@ -153,6 +174,9 @@ systems_thread (void *arg)
               frame.renderer->image_buffer,
               (u64)playback->display->w * playback->display->h * sizeof (u32));
 
+      operations_on_frame_decoded (playback->render_target,
+                                   frame.motion_vectors,
+                                   frame.motion_vector_count);
       operations_apply_zoom (playback->render_target, &playback->renderer_pool,
                              &render_state);
 

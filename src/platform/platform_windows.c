@@ -203,6 +203,9 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
           case 'F':
             ev = is_press ? KeyFPress : KeyFRelease;
             break;
+          case 'T':
+            ev = is_press ? KeyTPress : KeyTRelease;
+            break;
           default:
             valid = false;
             break;

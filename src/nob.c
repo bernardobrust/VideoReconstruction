@@ -442,7 +442,8 @@ main (s32 argc, byte **argv)
     nob_cmd_append (&compile_cmd, "renderer/renderer_simd.c");
   else
     nob_cmd_append (&compile_cmd, "renderer/renderer_scalar.c");
-  nob_cmd_append (&compile_cmd, "renderer/renderer_pool.c");
+  nob_cmd_append (&compile_cmd, "renderer/renderer_pool.c",
+                  "renderer/motion_vectors.c");
 
   // Decoder
   nob_cmd_append (&compile_cmd, "decode/decode.c");

@@ -45,6 +45,7 @@ enum X11KeyValues
   KEY_DOWN = 108 + 8,
   KEY_SPACE = 57 + 8,
   KEY_F = 33 + 8,
+  KEY_T = 28 + 8,
 };
 
 enum
@@ -535,6 +536,9 @@ dispatch_event (PlatformState *platform_state, const u8 event[32])
           break;
         case KEY_F:
           ev = is_press ? KeyFPress : KeyFRelease;
+          break;
+        case KEY_T:
+          ev = is_press ? KeyTPress : KeyTRelease;
           break;
         default:
           valid = false;

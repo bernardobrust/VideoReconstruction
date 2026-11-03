@@ -20,6 +20,7 @@ typedef enum
   DOWN = 8,
   SPACE = 9,
   F = 10,
+  T = 11,
 } KeyValue;
 
 typedef enum
@@ -37,8 +38,8 @@ typedef enum
 
 typedef struct
 {
-  s32 keys_pressed[11];
-  bool keys_just_pressed[11];
+  s32 keys_pressed[12];
+  bool keys_just_pressed[12];
   bool mouse_buttons_pressed[2];
   bool mouse_buttons_just_pressed[2];
   bool mouse_buttons_just_released[2];

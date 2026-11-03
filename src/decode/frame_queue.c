@@ -1,6 +1,7 @@
 #include "frame_queue.h"
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "basic.h"
@@ -14,7 +15,9 @@ frame_queue_memory_required (s32 w, s32 h, s32 capacity)
   assert ((u64)w <= UINT64_MAX / (u64)h / sizeof (u32));
 
   metadata = 256 + (u64)capacity * sizeof (RendererPlex)
-             + (u64)capacity * sizeof (s32) + (u64)capacity * sizeof (bool);
+             + (u64)capacity * sizeof (s32) + (u64)capacity * sizeof (bool)
+             + (u64)capacity * sizeof (AVMotionVector *)
+             + (u64)capacity * sizeof (s32) * 2;
   frame_bytes = (u64)w * (u64)h * sizeof (u32);
 
   assert (metadata <= UINT64_MAX
@@ -24,23 +27,21 @@ frame_queue_memory_required (s32 w, s32 h, s32 capacity)
 }
 
 s32
-frame_queue_capacity_for_megabytes (s32 w, s32 h, s32 megabytes)
+frame_queue_capacity_for_bytes (s32 w, s32 h, u64 byte_budget)
 {
-  u64 budget, per_frame, overhead_per_frame, capacity_u64;
+  u64 per_frame, overhead_per_frame, capacity_u64;
   s32 capacity;
 
-  assert (w > 0 && h > 0 && megabytes > 0);
-  assert ((u64)megabytes <= UINT64_MAX / (1024 * 1024));
-
-  assert ((u64)megabytes <= UINT64_MAX / MEGABYTE (1));
-  budget = (u64)megabytes * MEGABYTE (1);
+  assert (w > 0 && h > 0 && byte_budget > 0);
+  assert ((u64)w <= UINT64_MAX / (u64)h / sizeof (u32));
   per_frame = (u64)w * (u64)h * sizeof (u32);
   overhead_per_frame = sizeof (RendererPlex) + sizeof (s32) + sizeof (bool);
 
-  if (budget <= 256 || per_frame > UINT64_MAX - overhead_per_frame)
+  if (byte_budget <= 256 || per_frame > UINT64_MAX - overhead_per_frame)
     return 1;
 
-  capacity_u64 = (budget - 256) / (per_frame + overhead_per_frame);
+  capacity_u64
+      = (byte_budget - 256) / (per_frame + overhead_per_frame);
   capacity = (s32)MIN (capacity_u64, INT32_MAX);
 
   return MAX (capacity, 1);
@@ -64,11 +65,28 @@ frame_queue_init (FrameQueue *queue, Arena *arena, s32 w, s32 h, s32 capacity)
       arena, (u64)capacity * sizeof (*queue->ready_indices), _Alignof (s32));
   queue->occupied = arena_alloc (
       arena, (u64)capacity * sizeof (*queue->occupied), _Alignof (bool));
+  queue->motion_vectors = arena_alloc (
+      arena, (u64)capacity * sizeof (*queue->motion_vectors),
+      _Alignof (AVMotionVector *));
+  queue->motion_vector_counts = arena_alloc (
+      arena, (u64)capacity * sizeof (*queue->motion_vector_counts),
+      _Alignof (s32));
+  queue->motion_vector_capacities = arena_alloc (
+      arena, (u64)capacity * sizeof (*queue->motion_vector_capacities),
+      _Alignof (s32));
 
   assert (queue->frames != NULL && queue->ready_indices != NULL
-          && queue->occupied != NULL);
+          && queue->occupied != NULL && queue->motion_vectors != NULL
+          && queue->motion_vector_counts != NULL
+          && queue->motion_vector_capacities != NULL);
 
   memset (queue->occupied, 0, (u64)capacity * sizeof (*queue->occupied));
+  memset (queue->motion_vectors, 0,
+          (u64)capacity * sizeof (*queue->motion_vectors));
+  memset (queue->motion_vector_counts, 0,
+          (u64)capacity * sizeof (*queue->motion_vector_counts));
+  memset (queue->motion_vector_capacities, 0,
+          (u64)capacity * sizeof (*queue->motion_vector_capacities));
 
   for (i = 0; i < capacity; ++i)
     {
@@ -88,9 +106,14 @@ frame_queue_init (FrameQueue *queue, Arena *arena, s32 w, s32 h, s32 capacity)
 void
 frame_queue_destroy (FrameQueue *queue)
 {
+  s32 i;
+
   assert (queue != NULL);
 
   // Call only after the decoder and consumer threads have stopped.
+  for (i = 0; i < queue->capacity; ++i)
+    free (queue->motion_vectors[i]);
+
   platform_condition_destroy (&queue->slot_available);
   platform_condition_destroy (&queue->frame_ready);
   platform_mutex_destroy (&queue->mutex);
@@ -121,6 +144,9 @@ frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
               queue->occupied[i] = true;
               frame->index = i;
               frame->renderer = &queue->frames[i];
+              frame->motion_vectors = queue->motion_vectors[i];
+              frame->motion_vector_count = 0;
+              queue->motion_vector_counts[i] = 0;
               platform_mutex_unlock (&queue->mutex);
 
               return true;
@@ -129,6 +155,35 @@ frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
 
       platform_condition_wait (&queue->slot_available, &queue->mutex);
     }
+}
+
+void
+frame_queue_copy_motion_vectors (FrameQueue *queue, FrameQueueFrame *frame,
+                                const AVMotionVector *motion_vectors,
+                                s32 count)
+{
+  AVMotionVector *resized;
+
+  assert (queue != NULL && frame != NULL && frame->index >= 0
+          && frame->index < queue->capacity
+          && (motion_vectors != NULL || count == 0) && count >= 0);
+  assert (queue->occupied[frame->index]);
+
+  if (count > queue->motion_vector_capacities[frame->index])
+    {
+      resized = realloc (queue->motion_vectors[frame->index],
+                         (u64)count * sizeof (*resized));
+      assert (resized != NULL);
+      queue->motion_vectors[frame->index] = resized;
+      queue->motion_vector_capacities[frame->index] = count;
+    }
+
+  if (count > 0)
+    memcpy (queue->motion_vectors[frame->index], motion_vectors,
+            (u64)count * sizeof (*motion_vectors));
+  queue->motion_vector_counts[frame->index] = count;
+  frame->motion_vectors = queue->motion_vectors[frame->index];
+  frame->motion_vector_count = count;
 }
 
 void
@@ -175,6 +230,8 @@ frame_queue_take (FrameQueue *queue, FrameQueueFrame *frame)
   // frame_queue_release, preventing the decoder from overwriting a live frame.
   frame->index = queue->ready_indices[queue->ready_head];
   frame->renderer = &queue->frames[frame->index];
+  frame->motion_vectors = queue->motion_vectors[frame->index];
+  frame->motion_vector_count = queue->motion_vector_counts[frame->index];
   queue->ready_head = (queue->ready_head + 1) % queue->capacity;
   --queue->ready_count;
 

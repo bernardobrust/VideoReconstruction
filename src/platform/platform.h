@@ -58,6 +58,8 @@ typedef enum
   KeySpaceRelease,
   KeyFPress,
   KeyFRelease,
+  KeyTPress,
+  KeyTRelease,
   MouseLeftPress,
   MouseLeftRelease,
   MouseRightPress,

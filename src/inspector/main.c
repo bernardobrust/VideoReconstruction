@@ -20,6 +20,7 @@
 #include "playback.h"
 #include "renderer.h"
 #include "renderer_pool.h"
+#include "motion_vectors.h"
 
 s32
 main (s32 argc, byte **argv)
@@ -81,7 +82,7 @@ video_only:
   if (file_exists == 0)
     {
 #ifndef NDEBUG
-      printf ("Video to inspect: %s.\n", video_file);
+      printf ("Video to inspect: %s\n", video_file);
 #endif
     }
   else if (file_exists == 1)
@@ -103,12 +104,11 @@ video_only:
   arena_init (&video_arena, sizeof (VideoPlex) + _Alignof (VideoPlex));
 
   // Reserve the main, decoder-coordinator, and systems threads. The remaining
-  // helper budget supports up to three dav1d workers and two renderer workers.
+  // helper budget supports up to three dav1d workers and two renderer workers
   s32 logical_cores = platform_get_logical_core_count (),
       worker_budget = MAX (0, logical_cores - 3),
       decoder_threads = MIN (3, (worker_budget * 3 + 2) / 5),
-      renderer_workers
-      = MAX (0, MIN (2, worker_budget - decoder_threads));
+      renderer_workers = MAX (0, MIN (2, worker_budget - decoder_threads));
   if (decoder_threads == 0)
     decoder_threads = 1;
 
@@ -122,11 +122,11 @@ video_only:
   enum
   {
     // We'll later get this from a config file
-    DECODED_FRAME_CACHE_MEGABYTES = 1024
+    DECODED_FRAME_CACHE_BYTES = GIGABYTE (1)
   };
 
-  s32 decoded_frame_cache_capacity = frame_queue_capacity_for_megabytes (
-      w, h, DECODED_FRAME_CACHE_MEGABYTES);
+  s32 decoded_frame_cache_capacity
+      = frame_queue_capacity_for_bytes (w, h, DECODED_FRAME_CACHE_BYTES);
 
   u64 renderer_capacity
       = operations_memory_required (w, h)
@@ -144,7 +144,7 @@ video_only:
   if (platform_state.internal_state == NULL)
     goto end;
 
-  decode_set_display_resolution (
+  renderer_motion_vectors_set_display_resolution (
       platform_get_screen_resolution (&platform_state));
 
   // Keep the video's temporal coherence by default, playback speed scales it
