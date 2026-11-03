@@ -3,6 +3,7 @@
 
 ### Per-file basis
 - decode.c : Factor motion vector rendering out to a separate file, maybe even in the inspector source code
+- main.c : change cache to use MiB instead of frame count
 
 ## Checklists
 ### Modified libraries
@@ -99,7 +100,10 @@ Should we test the rendering primitives?
 - [x] Pause
 - [x] Slow down and speed up
 - [x] Zoom-in and Zoom-out
+- [ ] Panning
+- [ ] Hide data overlay
 - [ ] Scale/downscale video to a given WxH
+- [ ] Frame information (requires fonts working)
 - [x] Render motion vectors on top of the frame
 - [ ] Render motion vectors per block (a.k.a. highlight the block)
 - [x] Modify vector color based on magnitude (better than scaling the arrow)
