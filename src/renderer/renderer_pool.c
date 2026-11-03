@@ -1,6 +1,7 @@
 #include "renderer_pool.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <string.h>
 
 u64
@@ -77,6 +78,10 @@ bool
 renderer_pool_init (RendererPool *pool, Arena *arena, s32 thread_count)
 {
   assert (pool != NULL && arena != NULL && thread_count >= 0);
+
+#ifndef DNDEBUG
+  printf ("Using %d renderer threads\n", thread_count);
+#endif
 
   RendererWorker *workers;
   bool started;

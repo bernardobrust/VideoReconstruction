@@ -104,6 +104,10 @@ init_video (Arena *arena, byte *video_file, s32 decoder_threads)
 {
   assert (arena != NULL && decoder_threads > 0);
 
+#ifndef DNDEBUG
+  printf ("Using %d decoder threads\n", decoder_threads);
+#endif
+
   VideoPlex *vp = arena_alloc (arena, sizeof (*vp), _Alignof (VideoPlex));
   assert (vp != NULL);
 
@@ -159,7 +163,7 @@ init_video (Arena *arena, byte *video_file, s32 decoder_threads)
 
   // FFmpeg's libdav1d wrapper maps thread_count to dav1d's worker count. The
   // caller budgets this together with the renderer helpers and coordinator
-  // threads so their combined count stays within logical core capacity.
+  // threads so their combined count stays within logical core capacity
   vp->codec->thread_count = decoder_threads;
 
   // Important: we need to set the export_mvs flag to get motion vectors
