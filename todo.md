@@ -104,7 +104,7 @@ Should we test the rendering primitives?
 - [ ] Scale/downscale video to a given WxH
 - [ ] Frame information (requires fonts working)
 - [x] Render motion vectors on top of the frame
-- [ ] Render motion vectors per block (a.k.a. highlight the block)
+- [x] Render motion vectors per block (a.k.a. highlight the block)
 - [x] Modify vector color based on magnitude (better than scaling the arrow)
 - [ ] More compression data...
 - [ ] Next and previous frame
@@ -117,6 +117,5 @@ Should we test the rendering primitives?
 - [ ] Export and inspect at the same time
 
 ### Extra (inspector)
-- [ ] Test coverage (like Like FFmpeg's FATE but a lot simpler)
 - [ ] Parallelized build (?)
 - [ ] Data analysis

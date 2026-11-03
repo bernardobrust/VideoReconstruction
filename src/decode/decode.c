@@ -74,22 +74,28 @@ process_side_data (const AVFrame *frame, RendererPlex *rp)
         }
 
       f32 dx = (f32)(raw_endx - startx), dy = (f32)(raw_endy - starty);
+      f32 raw_len = hypot_f32 (dx, dy);
+      f32 normalized = clamp_f32 (raw_len / MAX_MOTION_MAGNITUDE, 0.0f, 1.0f),
+          motion_factor = sqrtf (normalized);
+      u32 color = interpolate_color_br (motion_factor);
+      u32 block_color = (color & 0x00FFFFFF) | (48u << 24);
+      u32 arrow_color = (color & 0x00FFFFFF) | (104u << 24);
 
-      // 0 size
-      if (dx == 0.0f && dy == 0.0f)
+      // Block color
+      draw_rectangle_t ((s32)mv->dst_x, (s32)mv->dst_y,
+                        (s32)mv->dst_x + (s32)mv->w - 1,
+                        (s32)mv->dst_y + (s32)mv->h - 1, block_color, rp);
+
+      // 0 size has no arrow, but the block still shows its zero magnitude.
+      if (raw_len == 0.0f)
         continue;
 
-      f32 raw_len = hypot_f32 (dx, dy);
-
-      f32 normalized = clamp_f32 (raw_len / MAX_MOTION_MAGNITUDE, 0.0f, 1.0f),
-          motion_factor = sqrtf (normalized),
-          display_len = MIN (raw_len, MAX_DISPLAY_LENGTH),
+      f32 display_len = MIN (raw_len, MAX_DISPLAY_LENGTH),
           scale = display_len / raw_len;
-      u32 color = interpolate_color_br (motion_factor);
       s32 endx = startx + (s32)roundf (dx * scale),
           endy = starty + (s32)roundf (dy * scale);
 
-      draw_arrow_t (startx, starty, endx, endy, thickness, color, rp);
+      draw_arrow_t (startx, starty, endx, endy, thickness, arrow_color, rp);
     }
 }
 
