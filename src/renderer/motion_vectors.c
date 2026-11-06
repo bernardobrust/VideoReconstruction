@@ -9,6 +9,9 @@
 // We may want to calculate this based on the display's dimensions
 const f32 MAX_MOTION_MAGNITUDE = 90.0f;
 f32 MAX_DISPLAY_LENGTH = 15.0f;
+// Neutral color for blocks with zero motion
+local const u32 MOTION_BLOCK_COLOR = 0x30FFFFFF;
+
 void
 renderer_motion_vectors_set_display_resolution (ScreenResolution resolution)
 {
@@ -33,35 +36,25 @@ process_motion_vector (const AVMotionVector *mv, RendererPlex *renderer,
                        s32 row_offset)
 {
   const s32 thickness = 2, arrow_margin = 4;
-  s32 cx, cy, startx, starty, raw_endx, raw_endy, arrow_min_y, arrow_max_y,
-      endx, endy;
+  s32 center_x, center_y, start_x, start_y, raw_end_x, raw_end_y;
+  s32 arrow_min_y, arrow_max_y, end_x, end_y;
   f32 dx, dy, raw_len, normalized, motion_factor, display_len, scale;
-  u32 color, block_color, arrow_color;
+  u32 block_color, arrow_color;
   bool block_intersects, arrow_intersects;
 
-  cx = (s32)(mv->w / 2);
-  cy = (s32)(mv->h / 2);
-
-  if (mv->source > 0)
-    {
-      startx = (s32)mv->dst_x + cx;
-      starty = (s32)mv->dst_y + cy;
-      raw_endx = (s32)mv->src_x + cx;
-      raw_endy = (s32)mv->src_y + cy;
-    }
-  else
-    {
-      startx = (s32)mv->src_x + cx;
-      starty = (s32)mv->src_y + cy;
-      raw_endx = (s32)mv->dst_x + cx;
-      raw_endy = (s32)mv->dst_y + cy;
-    }
+  center_x = (s32)(mv->w / 2);
+  center_y = (s32)(mv->h / 2);
+  // The displayed block is in the destination frame, so vectors start there
+  start_x = (s32)mv->dst_x + center_x;
+  start_y = (s32)mv->dst_y + center_y;
+  raw_end_x = (s32)mv->src_x + center_x;
+  raw_end_y = (s32)mv->src_y + center_y;
 
   // The arrow head and shaft extend only a few pixels beyond the vector line.
   // This conservative bound avoids repeating geometry work on other row
   // partitions while still allowing an arrow to cross a partition boundary
-  arrow_min_y = MIN (starty, raw_endy) - arrow_margin;
-  arrow_max_y = MAX (starty, raw_endy) + arrow_margin;
+  arrow_min_y = MIN (start_y, raw_end_y) - arrow_margin;
+  arrow_max_y = MAX (start_y, raw_end_y) + arrow_margin;
   block_intersects = (s32)mv->dst_y < row_offset + renderer->h
                      && (s32)mv->dst_y + (s32)mv->h > row_offset;
   arrow_intersects
@@ -69,15 +62,16 @@ process_motion_vector (const AVMotionVector *mv, RendererPlex *renderer,
   if (!block_intersects && !arrow_intersects)
     return;
 
-  dx = (f32)(raw_endx - startx);
-  dy = (f32)(raw_endy - starty);
-  starty -= row_offset;
+  dx = (f32)(raw_end_x - start_x);
+  dy = (f32)(raw_end_y - start_y);
+  start_y -= row_offset;
   raw_len = hypot_f32 (dx, dy);
   normalized = clamp_f32 (raw_len / MAX_MOTION_MAGNITUDE, 0.0f, 1.0f);
   motion_factor = sqrtf (normalized);
-  color = interpolate_color_br (motion_factor);
-  block_color = (color & 0x00FFFFFF) | (48u << 24);
-  arrow_color = (color & 0x00FFFFFF) | (104u << 24);
+  arrow_color = interpolate_color_br (motion_factor);
+  arrow_color = (arrow_color & 0x00FFFFFF) | (104u << 24);
+  block_color = raw_len == 0.0f ? MOTION_BLOCK_COLOR
+                                : (arrow_color & 0x00FFFFFF) | (48u << 24);
 
   if (block_intersects)
     draw_rectangle_t ((s32)mv->dst_x, (s32)mv->dst_y - row_offset,
@@ -90,9 +84,10 @@ process_motion_vector (const AVMotionVector *mv, RendererPlex *renderer,
 
   display_len = MIN (raw_len, MAX_DISPLAY_LENGTH);
   scale = display_len / raw_len;
-  endx = startx + (s32)roundf (dx * scale);
-  endy = starty + (s32)roundf (dy * scale);
-  draw_arrow_t (startx, starty, endx, endy, thickness, arrow_color, renderer);
+  end_x = start_x + (s32)roundf (dx * scale);
+  end_y = start_y + (s32)roundf (dy * scale);
+  draw_arrow_t (start_x, start_y, end_x, end_y, thickness, arrow_color,
+                renderer);
 }
 
 local void

@@ -99,7 +99,7 @@ Should we test the rendering primitives?
 - [x] Pause
 - [x] Slow down and speed up
 - [x] Zoom-in and Zoom-out
-- [ ] Panning
+- [x] Panning
 - [x] Hide data overlay
 - [ ] Scale/downscale video to a given WxH
 - [ ] Frame information (requires fonts working)
