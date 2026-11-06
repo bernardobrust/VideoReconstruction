@@ -21,9 +21,13 @@ inspector -inspect (video_file)
 
 Then use the following commands:
 - SPACE: Pauses/unpauses the video
-- DOWN ARROW: Decrease playback speed (down to 1/8th of the video's normal playback rate)
-- UP ARROW: Increase playback speed (up to the normal playback rate)
+- DOWN ARROW: Decrease playback speed
+- UP ARROW: Increase playback speed
 - F: Toggle full screen
+- T: Toggle data overlay
+- CTRL-LMB: Zoom in
+- CTRL-RMB: Zoom out
+- RMB: Pan the camera
 
 You can also export the data to a file in this [format](../docs/export_format.md):
 ```bash

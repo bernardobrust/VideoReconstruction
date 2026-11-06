@@ -37,13 +37,15 @@ ZoomStack zoom_stack = { 0 };
 u32 *clean_frame_buffer = NULL;
 u32 *overlay_frame_buffer = NULL;
 s32 *scale_x_map = NULL;
-RendererPlex *current_rp = NULL;
+RendererPlex *current_renderer = NULL;
 
-bool is_dragging = false, needs_paused_redraw = true;
+bool is_dragging = false, is_panning = false, needs_paused_redraw = true;
 bool show_data_overlay = true;
 AVMotionVector *current_motion_vectors = NULL;
 s32 current_motion_vector_count = 0, current_motion_vector_capacity = 0;
 s32 drag_start_x = 0, drag_start_y = 0, drag_cur_x = 0, drag_cur_y = 0;
+s32 pan_start_x = 0, pan_start_y = 0;
+ZoomRect pan_start_zoom;
 
 const u32 fill_color
     = 1684327679; // precomputed from rgba (100, 180, 255, 100)
@@ -93,8 +95,8 @@ get_current_zoom (void)
   if (zoom_stack.len > 0)
     return zoom_stack.items[zoom_stack.len - 1];
 
-  ZoomRect def = { 0, 0, current_rp ? current_rp->w : 0,
-                   current_rp ? current_rp->h : 0 };
+  ZoomRect def = { 0, 0, current_renderer ? current_renderer->w : 0,
+                   current_renderer ? current_renderer->h : 0 };
 
   return def;
 }
@@ -197,7 +199,7 @@ operations_init (RendererPlex *renderer, Arena *arena)
 {
   assert (renderer != NULL && arena != NULL);
 
-  current_rp = renderer;
+  current_renderer = renderer;
 
   u64 buffer_size
       = (u64)renderer->w * (u64)renderer->h * sizeof (*clean_frame_buffer);
@@ -218,6 +220,7 @@ operations_init (RendererPlex *renderer, Arena *arena)
   push_zoom (base_rect);
 
   is_dragging = false;
+  is_panning = false;
   needs_paused_redraw = true;
 }
 
@@ -369,14 +372,17 @@ process_input (PlatformState *p)
       needs_paused_redraw = true;
     }
 
-  // Zoom in/out
+  // Read pointer and mouse button state
   s32 mx = 0, my = 0;
   input_get_mouse_pos (&mx, &my);
   bool left_pressed = input_is_mouse_button_pressed (MOUSE_LEFT);
   bool left_just_released = input_is_mouse_button_just_released (MOUSE_LEFT);
+  bool right_pressed = input_is_mouse_button_pressed (MOUSE_RIGHT);
+  bool right_just_pressed = input_is_mouse_button_just_pressed (MOUSE_RIGHT);
+  bool right_just_released = input_is_mouse_button_just_released (MOUSE_RIGHT);
 
-  // Right Click: undo last zoom level
-  if (input_is_mouse_button_just_pressed (MOUSE_RIGHT))
+  // Ctrl+Right Click: undo the last zoom level
+  if (input_is_key_pressed (CTRL) && right_just_pressed)
     {
       if (is_dragging)
         {
@@ -395,8 +401,58 @@ process_input (PlatformState *p)
         }
     }
 
+  // Right Mouse Drag: pan the current view
+  if (!input_is_key_pressed (CTRL) && right_just_pressed)
+    {
+      if (is_dragging)
+        {
+          is_dragging = false;
+          needs_paused_redraw = true;
+        }
+
+      is_panning = true;
+      pan_start_x = mx;
+      pan_start_y = my;
+      pan_start_zoom = get_current_zoom ();
+    }
+
+  if (is_panning && (right_pressed || right_just_released))
+    {
+      if (current_renderer != NULL && (mx != pan_start_x || my != pan_start_y))
+        {
+          s64 source_delta_x, source_delta_y;
+          s32 max_x, max_y;
+          ZoomRect current_zoom, next_zoom;
+
+          // Convert pointer movement to source pixels and move the crop
+          // opposite it
+          source_delta_x = (((s64)mx - pan_start_x) * pan_start_zoom.w)
+                           / current_renderer->w;
+          source_delta_y = (((s64)my - pan_start_y) * pan_start_zoom.h)
+                           / current_renderer->h;
+          max_x = current_renderer->w - pan_start_zoom.w;
+          max_y = current_renderer->h - pan_start_zoom.h;
+          next_zoom.x
+              = clamp_s32 (pan_start_zoom.x - (s32)source_delta_x, 0, max_x);
+          next_zoom.y
+              = clamp_s32 (pan_start_zoom.y - (s32)source_delta_y, 0, max_y);
+          next_zoom.w = pan_start_zoom.w;
+          next_zoom.h = pan_start_zoom.h;
+
+          current_zoom = get_current_zoom ();
+          if (next_zoom.x != current_zoom.x || next_zoom.y != current_zoom.y)
+            {
+              zoom_stack.items[zoom_stack.len - 1] = next_zoom;
+              needs_paused_redraw = true;
+            }
+        }
+    }
+
+  if (is_panning && right_just_released)
+    is_panning = false;
+
   // Left Click: start drawing transparent rectangle
-  if (input_is_key_pressed (SHIFT)
+  if (input_is_key_pressed (CTRL)
       && input_is_mouse_button_just_pressed (MOUSE_LEFT))
     {
       is_dragging = true;
@@ -424,17 +480,17 @@ process_input (PlatformState *p)
       is_dragging = false;
       needs_paused_redraw = true;
 
-      if (current_rp)
+      if (current_renderer)
         {
           s32 sx1 = MIN (drag_start_x, drag_cur_x),
               sx2 = MAX (drag_start_x, drag_cur_x),
               sy1 = MIN (drag_start_y, drag_cur_y),
               sy2 = MAX (drag_start_y, drag_cur_y);
 
-          sx1 = clamp_s32 (sx1, 0, current_rp->w),
-          sx2 = clamp_s32 (sx2, 0, current_rp->w),
-          sy1 = clamp_s32 (sy1, 0, current_rp->h),
-          sy2 = clamp_s32 (sy2, 0, current_rp->h);
+          sx1 = clamp_s32 (sx1, 0, current_renderer->w),
+          sx2 = clamp_s32 (sx2, 0, current_renderer->w),
+          sy1 = clamp_s32 (sy1, 0, current_renderer->h),
+          sy2 = clamp_s32 (sy2, 0, current_renderer->h);
 
           s32 sel_w = sx2 - sx1, sel_h = sy2 - sy1;
 
@@ -444,10 +500,14 @@ process_input (PlatformState *p)
             {
               ZoomRect cur = get_current_zoom ();
 
-              s32 new_x1 = cur.x + (s32)(((s64)sx1 * cur.w) / current_rp->w),
-                  new_y1 = cur.y + (s32)(((s64)sy1 * cur.h) / current_rp->h),
-                  new_x2 = cur.x + (s32)(((s64)sx2 * cur.w) / current_rp->w),
-                  new_y2 = cur.y + (s32)(((s64)sy2 * cur.h) / current_rp->h);
+              s32 new_x1
+                  = cur.x + (s32)(((s64)sx1 * cur.w) / current_renderer->w),
+                  new_y1
+                  = cur.y + (s32)(((s64)sy1 * cur.h) / current_renderer->h),
+                  new_x2
+                  = cur.x + (s32)(((s64)sx2 * cur.w) / current_renderer->w),
+                  new_y2
+                  = cur.y + (s32)(((s64)sy2 * cur.h) / current_renderer->h);
 
               // Integer mapping can collapse a small screen selection to
               // zero source pixels after a few zoom levels. Keep the crop
@@ -456,19 +516,19 @@ process_input (PlatformState *p)
                   new_h = MAX (1, new_y2 - new_y1);
 
               // Clamp to video dimensions
-              if (new_w > current_rp->w)
-                new_w = current_rp->w;
-              if (new_h > current_rp->h)
-                new_h = current_rp->h;
+              if (new_w > current_renderer->w)
+                new_w = current_renderer->w;
+              if (new_h > current_renderer->h)
+                new_h = current_renderer->h;
 
               if (new_x1 < 0)
                 new_x1 = 0;
               if (new_y1 < 0)
                 new_y1 = 0;
-              if (new_x1 + new_w > current_rp->w)
-                new_x1 = current_rp->w - new_w;
-              if (new_y1 + new_h > current_rp->h)
-                new_y1 = current_rp->h - new_h;
+              if (new_x1 + new_w > current_renderer->w)
+                new_x1 = current_renderer->w - new_w;
+              if (new_y1 + new_h > current_renderer->h)
+                new_y1 = current_renderer->h - new_h;
 
               if (likely (new_x1 != cur.x || new_y1 != cur.y || new_w != cur.w
                           || new_h != cur.h))
