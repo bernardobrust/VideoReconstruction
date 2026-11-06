@@ -7,12 +7,12 @@
 #include "basic.h"
 #include "dyn_arr.h"
 #include "input.h"
+#include "motion_vectors.h"
 #include "operations.h"
 #include "performance.h"
 #include "platform.h"
 #include "renderer.h"
 #include "renderer_pool.h"
-#include "motion_vectors.h"
 
 f64 playback_speed = 1.0, speed_step = 0.125;
 bool paused = false, fullscreen = false, slow_down, speed_up;
@@ -149,7 +149,7 @@ scale_image_region (u32 *src, s32 src_w, s32 src_h, s32 zx, s32 zy, s32 zw,
   fast_copy = zx == 0 && zy == 0 && zw == dst_w && zh == dst_h
               && src_w == dst_w && src_h == dst_h;
 
-  // We could clamp, but this seams faster (I didn't bechmark yet)
+  // Clamping may be slower, though this has not been benchmarked yet
   if (zx < 0)
     zx = 0;
   if (zy < 0)
@@ -184,25 +184,26 @@ scale_image_region (u32 *src, s32 src_w, s32 src_h, s32 zx, s32 zy, s32 zw,
 }
 
 inline local void
-draw_selection_box (s32 x1, s32 y1, s32 x2, s32 y2, RendererPlex *rp)
+draw_selection_box (s32 x1, s32 y1, s32 x2, s32 y2, RendererPlex *renderer)
 {
   s32 min_x = MIN (x1, x2), max_x = MAX (x1, x2);
   s32 min_y = MIN (y1, y2), max_y = MAX (y1, y2);
 
-  draw_rectangle_t (min_x, min_y, max_x, max_y, fill_color, rp);
+  draw_rectangle_t (min_x, min_y, max_x, max_y, fill_color, renderer);
 }
 
 void
-operations_init (RendererPlex *rp, Arena *arena)
+operations_init (RendererPlex *renderer, Arena *arena)
 {
-  assert (rp != NULL && arena != NULL);
+  assert (renderer != NULL && arena != NULL);
 
-  current_rp = rp;
+  current_rp = renderer;
 
-  u64 buffer_size = (u64)rp->w * (u64)rp->h * sizeof (*clean_frame_buffer);
+  u64 buffer_size
+      = (u64)renderer->w * (u64)renderer->h * sizeof (*clean_frame_buffer);
   clean_frame_buffer = arena_alloc (arena, buffer_size, _Alignof (u32));
   overlay_frame_buffer = arena_alloc (arena, buffer_size, _Alignof (u32));
-  scale_x_map = arena_alloc (arena, (u64)rp->w * sizeof (*scale_x_map),
+  scale_x_map = arena_alloc (arena, (u64)renderer->w * sizeof (*scale_x_map),
                              _Alignof (s32));
   zoom_stack.cap = MAX_ZOOM_LEVELS;
   zoom_stack.items
@@ -211,10 +212,9 @@ operations_init (RendererPlex *rp, Arena *arena)
   zoom_stack.len = 0;
 
   assert (clean_frame_buffer != NULL && overlay_frame_buffer != NULL
-          && scale_x_map != NULL
-          && zoom_stack.items != NULL);
+          && scale_x_map != NULL && zoom_stack.items != NULL);
 
-  ZoomRect base_rect = { 0, 0, rp->w, rp->h };
+  ZoomRect base_rect = { 0, 0, renderer->w, renderer->h };
   push_zoom (base_rect);
 
   is_dragging = false;
@@ -222,16 +222,17 @@ operations_init (RendererPlex *rp, Arena *arena)
 }
 
 void
-operations_on_frame_decoded (RendererPlex *rp,
+operations_on_frame_decoded (RendererPlex *renderer,
                              const AVMotionVector *motion_vectors,
                              s32 motion_vector_count)
 {
   AVMotionVector *resized;
 
-  if (!clean_frame_buffer || !rp)
+  if (!clean_frame_buffer || !renderer)
     return;
 
-  memcpy (clean_frame_buffer, rp->image_buffer, rp->w * rp->h * sizeof (u32));
+  memcpy (clean_frame_buffer, renderer->image_buffer,
+          renderer->w * renderer->h * sizeof (u32));
   assert (motion_vector_count >= 0
           && (motion_vectors != NULL || motion_vector_count == 0));
   if (motion_vector_count > current_motion_vector_capacity)
@@ -269,54 +270,56 @@ operations_get_render_state (OperationsRenderState *state)
 }
 
 void
-operations_apply_zoom (RendererPlex *rp, RendererPool *pool,
+operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
                        const OperationsRenderState *state)
 {
   assert (state != NULL);
 
-  if (!clean_frame_buffer || !rp)
+  if (!clean_frame_buffer || !renderer)
     return;
 
   memcpy (overlay_frame_buffer, clean_frame_buffer,
-          (u64)rp->w * rp->h * sizeof (u32));
+          (u64)renderer->w * renderer->h * sizeof (u32));
   if (state->show_data_overlay)
     {
-      RendererPlex source = { rp->w, rp->h, overlay_frame_buffer };
-      renderer_draw_motion_vectors (current_motion_vectors,
-                                    current_motion_vector_count, &source, pool);
+      RendererPlex source = { renderer->w, renderer->h, overlay_frame_buffer };
+      renderer_draw_motion_vectors (
+          current_motion_vectors, current_motion_vector_count, &source, pool);
     }
 
-  scale_image_region (overlay_frame_buffer, rp->w, rp->h, state->zoom_x,
-                      state->zoom_y, state->zoom_w, state->zoom_h,
-                      rp->image_buffer, rp->w, rp->h, pool);
+  scale_image_region (overlay_frame_buffer, renderer->w, renderer->h,
+                      state->zoom_x, state->zoom_y, state->zoom_w,
+                      state->zoom_h, renderer->image_buffer, renderer->w,
+                      renderer->h, pool);
 
   if (state->is_dragging)
     draw_selection_box (state->drag_start_x, state->drag_start_y,
-                        state->drag_cur_x, state->drag_cur_y, rp);
+                        state->drag_cur_x, state->drag_cur_y, renderer);
 }
 
 void
-operations_render_paused (PlatformState *p, RendererPlex *rp)
+operations_render_paused (PlatformState *p, RendererPlex *renderer)
 {
-  if (!clean_frame_buffer || !rp || !p
+  if (!clean_frame_buffer || !renderer || !p
       || (!needs_paused_redraw && !is_dragging))
     return;
 
   ZoomRect cur = get_current_zoom ();
   memcpy (overlay_frame_buffer, clean_frame_buffer,
-          (u64)rp->w * rp->h * sizeof (u32));
+          (u64)renderer->w * renderer->h * sizeof (u32));
   if (show_data_overlay)
     {
-      RendererPlex source = { rp->w, rp->h, overlay_frame_buffer };
-      renderer_draw_motion_vectors (current_motion_vectors,
-                                    current_motion_vector_count, &source, NULL);
+      RendererPlex source = { renderer->w, renderer->h, overlay_frame_buffer };
+      renderer_draw_motion_vectors (
+          current_motion_vectors, current_motion_vector_count, &source, NULL);
     }
-  scale_image_region (overlay_frame_buffer, rp->w, rp->h, cur.x, cur.y, cur.w,
-                      cur.h, rp->image_buffer, rp->w, rp->h, NULL);
+  scale_image_region (overlay_frame_buffer, renderer->w, renderer->h, cur.x,
+                      cur.y, cur.w, cur.h, renderer->image_buffer, renderer->w,
+                      renderer->h, NULL);
 
   if (is_dragging)
     draw_selection_box (drag_start_x, drag_start_y, drag_cur_x, drag_cur_y,
-                        rp);
+                        renderer);
 
   platform_present (p);
   needs_paused_redraw = false;

@@ -23,100 +23,104 @@ init_video (Arena *arena, byte *video_file, s32 decoder_threads)
   printf ("Using %d decoder threads\n", decoder_threads);
 #endif
 
-  VideoPlex *vp = arena_alloc (arena, sizeof (*vp), _Alignof (VideoPlex));
-  assert (vp != NULL);
+  VideoPlex *video_plex
+      = arena_alloc (arena, sizeof (*video_plex), _Alignof (VideoPlex));
+  assert (video_plex != NULL);
 
-  memset (vp, 0, sizeof (*vp));
+  memset (video_plex, 0, sizeof (*video_plex));
 
-  if (avformat_open_input (&vp->fmt, video_file, NULL, NULL) < 0)
+  if (avformat_open_input (&video_plex->fmt, video_file, NULL, NULL) < 0)
     {
       fprintf (stderr, "Could not open video file.\n");
       goto fail;
     }
 
-  if (avformat_find_stream_info (vp->fmt, NULL) < 0)
+  if (avformat_find_stream_info (video_plex->fmt, NULL) < 0)
     {
       fprintf (stderr,
                "Could not find stream info. Is the file correctly encoded?\n");
       goto fail;
     }
 
-  vp->video_stream = -1;
-  for (u32 i = 0; i < vp->fmt->nb_streams; ++i)
+  video_plex->video_stream = -1;
+  for (u32 i = 0; i < video_plex->fmt->nb_streams; ++i)
     {
-      if (vp->fmt->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
+      if (video_plex->fmt->streams[i]->codecpar->codec_type
+          == AVMEDIA_TYPE_VIDEO)
         {
-          vp->video_stream = i;
+          video_plex->video_stream = i;
           break;
         }
     }
 
-  if (vp->video_stream < 0)
+  if (video_plex->video_stream < 0)
     {
       fprintf (stderr,
                "No video stream found. Is the file correctly encoded?\n");
       goto fail;
     }
 
-  vp->stream = vp->fmt->streams[vp->video_stream];
-  vp->decoder = avcodec_find_decoder_by_name ("libdav1d");
-  if (!vp->decoder)
+  video_plex->stream = video_plex->fmt->streams[video_plex->video_stream];
+  video_plex->decoder = avcodec_find_decoder_by_name ("libdav1d");
+  if (!video_plex->decoder)
     {
       fprintf (stderr, "No decoder found, did you install the FFmpeg "
                        "libraries corectly?\n");
       goto fail;
     }
 
-  vp->codec = avcodec_alloc_context3 (vp->decoder);
-  assert (vp->codec != NULL);
+  video_plex->codec = avcodec_alloc_context3 (video_plex->decoder);
+  assert (video_plex->codec != NULL);
 
-  if (avcodec_parameters_to_context (vp->codec, vp->stream->codecpar) < 0)
+  if (avcodec_parameters_to_context (video_plex->codec,
+                                     video_plex->stream->codecpar)
+      < 0)
     {
       fprintf (stderr, "Could not copy codec parameters\n");
       goto fail;
     }
 
-  // FFmpeg's libdav1d wrapper maps thread_count to dav1d's worker count. The
-  // caller budgets this together with the renderer helpers and coordinator
-  // threads so their combined count stays within logical core capacity
-  vp->codec->thread_count = decoder_threads;
+  // The libdav1d wrapper maps thread_count to dav1d's thread count. Keep it at
+  // least one because zero selects automatic core detection
+  video_plex->codec->thread_count = decoder_threads;
 
   // Important: we need to set the export_mvs flag to get motion vectors
-  av_opt_set_int (vp->codec, "flags2", AV_CODEC_FLAG2_EXPORT_MVS, 0);
-  if (avcodec_open2 (vp->codec, vp->decoder, NULL) < 0)
+  av_opt_set_int (video_plex->codec, "flags2", AV_CODEC_FLAG2_EXPORT_MVS, 0);
+  if (avcodec_open2 (video_plex->codec, video_plex->decoder, NULL) < 0)
     {
       fprintf (stderr, "Could not open decoder\n");
       goto fail;
     }
 
 #ifndef NDEBUG
-  printf ("Resolution: %dx%d\n", vp->codec->width, vp->codec->height);
+  printf ("Resolution: %dx%d\n", video_plex->codec->width,
+          video_plex->codec->height);
 #endif
 
-  vp->frame = av_frame_alloc ();
-  assert (vp->frame != NULL);
+  video_plex->frame = av_frame_alloc ();
+  assert (video_plex->frame != NULL);
 
-  vp->packet = av_packet_alloc ();
-  assert (vp->packet != NULL);
+  video_plex->packet = av_packet_alloc ();
+  assert (video_plex->packet != NULL);
 
-  return vp;
+  return video_plex;
 
 fail:
   return NULL;
 }
 
 void
-shutdown_video (VideoPlex *vp)
+shutdown_video (VideoPlex *video_plex)
 {
-  assert (vp != NULL);
+  assert (video_plex != NULL);
 
-  if (vp->sws != NULL)
-    sws_freeContext (vp->sws);
+  if (video_plex->sws != NULL)
+    sws_freeContext (video_plex->sws);
 
-  av_packet_free (&vp->packet);
-  av_frame_free (&vp->frame);
-  avcodec_free_context (&vp->codec);
-  avformat_close_input (&vp->fmt);
+  av_packet_free (&video_plex->packet);
+  av_frame_free (&video_plex->frame);
+  avcodec_free_context (&video_plex->codec);
+  avformat_close_input (&video_plex->fmt);
 }
 
 // We may want to factor the scaling out of here
@@ -125,20 +129,20 @@ shutdown_video (VideoPlex *vp)
 // 0 = ok
 // 1 = end
 s32
-decode_next_frame (VideoPlex *vp, RendererPlex *rp)
+decode_next_frame (VideoPlex *video_plex, RendererPlex *renderer)
 {
   bool got_frame = false;
 
-  assert (vp != NULL && rp != NULL);
+  assert (video_plex != NULL && renderer != NULL);
 
   while (!got_frame)
     {
-      s32 ret = av_read_frame (vp->fmt, vp->packet);
+      s32 ret = av_read_frame (video_plex->fmt, video_plex->packet);
 
       if (ret < 0)
         {
           // Input is exhausted, flush the decoder
-          ret = avcodec_send_packet (vp->codec, NULL);
+          ret = avcodec_send_packet (video_plex->codec, NULL);
 
           if (ret < 0 && ret != AVERROR_EOF)
             {
@@ -149,7 +153,8 @@ decode_next_frame (VideoPlex *vp, RendererPlex *rp)
           // Receive any frames buffered inside the decoder
           while (!got_frame)
             {
-              ret = avcodec_receive_frame (vp->codec, vp->frame);
+              ret = avcodec_receive_frame (video_plex->codec,
+                                           video_plex->frame);
 
               if (ret == 0)
                 {
@@ -173,14 +178,14 @@ decode_next_frame (VideoPlex *vp, RendererPlex *rp)
         }
 
       // Ignore non-video packets
-      if (vp->packet->stream_index != vp->video_stream)
+      if (video_plex->packet->stream_index != video_plex->video_stream)
         {
-          av_packet_unref (vp->packet);
+          av_packet_unref (video_plex->packet);
           continue;
         }
 
-      ret = avcodec_send_packet (vp->codec, vp->packet);
-      av_packet_unref (vp->packet);
+      ret = avcodec_send_packet (video_plex->codec, video_plex->packet);
+      av_packet_unref (video_plex->packet);
 
       if (ret < 0)
         {
@@ -191,7 +196,7 @@ decode_next_frame (VideoPlex *vp, RendererPlex *rp)
       // A packet can produce zero, one, or multiple frames
       while (!got_frame)
         {
-          ret = avcodec_receive_frame (vp->codec, vp->frame);
+          ret = avcodec_receive_frame (video_plex->codec, video_plex->frame);
 
           if (ret == 0)
             {
@@ -211,18 +216,20 @@ decode_next_frame (VideoPlex *vp, RendererPlex *rp)
     }
 
   // Convert the decoded frame. We may want to factor this out
-  s32 w = vp->codec->width, h = vp->codec->height, format = vp->frame->format;
+  s32 width = video_plex->codec->width, height = video_plex->codec->height;
+  s32 pixel_format = video_plex->frame->format;
 
   // Using RGBA was swapping the colors, so we use BGRA instead.
-  vp->sws = sws_getCachedContext (vp->sws, w, h, format, w, h, AV_PIX_FMT_BGRA,
-                                  SWS_BILINEAR, NULL, NULL, NULL);
-  assert (vp->sws != NULL);
+  video_plex->sws = sws_getCachedContext (
+      video_plex->sws, width, height, pixel_format, width, height,
+      AV_PIX_FMT_BGRA, SWS_BILINEAR, NULL, NULL, NULL);
+  assert (video_plex->sws != NULL);
 
-  u8 *dst_data[4] = { (u8 *)rp->image_buffer, NULL, NULL, NULL };
-  s32 dst_linesize[4] = { w * 4, 0, 0, 0 };
+  u8 *dst_data[4] = { (u8 *)renderer->image_buffer, NULL, NULL, NULL };
+  s32 dst_linesize[4] = { width * 4, 0, 0, 0 };
 
-  sws_scale (vp->sws, (const u8 *const *)vp->frame->data, vp->frame->linesize,
-             0, h, dst_data, dst_linesize);
+  sws_scale (video_plex->sws, (const u8 *const *)video_plex->frame->data,
+             video_plex->frame->linesize, 0, height, dst_data, dst_linesize);
 
   return 0;
 }

@@ -22,6 +22,6 @@ typedef struct
 } VideoPlex;
 
 VideoPlex *init_video (Arena *arena, byte *video_file, s32 decoder_threads);
-void shutdown_video (VideoPlex *vp);
+void shutdown_video (VideoPlex *video_plex);
 
-s32 decode_next_frame (VideoPlex *vp, RendererPlex *rp);
+s32 decode_next_frame (VideoPlex *video_plex, RendererPlex *renderer);

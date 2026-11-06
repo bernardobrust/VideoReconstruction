@@ -20,7 +20,7 @@
 #include "dyn_arr.h"
 #include "platform.h"
 
-// IDK what this does really, but it dosen't work without this
+// This definition is required for the Windows API call below
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "winmm.lib")

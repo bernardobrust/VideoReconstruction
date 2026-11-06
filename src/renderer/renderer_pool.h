@@ -24,7 +24,8 @@ typedef struct
 } RendererWorker;
 
 // Concurrent callers are serialized; each caller renders the first row range
-// itself. Worker ranges are disjoint, callback and context stay valid until return
+// itself. Worker ranges are disjoint, callback and context stay valid until
+// return
 bool renderer_pool_init (RendererPool *pool, Arena *arena, s32 thread_count);
 void renderer_pool_shutdown (RendererPool *pool);
 

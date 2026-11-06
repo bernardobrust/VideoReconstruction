@@ -32,7 +32,7 @@ hypot_f32 (f32 a, f32 b)
   f32 abs_a = fabsf (a), abs_b = fabsf (b), max_val = MAX (abs_a, abs_b),
       min_val = MIN (abs_a, abs_b);
 
-  return max_val + 0.3375f * min_val; // Max relative error aprox. 5.5%
+  return max_val + 0.3375f * min_val; // Maximum relative error is about 5.5%
 }
 
 /*

@@ -3,6 +3,7 @@
 #include "astf.h"
 #include "basic.h"
 #include "renderer.test.h"
+#include "renderer_internal.h"
 
 #include <string.h>
 
@@ -11,69 +12,71 @@
 #define TEST_PIXELS (TEST_W * TEST_H)
 
 static void
-renderer_reference_triangle_t (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3,
-                                s32 y3, u32 color, bool transparent,
-                                RendererPlex *rp)
+renderer_reference_triangle_t (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3,
+                               u32 color, bool transparent,
+                               RendererPlex *renderer)
 {
-  s32 min_x, max_x, min_y, max_y, area, a0, b0, a1, b1, a2, b2, w0_row,
-      w1_row, w2_row, x, y;
+  s32 min_x, max_x, min_y, max_y, area;
+  s32 edge_step_x_0, edge_step_y_0, edge_step_x_1, edge_step_y_1;
+  s32 edge_step_x_2, edge_step_y_2;
+  s32 edge_value_0_row, edge_value_1_row, edge_value_2_row, x, y;
 
-  min_x = clamp_s32 (MIN3 (x1, x2, x3), 0, rp->w - 1);
-  max_x = clamp_s32 (MAX3 (x1, x2, x3), 0, rp->w - 1);
-  min_y = clamp_s32 (MIN3 (y1, y2, y3), 0, rp->h - 1);
-  max_y = clamp_s32 (MAX3 (y1, y2, y3), 0, rp->h - 1);
+  min_x = clamp_s32 (MIN3 (x1, x2, x3), 0, renderer->w - 1);
+  max_x = clamp_s32 (MAX3 (x1, x2, x3), 0, renderer->w - 1);
+  min_y = clamp_s32 (MIN3 (y1, y2, y3), 0, renderer->h - 1);
+  max_y = clamp_s32 (MAX3 (y1, y2, y3), 0, renderer->h - 1);
   area = determinant_ab_ap_s32 (x1, y1, x2, y2, x3, y3);
   if (area == 0)
     return;
 
-  a0 = y3 - y2;
-  b0 = x2 - x3;
-  a1 = y1 - y3;
-  b1 = x3 - x1;
-  a2 = y2 - y1;
-  b2 = x1 - x2;
-  w0_row = determinant_ab_ap_s32 (x2, y2, x3, y3, min_x, min_y);
-  w1_row = determinant_ab_ap_s32 (x3, y3, x1, y1, min_x, min_y);
-  w2_row = determinant_ab_ap_s32 (x1, y1, x2, y2, min_x, min_y);
+  edge_step_x_0 = y3 - y2;
+  edge_step_y_0 = x2 - x3;
+  edge_step_x_1 = y1 - y3;
+  edge_step_y_1 = x3 - x1;
+  edge_step_x_2 = y2 - y1;
+  edge_step_y_2 = x1 - x2;
+  edge_value_0_row = determinant_ab_ap_s32 (x2, y2, x3, y3, min_x, min_y);
+  edge_value_1_row = determinant_ab_ap_s32 (x3, y3, x1, y1, min_x, min_y);
+  edge_value_2_row = determinant_ab_ap_s32 (x1, y1, x2, y2, min_x, min_y);
 
   if (area < 0)
     {
-      a0 = -a0;
-      b0 = -b0;
-      w0_row = -w0_row;
-      a1 = -a1;
-      b1 = -b1;
-      w1_row = -w1_row;
-      a2 = -a2;
-      b2 = -b2;
-      w2_row = -w2_row;
+      edge_step_x_0 = -edge_step_x_0;
+      edge_step_y_0 = -edge_step_y_0;
+      edge_value_0_row = -edge_value_0_row;
+      edge_step_x_1 = -edge_step_x_1;
+      edge_step_y_1 = -edge_step_y_1;
+      edge_value_1_row = -edge_value_1_row;
+      edge_step_x_2 = -edge_step_x_2;
+      edge_step_y_2 = -edge_step_y_2;
+      edge_value_2_row = -edge_value_2_row;
     }
 
   for (y = min_y; y <= max_y; ++y)
     {
-      s32 w0, w1, w2, row_offset;
+      s32 edge_value_0, edge_value_1, edge_value_2, row_offset;
 
-      w0 = w0_row;
-      w1 = w1_row;
-      w2 = w2_row;
-      row_offset = y * rp->w;
+      edge_value_0 = edge_value_0_row;
+      edge_value_1 = edge_value_1_row;
+      edge_value_2 = edge_value_2_row;
+      row_offset = y * renderer->w;
       for (x = min_x; x <= max_x; ++x)
         {
-          if ((w0 | w1 | w2) >= 0)
-            rp->image_buffer[row_offset + x]
+          if ((edge_value_0 | edge_value_1 | edge_value_2) >= 0)
+            renderer->image_buffer[row_offset + x]
                 = transparent
-                      ? blend_rgba_pixel (color,
-                                         rp->image_buffer[row_offset + x])
+                      ? blend_rgba_pixel (
+                            color, renderer->image_buffer[row_offset + x])
                       : color;
 
-          w0 += a0;
-          w1 += a1;
-          w2 += a2;
+          edge_value_0 += edge_step_x_0;
+          edge_value_1 += edge_step_x_1;
+          edge_value_2 += edge_step_x_2;
         }
 
-      w0_row += b0;
-      w1_row += b1;
-      w2_row += b2;
+      edge_value_0_row += edge_step_y_0;
+      edge_value_1_row += edge_step_y_1;
+      edge_value_2_row += edge_step_y_2;
     }
 }
 
@@ -106,38 +109,38 @@ renderer_test_lines_and_rectangles (void)
   start_test_suite ("Renderer rasterization: lines and rectangles");
 
   u32 pixels[TEST_PIXELS] = { 0 };
-  RendererPlex rp = { TEST_W, TEST_H, pixels };
+  RendererPlex renderer = { TEST_W, TEST_H, pixels };
 
-  draw_hline (5, 1, 2, 0xFF010203, &rp);
+  draw_hline (5, 1, 2, 0xFF010203, &renderer);
   for (s32 x = 0; x < TEST_W; ++x)
     assert_equal (x >= 1 && x <= 5 ? 0xFF010203 : 0, pixels[2 * TEST_W + x]);
 
-  draw_hline (-5, 3, 3, 0xFF040506, &rp);
+  draw_hline (-5, 3, 3, 0xFF040506, &renderer);
   for (s32 x = 0; x < TEST_W; ++x)
     assert_equal (x <= 3 ? 0xFF040506 : 0, pixels[3 * TEST_W + x]);
 
-  draw_hline (0, 6, -1, 0xFFFFFFFF, &rp);
-  draw_hline (0, 6, TEST_H, 0xFFFFFFFF, &rp);
-  draw_hline (-5, 20, 6, 0xFFABCDEF, &rp);
+  draw_hline (0, 6, -1, 0xFFFFFFFF, &renderer);
+  draw_hline (0, 6, TEST_H, 0xFFFFFFFF, &renderer);
+  draw_hline (-5, 20, 6, 0xFFABCDEF, &renderer);
   for (s32 x = 0; x < TEST_W; ++x)
     assert_equal (0xFFABCDEF, pixels[6 * TEST_W + x]);
 
-  draw_hline (-5, -1, 4, 0xFFFFFFFF, &rp);
-  draw_hline (TEST_W, TEST_W + 4, 4, 0xFFFFFFFF, &rp);
+  draw_hline (-5, -1, 4, 0xFFFFFFFF, &renderer);
+  draw_hline (TEST_W, TEST_W + 4, 4, 0xFFFFFFFF, &renderer);
   for (s32 x = 0; x < TEST_W; ++x)
     assert_equal (x <= 3 ? 0xFF040506 : 0, pixels[3 * TEST_W + x]);
 
   assert_equal (0, pixels[0]);
 
   memset (pixels, 0, sizeof pixels);
-  draw_rectangle (5, 5, 2, 2, 0xFF112233, &rp);
+  draw_rectangle (5, 5, 2, 2, 0xFF112233, &renderer);
   for (s32 y = 0; y < TEST_H; ++y)
     for (s32 x = 0; x < TEST_W; ++x)
       assert_equal (x >= 2 && x <= 5 && y >= 2 && y <= 5 ? 0xFF112233 : 0,
                     pixels[y * TEST_W + x]);
 
   memset (pixels, 0, sizeof pixels);
-  draw_rectangle (-3, -2, 2, 1, 0xFF445566, &rp);
+  draw_rectangle (-3, -2, 2, 1, 0xFF445566, &renderer);
 
   assert_equal (0xFF445566, pixels[0]);
   assert_equal (0xFF445566, pixels[1]);
@@ -146,12 +149,13 @@ renderer_test_lines_and_rectangles (void)
   assert_equal (0, pixels[2 * TEST_W]);
 
   memset (pixels, 0, sizeof pixels);
-  draw_rectangle (3, 1, 3, 5, 0xFFFFFFFF, &rp);
+  draw_rectangle (3, 1, 3, 5, 0xFFFFFFFF, &renderer);
   assert_equal (0, pixels[1 * TEST_W + 3]);
 
   memset (pixels, 0, sizeof pixels);
-  draw_rectangle (-20, -20, -1, -1, 0xFFFFFFFF, &rp);
-  draw_rectangle (TEST_W, TEST_H, TEST_W + 2, TEST_H + 2, 0xFFFFFFFF, &rp);
+  draw_rectangle (-20, -20, -1, -1, 0xFFFFFFFF, &renderer);
+  draw_rectangle (TEST_W, TEST_H, TEST_W + 2, TEST_H + 2, 0xFFFFFFFF,
+                  &renderer);
   for (s32 i = 0; i < TEST_PIXELS; ++i)
     assert_equal (0, pixels[i]);
 
@@ -165,10 +169,10 @@ renderer_test_triangles (void)
 
   u32 pixels[TEST_PIXELS] = { 0 };
   u32 reversed[TEST_PIXELS] = { 0 };
-  RendererPlex rp = { TEST_W, TEST_H, pixels };
+  RendererPlex renderer = { TEST_W, TEST_H, pixels };
   const u32 color = 0xFFABCDEF;
 
-  draw_triangle (1, 1, 5, 1, 1, 5, color, &rp);
+  draw_triangle (1, 1, 5, 1, 1, 5, color, &renderer);
 
   assert_equal (color, pixels[1 * TEST_W + 1]);
   assert_equal (color, pixels[2 * TEST_W + 2]);
@@ -177,22 +181,22 @@ renderer_test_triangles (void)
 
   memcpy (reversed, pixels, sizeof pixels);
   memset (pixels, 0, sizeof pixels);
-  draw_triangle (1, 5, 5, 1, 1, 1, color, &rp);
+  draw_triangle (1, 5, 5, 1, 1, 1, color, &renderer);
 
   assert_equal (0, memcmp (reversed, pixels, sizeof pixels));
 
   memset (pixels, 0, sizeof pixels);
-  draw_triangle (1, 1, 3, 3, 5, 5, color, &rp);
+  draw_triangle (1, 1, 3, 3, 5, 5, color, &renderer);
   for (s32 i = 0; i < TEST_PIXELS; ++i)
     assert_equal (0, pixels[i]);
 
-  draw_triangle (-3, 1, 3, 1, 0, 5, color, &rp);
+  draw_triangle (-3, 1, 3, 1, 0, 5, color, &renderer);
   assert_equal (color, pixels[1 * TEST_W]);
   assert_equal (color, pixels[3 * TEST_W]);
   assert_equal (0, pixels[6 * TEST_W + 6]);
 
   memset (pixels, 0, sizeof pixels);
-  draw_circle (3, 3, 2, color, &rp);
+  draw_circle (3, 3, 2, color, &renderer);
   assert_equal (color, pixels[1 * TEST_W + 3]);
   assert_equal (color, pixels[5 * TEST_W + 3]);
   assert_equal (color, pixels[3 * TEST_W + 1]);
@@ -208,15 +212,15 @@ renderer_test_circles (void)
   start_test_suite ("Renderer rasterization: circles and clipping");
 
   u32 pixels[TEST_PIXELS] = { 0 };
-  RendererPlex rp = { TEST_W, TEST_H, pixels };
+  RendererPlex renderer = { TEST_W, TEST_H, pixels };
   const u32 color = 0xFF778899;
 
-  draw_circle (3, 3, 0, color, &rp);
+  draw_circle (3, 3, 0, color, &renderer);
   assert_equal (color, pixels[3 * TEST_W + 3]);
   assert_equal (0, pixels[3 * TEST_W + 2]);
 
   memset (pixels, 0, sizeof pixels);
-  draw_circle (3, 3, 1, color, &rp);
+  draw_circle (3, 3, 1, color, &renderer);
 
   assert_equal (color, pixels[3 * TEST_W + 3]);
   assert_equal (color, pixels[3 * TEST_W + 2]);
@@ -226,7 +230,7 @@ renderer_test_circles (void)
   assert_equal (0, pixels[2 * TEST_W + 2]);
 
   memset (pixels, 0, sizeof pixels);
-  draw_circle (0, 0, 2, color, &rp);
+  draw_circle (0, 0, 2, color, &renderer);
 
   assert_equal (color, pixels[0]);
   assert_equal (color, pixels[2]);
@@ -235,7 +239,7 @@ renderer_test_circles (void)
 
   memset (pixels, 0, sizeof pixels);
   const u32 translucent = 0x800000FF;
-  draw_circle_t (3, 3, 1, translucent, &rp);
+  draw_circle_t (3, 3, 1, translucent, &renderer);
   assert_equal (blend_rgba_pixel (translucent, 0), pixels[3 * TEST_W + 3]);
 
   enum
@@ -266,29 +270,29 @@ renderer_test_transformed_shapes (void)
   start_test_suite ("Renderer geometry: rotated and oriented shapes");
 
   u32 pixels[TEST_PIXELS] = { 0 };
-  RendererPlex rp = { TEST_W, TEST_H, pixels };
+  RendererPlex renderer = { TEST_W, TEST_H, pixels };
   const u32 color = 0xFF13579B;
 
-  draw_rotated_rectangle (3, 3, 4, 2, 0.0f, color, &rp);
+  draw_rotated_rectangle (3, 3, 4, 2, 0.0f, color, &renderer);
   assert_equal (color, pixels[3 * TEST_W + 3]);
   assert_equal (color, pixels[2 * TEST_W + 2]);
   assert_equal (0, pixels[0]);
 
   memset (pixels, 0, sizeof pixels);
-  draw_rotated_rectangle (3, 3, 4, 2, 1.57079632679f, color, &rp);
+  draw_rotated_rectangle (3, 3, 4, 2, 1.57079632679f, color, &renderer);
   assert_equal (color, pixels[3 * TEST_W + 3]);
   assert_equal (color, pixels[2 * TEST_W + 3]);
   assert_equal (0, pixels[0]);
 
   memset (pixels, 0, sizeof pixels);
-  draw_rotated_oriented_rectangle (1, 3, 5, 3, 2, color, &rp);
+  draw_rotated_oriented_rectangle (1, 3, 5, 3, 2, color, &renderer);
 
   assert_true (pixels[3 * TEST_W + 3] == color
                || pixels[2 * TEST_W + 3] == color
                || pixels[4 * TEST_W + 3] == color);
 
   memset (pixels, 0, sizeof pixels);
-  draw_rotated_oriented_rectangle (3, 3, 3, 3, 2, color, &rp);
+  draw_rotated_oriented_rectangle (3, 3, 3, 3, 2, color, &renderer);
   for (s32 i = 0; i < TEST_PIXELS; ++i)
     assert_equal (0, pixels[i]);
 
@@ -300,9 +304,10 @@ renderer_test_transparency (void)
 {
   u32 pixels[TEST_PIXELS], wide_pixels[17], expected[17];
   u32 triangle_pixels[17 * 17], reference_pixels[17 * 17];
-  RendererPlex rp = { TEST_W, TEST_H, pixels }, wide_rp = { 17, 1, wide_pixels };
+  RendererPlex renderer = { TEST_W, TEST_H, pixels },
+               wide_rp = { 17, 1, wide_pixels };
   RendererPlex triangle_rp = { 17, 17, triangle_pixels },
-      reference_rp = { 17, 17, reference_pixels };
+               reference_rp = { 17, 17, reference_pixels };
   const s32 triangles[4][6] = { { 1, 1, 15, 3, 4, 15 },
                                 { 15, 3, 1, 1, 4, 15 },
                                 { -4, 1, 12, 3, 2, 16 },
@@ -314,17 +319,17 @@ renderer_test_transparency (void)
   for (i = 0; i < TEST_PIXELS; ++i)
     pixels[i] = 0xFF204060;
 
-  draw_rectangle_t (1, 1, 3, 3, 0x00112233, &rp);
+  draw_rectangle_t (1, 1, 3, 3, 0x00112233, &renderer);
   assert_equal (0xFF204060, pixels[2 * TEST_W + 2]);
 
-  draw_rectangle_t (1, 1, 3, 3, 0xFFFF0000, &rp);
+  draw_rectangle_t (1, 1, 3, 3, 0xFFFF0000, &renderer);
   assert_equal (0xFFFF0000, pixels[2 * TEST_W + 2]);
   assert_equal (0xFF204060, pixels[0]);
 
   for (i = 0; i < TEST_PIXELS; ++i)
     pixels[i] = 0xFF0000FF;
 
-  draw_rectangle_t (1, 1, 3, 3, 0x80FF0000, &rp);
+  draw_rectangle_t (1, 1, 3, 3, 0x80FF0000, &renderer);
 
   assert_equal (0x8080007F, pixels[2 * TEST_W + 2]);
   assert_equal (0xFF0000FF, pixels[0]);
@@ -406,6 +411,8 @@ renderer_transparency_tests (void)
 void
 renderer_all_tests (void)
 {
+  renderer_backend_init ();
+
   start_group ("Renderer Color Tests");
   renderer_color_tests ();
   end_group ();

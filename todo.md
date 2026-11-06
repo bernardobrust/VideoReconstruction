@@ -2,7 +2,7 @@
 Check if everything also works on GNU Linux
 
 ### Per-file basis
-- decode.c : Factor motion vector rendering out to a separate file, maybe even in the inspector source code
+...
 
 ## Checklists
 ### Modified libraries

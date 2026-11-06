@@ -1,11 +1,11 @@
 #pragma once
 
 #include "arena.h"
-#include <libavutil/motion_vector.h>
 #include "macros.h"
 #include "platform.h"
 #include "renderer.h"
 #include "renderer_pool.h"
+#include <libavutil/motion_vector.h>
 
 extern f64 playback_speed;
 extern bool paused;
@@ -23,14 +23,14 @@ typedef struct
 
 u64 operations_memory_required (s32 w, s32 h);
 
-void operations_init (RendererPlex *rp, Arena *arena);
+void operations_init (RendererPlex *renderer, Arena *arena);
 
-void operations_on_frame_decoded (RendererPlex *rp,
+void operations_on_frame_decoded (RendererPlex *renderer,
                                   const AVMotionVector *motion_vectors,
                                   s32 motion_vector_count);
 void operations_get_render_state (OperationsRenderState *state);
-void operations_apply_zoom (RendererPlex *rp, RendererPool *pool,
+void operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
                             const OperationsRenderState *state);
 void operations_render_paused (PlatformState *platform_state,
-                               RendererPlex *rp);
+                               RendererPlex *renderer);
 void process_input (PlatformState *platform_state);

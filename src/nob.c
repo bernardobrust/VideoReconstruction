@@ -46,9 +46,8 @@ compiler_supports_sse2 (void)
 local const byte *
 renderer_avx2_object_path (const byte *platform)
 {
-  return is_windows_platform (platform)
-             ? BUILD_DIR "renderer_simd_avx2.obj"
-             : BUILD_DIR "renderer_simd_avx2.o";
+  return is_windows_platform (platform) ? BUILD_DIR "renderer_simd_avx2.obj"
+                                        : BUILD_DIR "renderer_simd_avx2.o";
 }
 
 local bool
@@ -66,8 +65,7 @@ compile_renderer_avx2 (const byte *platform, const byte *mode)
       else
         nob_cmd_append (&cmd, "/O2", "/DNDEBUG");
 
-      nob_cmd_append (&cmd,
-                      "/Fo:" BUILD_DIR "renderer_simd_avx2.obj",
+      nob_cmd_append (&cmd, "/Fo:" BUILD_DIR "renderer_simd_avx2.obj",
                       "renderer/renderer_simd_avx2.c");
     }
   else
@@ -94,7 +92,7 @@ detect_platform (void)
 #ifdef _WIN32
   return "windows";
 #else
-  // This ENV var is guaranteed to be set on Wayland from my reasearch
+  // This environment variable is set on Wayland based on my research
   if (getenv ("WAYLAND_DISPLAY") != NULL)
     return "gnu_linux_wayland";
   return "gnu_linux_x11";
@@ -354,7 +352,7 @@ main (s32 argc, byte **argv)
   // Compiler options
   if (is_windows_platform (*platform))
     {
-      nob_cmd_append (&compile_cmd, "/nologo", "/std:c11");
+      nob_cmd_append (&compile_cmd, "/nologo", "/std:c11", "/Fo:" BUILD_DIR);
 
       if (str_eq (*mode, "debug"))
         nob_cmd_append (&compile_cmd, "/W4", "/external:W0",

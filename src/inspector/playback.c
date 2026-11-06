@@ -28,20 +28,18 @@ decoder_thread (void *arg)
       result = decode_next_frame (playback->video, frame.renderer);
       if (result == 0)
         {
-          side_data = av_frame_get_side_data (
-              playback->video->frame, AV_FRAME_DATA_MOTION_VECTORS);
-          motion_vectors = side_data != NULL
-                              ? (AVMotionVector *)side_data->data
-                              : NULL;
+          side_data = av_frame_get_side_data (playback->video->frame,
+                                              AV_FRAME_DATA_MOTION_VECTORS);
+          motion_vectors
+              = side_data != NULL ? (AVMotionVector *)side_data->data : NULL;
           motion_vector_count_u64
-              = side_data != NULL
-                    ? side_data->size / sizeof (*motion_vectors)
-                    : 0;
+              = side_data != NULL ? side_data->size / sizeof (*motion_vectors)
+                                  : 0;
           assert (motion_vector_count_u64 <= INT32_MAX);
           motion_vector_count = (s32)motion_vector_count_u64;
           frame_queue_copy_motion_vectors (&playback->decoded_frames, &frame,
-                                          motion_vectors,
-                                          motion_vector_count);
+                                           motion_vectors,
+                                           motion_vector_count);
           frame_queue_publish (&playback->decoded_frames, frame);
         }
       else

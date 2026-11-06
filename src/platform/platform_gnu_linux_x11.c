@@ -1,4 +1,4 @@
-// I have to say that Platform Layers are the most Copy-Pastey Ever invented
+// The platform layers contain substantial duplicated code
 
 // Use these definitions if and only if we're on GNU + Linux and X11
 

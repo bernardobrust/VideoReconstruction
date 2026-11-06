@@ -40,8 +40,7 @@ frame_queue_capacity_for_bytes (s32 w, s32 h, u64 byte_budget)
   if (byte_budget <= 256 || per_frame > UINT64_MAX - overhead_per_frame)
     return 1;
 
-  capacity_u64
-      = (byte_budget - 256) / (per_frame + overhead_per_frame);
+  capacity_u64 = (byte_budget - 256) / (per_frame + overhead_per_frame);
   capacity = (s32)MIN (capacity_u64, INT32_MAX);
 
   return MAX (capacity, 1);
@@ -65,9 +64,9 @@ frame_queue_init (FrameQueue *queue, Arena *arena, s32 w, s32 h, s32 capacity)
       arena, (u64)capacity * sizeof (*queue->ready_indices), _Alignof (s32));
   queue->occupied = arena_alloc (
       arena, (u64)capacity * sizeof (*queue->occupied), _Alignof (bool));
-  queue->motion_vectors = arena_alloc (
-      arena, (u64)capacity * sizeof (*queue->motion_vectors),
-      _Alignof (AVMotionVector *));
+  queue->motion_vectors
+      = arena_alloc (arena, (u64)capacity * sizeof (*queue->motion_vectors),
+                     _Alignof (AVMotionVector *));
   queue->motion_vector_counts = arena_alloc (
       arena, (u64)capacity * sizeof (*queue->motion_vector_counts),
       _Alignof (s32));
@@ -159,8 +158,8 @@ frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
 
 void
 frame_queue_copy_motion_vectors (FrameQueue *queue, FrameQueueFrame *frame,
-                                const AVMotionVector *motion_vectors,
-                                s32 count)
+                                 const AVMotionVector *motion_vectors,
+                                 s32 count)
 {
   AVMotionVector *resized;
 

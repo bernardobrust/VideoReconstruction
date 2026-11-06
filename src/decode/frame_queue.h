@@ -35,9 +35,9 @@ void frame_queue_destroy (FrameQueue *queue);
 
 bool frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame);
 void frame_queue_copy_motion_vectors (FrameQueue *queue,
-                                     FrameQueueFrame *frame,
-                                     const AVMotionVector *motion_vectors,
-                                     s32 count);
+                                      FrameQueueFrame *frame,
+                                      const AVMotionVector *motion_vectors,
+                                      s32 count);
 void frame_queue_publish (FrameQueue *queue, FrameQueueFrame frame);
 bool frame_queue_take (FrameQueue *queue, FrameQueueFrame *frame);
 void frame_queue_release (FrameQueue *queue, FrameQueueFrame frame);

@@ -1,12 +1,12 @@
 #include "motion_vectors.h"
 
+#include "basic.h"
 #include <assert.h>
+#include <libavutil/motion_vector.h>
 #include <math.h>
 #include <stdio.h>
-#include <libavutil/motion_vector.h>
-#include "basic.h"
 
-// We may want to calculate this based on the display's dimentions
+// We may want to calculate this based on the display's dimensions
 const f32 MAX_MOTION_MAGNITUDE = 90.0f;
 f32 MAX_DISPLAY_LENGTH = 15.0f;
 void
@@ -29,7 +29,7 @@ typedef struct
 // Each worker renders a disjoint set of rows, while iterating motion vectors
 // in the same order. This preserves the sequential result where overlays meet
 local void
-process_motion_vector (const AVMotionVector *mv, RendererPlex *rp,
+process_motion_vector (const AVMotionVector *mv, RendererPlex *renderer,
                        s32 row_offset)
 {
   const s32 thickness = 2, arrow_margin = 4;
@@ -62,10 +62,10 @@ process_motion_vector (const AVMotionVector *mv, RendererPlex *rp,
   // partitions while still allowing an arrow to cross a partition boundary
   arrow_min_y = MIN (starty, raw_endy) - arrow_margin;
   arrow_max_y = MAX (starty, raw_endy) + arrow_margin;
-  block_intersects = (s32)mv->dst_y < row_offset + rp->h
+  block_intersects = (s32)mv->dst_y < row_offset + renderer->h
                      && (s32)mv->dst_y + (s32)mv->h > row_offset;
   arrow_intersects
-      = arrow_max_y >= row_offset && arrow_min_y < row_offset + rp->h;
+      = arrow_max_y >= row_offset && arrow_min_y < row_offset + renderer->h;
   if (!block_intersects && !arrow_intersects)
     return;
 
@@ -83,7 +83,7 @@ process_motion_vector (const AVMotionVector *mv, RendererPlex *rp,
     draw_rectangle_t ((s32)mv->dst_x, (s32)mv->dst_y - row_offset,
                       (s32)mv->dst_x + (s32)mv->w - 1,
                       (s32)mv->dst_y + (s32)mv->h - 1 - row_offset,
-                      block_color, rp);
+                      block_color, renderer);
 
   if (raw_len == 0.0f)
     return;
@@ -92,7 +92,7 @@ process_motion_vector (const AVMotionVector *mv, RendererPlex *rp,
   scale = display_len / raw_len;
   endx = startx + (s32)roundf (dx * scale);
   endy = starty + (s32)roundf (dy * scale);
-  draw_arrow_t (startx, starty, endx, endy, thickness, arrow_color, rp);
+  draw_arrow_t (startx, starty, endx, endy, thickness, arrow_color, renderer);
 }
 
 local void
@@ -120,23 +120,23 @@ process_motion_vector_rows (void *arg, s32 first_row, s32 end_row)
 
 void
 renderer_draw_motion_vectors (const AVMotionVector *motion_vectors, s32 count,
-                              RendererPlex *rp, RendererPool *renderer_pool)
+                              RendererPlex *renderer,
+                              RendererPool *renderer_pool)
 {
   MotionVectorRenderContext context;
 
   assert (motion_vectors != NULL || count == 0);
-  assert (rp != NULL && count >= 0);
+  assert (renderer != NULL && count >= 0);
   context.mvs = motion_vectors;
-  context.frame_renderer = rp;
+  context.frame_renderer = renderer;
   context.count = count;
 
   if (count > 0)
     {
       if (renderer_pool != NULL)
-        renderer_pool_run_rows (renderer_pool, rp->h,
+        renderer_pool_run_rows (renderer_pool, renderer->h,
                                 process_motion_vector_rows, &context);
       else
-        process_motion_vector_rows (&context, 0, rp->h);
+        process_motion_vector_rows (&context, 0, renderer->h);
     }
 }
-

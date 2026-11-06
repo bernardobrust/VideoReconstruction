@@ -8,8 +8,11 @@
 #endif
 
 void
-renderer_triangle_row_avx2 (u32 *pixels, s32 count, u32 color, s32 w0, s32 w1,
-                            s32 w2, s32 a0, s32 a1, s32 a2, bool transparent)
+renderer_triangle_row_avx2 (u32 *pixels, s32 count, u32 color,
+                            s32 edge_value_0, s32 edge_value_1,
+                            s32 edge_value_2, s32 edge_step_x_0,
+                            s32 edge_step_x_1, s32 edge_step_x_2,
+                            bool transparent)
 {
   s32 x;
   u8 alpha, inverse_alpha;
@@ -31,24 +34,37 @@ renderer_triangle_row_avx2 (u32 *pixels, s32 count, u32 color, s32 w0, s32 w1,
 
   for (x = 0; x + 8 <= count; x += 8)
     {
-      simd256i destination, w0v, w1v, w2v, coverage, zero, dst_lo, dst_hi,
-          src_lo, src_hi, lo, hi, blended;
+      simd256i destination, edge_value_0_lanes, edge_value_1_lanes,
+          edge_value_2_lanes, coverage, zero, dst_lo, dst_hi, src_lo, src_hi,
+          lo, hi, blended;
 
-      w0v = SIMD256_SETR_I32 (w0, w0 + a0, w0 + 2 * a0, w0 + 3 * a0,
-                              w0 + 4 * a0, w0 + 5 * a0, w0 + 6 * a0,
-                              w0 + 7 * a0);
-      w1v = SIMD256_SETR_I32 (w1, w1 + a1, w1 + 2 * a1, w1 + 3 * a1,
-                              w1 + 4 * a1, w1 + 5 * a1, w1 + 6 * a1,
-                              w1 + 7 * a1);
-      w2v = SIMD256_SETR_I32 (w2, w2 + a2, w2 + 2 * a2, w2 + 3 * a2,
-                              w2 + 4 * a2, w2 + 5 * a2, w2 + 6 * a2,
-                              w2 + 7 * a2);
+      edge_value_0_lanes = SIMD256_SETR_I32 (
+          edge_value_0, edge_value_0 + edge_step_x_0,
+          edge_value_0 + 2 * edge_step_x_0, edge_value_0 + 3 * edge_step_x_0,
+          edge_value_0 + 4 * edge_step_x_0, edge_value_0 + 5 * edge_step_x_0,
+          edge_value_0 + 6 * edge_step_x_0, edge_value_0 + 7 * edge_step_x_0);
+      edge_value_1_lanes = SIMD256_SETR_I32 (
+          edge_value_1, edge_value_1 + edge_step_x_1,
+          edge_value_1 + 2 * edge_step_x_1, edge_value_1 + 3 * edge_step_x_1,
+          edge_value_1 + 4 * edge_step_x_1, edge_value_1 + 5 * edge_step_x_1,
+          edge_value_1 + 6 * edge_step_x_1, edge_value_1 + 7 * edge_step_x_1);
+      edge_value_2_lanes = SIMD256_SETR_I32 (
+          edge_value_2, edge_value_2 + edge_step_x_2,
+          edge_value_2 + 2 * edge_step_x_2, edge_value_2 + 3 * edge_step_x_2,
+          edge_value_2 + 4 * edge_step_x_2, edge_value_2 + 5 * edge_step_x_2,
+          edge_value_2 + 6 * edge_step_x_2, edge_value_2 + 7 * edge_step_x_2);
+      // A pixel is covered only when all three signed edge values are
+      // nonnegative
       coverage = SIMD256_COMPARE_GT_I32 (
-          SIMD256_OR (SIMD256_OR (w0v, w1v), w2v), negative_one);
+          SIMD256_OR (SIMD256_OR (edge_value_0_lanes, edge_value_1_lanes),
+                      edge_value_2_lanes),
+          negative_one);
       destination = SIMD256_LOADU ((simd256i *)(pixels + x));
 
       if (transparent)
         {
+          // Widen byte channels before multiplying to keep intermediate
+          // values. within 16 bits, then round the division by 255
           zero = SIMD256_ZERO ();
           dst_lo = SIMD256_UNPACKLO_U8 (destination, zero);
           dst_hi = SIMD256_UNPACKHI_U8 (destination, zero);
@@ -77,19 +93,19 @@ renderer_triangle_row_avx2 (u32 *pixels, s32 count, u32 color, s32 w0, s32 w1,
                                   SIMD256_ANDNOT (coverage, destination));
 
       SIMD256_STOREU ((simd256i *)(pixels + x), destination);
-      w0 += 8 * a0;
-      w1 += 8 * a1;
-      w2 += 8 * a2;
+      edge_value_0 += 8 * edge_step_x_0;
+      edge_value_1 += 8 * edge_step_x_1;
+      edge_value_2 += 8 * edge_step_x_2;
     }
 
   for (; x < count; ++x)
     {
-      if ((w0 | w1 | w2) >= 0)
+      if ((edge_value_0 | edge_value_1 | edge_value_2) >= 0)
         pixels[x] = transparent ? blend_rgba_pixel (color, pixels[x]) : color;
 
-      w0 += a0;
-      w1 += a1;
-      w2 += a2;
+      edge_value_0 += edge_step_x_0;
+      edge_value_1 += edge_step_x_1;
+      edge_value_2 += edge_step_x_2;
     }
 }
 

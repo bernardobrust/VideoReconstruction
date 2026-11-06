@@ -13,7 +13,7 @@ magnitude  := float (3 decimal digits)
 angle      := float (3 decimal digits, radians)
 normalized := (float, float) (3 decimal digits)
 
-Exmaple:
+Exmaple (does not contain the names of the fields ofc):
 -----------------------------------------------------------------------------------------------------------------------------------------
 FRAME 0
 PTS 0

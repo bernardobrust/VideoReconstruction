@@ -75,26 +75,28 @@ init_renderer (Arena *arena, s32 w, s32 h)
   assert (arena != NULL && w > 0 && h > 0);
   assert ((u64)w <= UINT64_MAX / (u64)h / sizeof (u32));
 
-  RendererPlex *rp
-      = arena_alloc (arena, sizeof (*rp), _Alignof (RendererPlex));
-  assert (rp != NULL);
+  RendererPlex *renderer;
 
-  rp->w = w;
-  rp->h = h;
-  rp->image_buffer
+  renderer_backend_init ();
+  renderer = arena_alloc (arena, sizeof (*renderer), _Alignof (RendererPlex));
+  assert (renderer != NULL);
+
+  renderer->w = w;
+  renderer->h = h;
+  renderer->image_buffer
       = arena_alloc (arena, (u64)w * h * sizeof (u32), _Alignof (u32));
-  assert (rp->image_buffer != NULL);
+  assert (renderer->image_buffer != NULL);
 
-  return rp;
+  return renderer;
 }
 
 void
-draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp)
+draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *renderer)
 {
   s32 width;
 
-  assert (rp != NULL);
-  if (y < 0 || y >= rp->h)
+  assert (renderer != NULL);
+  if (y < 0 || y >= renderer->h)
     return;
 
   // Wrong order, may actually never happen
@@ -106,32 +108,34 @@ draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp)
       x1 = t;
     }
 
-  if (x1 < 0 || x0 >= rp->w)
+  if (x1 < 0 || x0 >= renderer->w)
     return;
 
-  x0 = clamp_s32 (x0, 0, rp->w - 1);
-  x1 = clamp_s32 (x1, 0, rp->w - 1);
+  x0 = clamp_s32 (x0, 0, renderer->w - 1);
+  x1 = clamp_s32 (x1, 0, renderer->w - 1);
 
   width = x1 - x0 + 1;
-  renderer_fill_rectangle (rp->image_buffer + y * rp->w + x0, rp->w, width, 1,
-                           color);
+  renderer_fill_rectangle (renderer->image_buffer + y * renderer->w + x0,
+                           renderer->w, width, 1, color);
 }
 
 // Standard shapes
 
-// Previously I was using barycentric coordinates as TSoding used in Olive.c,
-// but profiling with VTune pointed that that was highly inefficient. So I
-// decided to use the edge function method, which, being honest, is also easier
-// to reason about.
+// This uses the edge function method instead of the barycentric method used in
+// Olive.c. Profiling with VTune showed that edge functions were more efficient
+// and easier to reason about
 local void
 draw_triangle_internal (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3,
-                        u32 color, bool transparent, RendererPlex *rp)
+                        u32 color, bool transparent, RendererPlex *renderer)
 {
-  s32 min_x, max_x, min_y, max_y, area, a0, b0, a1, b1, a2, b2;
-  s32 w0_row, w1_row, w2_row, row_width, y, row_offset;
+  s32 min_x, max_x, min_y, max_y, area;
+  s32 edge_step_x_0, edge_step_y_0, edge_step_x_1, edge_step_y_1;
+  s32 edge_step_x_2, edge_step_y_2;
+  s32 edge_value_0_row, edge_value_1_row, edge_value_2_row;
+  s32 row_width, y, row_offset;
   RendererTriangleRowFn draw_row;
 
-  assert (rp != NULL);
+  assert (renderer != NULL);
 
   if (transparent && (color >> 24) == 0)
     return;
@@ -141,103 +145,106 @@ draw_triangle_internal (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3,
   min_y = MIN3 (y1, y2, y3);
   max_y = MAX3 (y1, y2, y3);
 
-  if (max_x < 0 || min_x >= rp->w || max_y < 0 || min_y >= rp->h)
+  if (max_x < 0 || min_x >= renderer->w || max_y < 0 || min_y >= renderer->h)
     return;
 
-  min_x = clamp_s32 (min_x, 0, rp->w - 1);
-  max_x = clamp_s32 (max_x, 0, rp->w - 1);
-  min_y = clamp_s32 (min_y, 0, rp->h - 1);
-  max_y = clamp_s32 (max_y, 0, rp->h - 1);
+  min_x = clamp_s32 (min_x, 0, renderer->w - 1);
+  max_x = clamp_s32 (max_x, 0, renderer->w - 1);
+  min_y = clamp_s32 (min_y, 0, renderer->h - 1);
+  max_y = clamp_s32 (max_y, 0, renderer->h - 1);
 
   area = determinant_ab_ap_s32 (x1, y1, x2, y2, x3, y3);
   if (area == 0)
     return;
 
-  a0 = y3 - y2;
-  b0 = x2 - x3;
-  a1 = y1 - y3;
-  b1 = x3 - x1;
-  a2 = y2 - y1;
-  b2 = x1 - x2;
-  w0_row = determinant_ab_ap_s32 (x2, y2, x3, y3, min_x, min_y);
-  w1_row = determinant_ab_ap_s32 (x3, y3, x1, y1, min_x, min_y);
-  w2_row = determinant_ab_ap_s32 (x1, y1, x2, y2, min_x, min_y);
+  edge_step_x_0 = y3 - y2;
+  edge_step_y_0 = x2 - x3;
+  edge_step_x_1 = y1 - y3;
+  edge_step_y_1 = x3 - x1;
+  edge_step_x_2 = y2 - y1;
+  edge_step_y_2 = x1 - x2;
+  edge_value_0_row = determinant_ab_ap_s32 (x2, y2, x3, y3, min_x, min_y);
+  edge_value_1_row = determinant_ab_ap_s32 (x3, y3, x1, y1, min_x, min_y);
+  edge_value_2_row = determinant_ab_ap_s32 (x1, y1, x2, y2, min_x, min_y);
 
   // Just invert everything
   if (area < 0)
     {
-      a0 = -a0;
-      b0 = -b0;
-      w0_row = -w0_row;
-      a1 = -a1;
-      b1 = -b1;
-      w1_row = -w1_row;
-      a2 = -a2;
-      b2 = -b2;
-      w2_row = -w2_row;
+      edge_step_x_0 = -edge_step_x_0;
+      edge_step_y_0 = -edge_step_y_0;
+      edge_value_0_row = -edge_value_0_row;
+      edge_step_x_1 = -edge_step_x_1;
+      edge_step_y_1 = -edge_step_y_1;
+      edge_value_1_row = -edge_value_1_row;
+      edge_step_x_2 = -edge_step_x_2;
+      edge_step_y_2 = -edge_step_y_2;
+      edge_value_2_row = -edge_value_2_row;
     }
 
   row_width = max_x - min_x + 1;
   draw_row = renderer_get_triangle_row_renderer (row_width);
   for (y = min_y; y <= max_y; ++y)
     {
-      row_offset = y * rp->w + min_x;
-      draw_row (rp->image_buffer + row_offset, row_width, color, w0_row,
-                w1_row, w2_row, a0, a1, a2, transparent);
+      row_offset = y * renderer->w + min_x;
+      draw_row (renderer->image_buffer + row_offset, row_width, color,
+                edge_value_0_row, edge_value_1_row, edge_value_2_row,
+                edge_step_x_0, edge_step_x_1, edge_step_x_2, transparent);
 
-      w0_row += b0;
-      w1_row += b1;
-      w2_row += b2;
+      edge_value_0_row += edge_step_y_0;
+      edge_value_1_row += edge_step_y_1;
+      edge_value_2_row += edge_step_y_2;
     }
 }
 
 void
 draw_triangle (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3, u32 color,
-               RendererPlex *rp)
+               RendererPlex *renderer)
 {
-  draw_triangle_internal (x1, y1, x2, y2, x3, y3, color, false, rp);
+  draw_triangle_internal (x1, y1, x2, y2, x3, y3, color, false, renderer);
 }
 
 void
-draw_rectangle (s32 x1, s32 y1, s32 x2, s32 y2, u32 color, RendererPlex *rp)
+draw_rectangle (s32 x1, s32 y1, s32 x2, s32 y2, u32 color,
+                RendererPlex *renderer)
 {
   s32 min_x, max_x, min_y, max_y, width, height;
 
-  assert (rp != NULL);
+  assert (renderer != NULL);
 
   min_x = MIN (x1, x2);
   max_x = MAX (x1, x2);
   min_y = MIN (y1, y2);
   max_y = MAX (y1, y2);
 
-  if (max_x < 0 || min_x >= rp->w || max_y < 0 || min_y >= rp->h)
+  if (max_x < 0 || min_x >= renderer->w || max_y < 0 || min_y >= renderer->h)
     return;
 
-  min_x = clamp_s32 (min_x, 0, rp->w - 1);
-  max_x = clamp_s32 (max_x, 0, rp->w - 1);
-  min_y = clamp_s32 (min_y, 0, rp->h - 1);
-  max_y = clamp_s32 (max_y, 0, rp->h - 1);
+  min_x = clamp_s32 (min_x, 0, renderer->w - 1);
+  max_x = clamp_s32 (max_x, 0, renderer->w - 1);
+  min_y = clamp_s32 (min_y, 0, renderer->h - 1);
+  max_y = clamp_s32 (max_y, 0, renderer->h - 1);
 
   if ((max_x - min_x) * (max_y - min_y) == 0)
     return;
 
   width = max_x - min_x + 1;
   height = max_y - min_y + 1;
-  renderer_fill_rectangle (rp->image_buffer + min_y * rp->w + min_x, rp->w,
-                           width, height, color);
+  renderer_fill_rectangle (renderer->image_buffer + min_y * renderer->w
+                               + min_x,
+                           renderer->w, width, height, color);
 }
 
 void
-draw_circle (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *rp)
+draw_circle (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *renderer)
 {
   s32 x = r, y = 0, err = 1 - r;
 
   while (x >= y)
     {
-      draw_hline (cx - x, cx + x, cy + y, color, rp);
-      draw_hline (cx - x, cx + x, cy - y, color, rp);
-      draw_hline (cx - y, cx + y, cy + x, color, rp);
-      draw_hline (cx - y, cx + y, cy - x, color, rp);
+      draw_hline (cx - x, cx + x, cy + y, color, renderer);
+      draw_hline (cx - x, cx + x, cy - y, color, renderer);
+      draw_hline (cx - y, cx + y, cy + x, color, renderer);
+      draw_hline (cx - y, cx + y, cy - x, color, renderer);
 
       ++y;
 
@@ -256,7 +263,7 @@ draw_circle (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *rp)
 // it this way
 void
 draw_rotated_rectangle (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
-                        RendererPlex *rp)
+                        RendererPlex *renderer)
 {
   f32 c = cosf (theta), s = sinf (theta);
 
@@ -289,17 +296,18 @@ draw_rotated_rectangle (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
   // Triangle 2 points:
   // (x0, y0), (x2, y2), (x3, y3)
   draw_triangle ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
-                 rp);
+                 renderer);
   draw_triangle ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
-                 rp);
+                 renderer);
 }
 
 // It's also reasonable to think about in terms of start, end + width. The
-// start -> end vector gives a direction along the center line, this is usefull
+// The start-to-end vector gives the direction along the center line.
+// This vector is also useful for calculating the arrowhead
 // for the arrow
 void
 draw_rotated_oriented_rectangle (s32 dx1, s32 dy1, s32 dx2, s32 dy2, s32 width,
-                                 u32 color, RendererPlex *rp)
+                                 u32 color, RendererPlex *renderer)
 {
   s32 dx = dx2 - dx1, dy = dy2 - dy1;
   f32 length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
@@ -328,15 +336,15 @@ draw_rotated_oriented_rectangle (s32 dx1, s32 dy1, s32 dx2, s32 dy2, s32 width,
   // Triangle 2 points:
   // (x0, y0), (x2, y2), (x3, y3)
   draw_triangle ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
-                 rp);
+                 renderer);
   draw_triangle ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
-                 rp);
+                 renderer);
 }
 
 // It's just a rectangle with a triangle on top
 void
 draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
-            u32 color, RendererPlex *rp)
+            u32 color, RendererPlex *renderer)
 {
   // Same geometry from draw_rotated_oriented_rectangle
   s32 dx = endx - startx, dy = endy - starty;
@@ -360,9 +368,10 @@ draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
       shaft_end_y = endy - uy * head_thickness;
 
   draw_rotated_oriented_rectangle ((int)startx, (int)starty, (int)shaft_end_x,
-                                   (int)shaft_end_y, thickness, color, rp);
+                                   (int)shaft_end_y, thickness, color,
+                                   renderer);
   draw_triangle ((int)endx, (int)endy, (int)leftx, (int)lefty, (int)rightx,
-                 (int)righty, color, rp);
+                 (int)righty, color, renderer);
 }
 
 // Transparent shapes
@@ -371,17 +380,18 @@ draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
 // All triangle coverage and color writes use the selected renderer backend.
 void
 draw_triangle_t (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3, u32 color,
-                 RendererPlex *rp)
+                 RendererPlex *renderer)
 {
-  draw_triangle_internal (x1, y1, x2, y2, x3, y3, color, true, rp);
+  draw_triangle_internal (x1, y1, x2, y2, x3, y3, color, true, renderer);
 }
 
 void
-draw_rectangle_t (s32 x1, s32 y1, s32 x2, s32 y2, u32 color, RendererPlex *rp)
+draw_rectangle_t (s32 x1, s32 y1, s32 x2, s32 y2, u32 color,
+                  RendererPlex *renderer)
 {
   s32 min_x, max_x, min_y, max_y, width, height;
 
-  assert (rp != NULL);
+  assert (renderer != NULL);
 
   if ((color >> 24) == 0)
     return;
@@ -391,59 +401,60 @@ draw_rectangle_t (s32 x1, s32 y1, s32 x2, s32 y2, u32 color, RendererPlex *rp)
   min_y = MIN (y1, y2);
   max_y = MAX (y1, y2);
 
-  if (max_x < 0 || min_x >= rp->w || max_y < 0 || min_y >= rp->h)
+  if (max_x < 0 || min_x >= renderer->w || max_y < 0 || min_y >= renderer->h)
     return;
 
-  min_x = clamp_s32 (min_x, 0, rp->w - 1);
-  max_x = clamp_s32 (max_x, 0, rp->w - 1);
-  min_y = clamp_s32 (min_y, 0, rp->h - 1);
-  max_y = clamp_s32 (max_y, 0, rp->h - 1);
+  min_x = clamp_s32 (min_x, 0, renderer->w - 1);
+  max_x = clamp_s32 (max_x, 0, renderer->w - 1);
+  min_y = clamp_s32 (min_y, 0, renderer->h - 1);
+  max_y = clamp_s32 (max_y, 0, renderer->h - 1);
 
   if (max_x < min_x || max_y < min_y)
     return;
 
   width = max_x - min_x + 1;
   height = max_y - min_y + 1;
-  renderer_blend_rectangle (rp->image_buffer + min_y * rp->w + min_x, rp->w,
-                            width, height, color);
+  renderer_blend_rectangle (renderer->image_buffer + min_y * renderer->w
+                                + min_x,
+                            renderer->w, width, height, color);
 }
 
 local void
-draw_hline_t (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *rp)
+draw_hline_t (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *renderer)
 {
   s32 width;
 
-  assert (rp != NULL);
-  if (y < 0 || y >= rp->h || x1 < 0 || x0 >= rp->w)
+  assert (renderer != NULL);
+  if (y < 0 || y >= renderer->h || x1 < 0 || x0 >= renderer->w)
     return;
 
   x0 = MAX (x0, 0);
-  x1 = MIN (x1, rp->w - 1);
+  x1 = MIN (x1, renderer->w - 1);
   if (x0 > x1)
     return;
 
   width = x1 - x0 + 1;
-  renderer_blend_rectangle (rp->image_buffer + y * rp->w + x0, rp->w, width, 1,
-                            color);
+  renderer_blend_rectangle (renderer->image_buffer + y * renderer->w + x0,
+                            renderer->w, width, 1, color);
 }
 
 void
-draw_circle_t (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *rp)
+draw_circle_t (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *renderer)
 {
-  assert (rp != NULL);
+  assert (renderer != NULL);
   s32 x = r, y = 0, err = 1 - r;
 
   while (x >= y)
     {
-      draw_hline_t (cx - x, cx + x, cy + y, color, rp);
+      draw_hline_t (cx - x, cx + x, cy + y, color, renderer);
       if (y != 0)
-        draw_hline_t (cx - x, cx + x, cy - y, color, rp);
+        draw_hline_t (cx - x, cx + x, cy - y, color, renderer);
 
       if (x != y)
         {
-          draw_hline_t (cx - y, cx + y, cy + x, color, rp);
+          draw_hline_t (cx - y, cx + y, cy + x, color, renderer);
           if (x != 0)
-            draw_hline_t (cx - y, cx + y, cy - x, color, rp);
+            draw_hline_t (cx - y, cx + y, cy - x, color, renderer);
         }
 
       ++y;
@@ -460,7 +471,7 @@ draw_circle_t (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *rp)
 
 void
 draw_rotated_rectangle_t (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
-                          RendererPlex *rp)
+                          RendererPlex *renderer)
 {
   f32 c = cosf (theta);
   f32 s = sinf (theta);
@@ -495,14 +506,15 @@ draw_rotated_rectangle_t (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
   // Triangle 2 points:
   // (x0, y0), (x2, y2), (x3, y3)
   draw_triangle_t ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
-                   rp);
+                   renderer);
   draw_triangle_t ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
-                   rp);
+                   renderer);
 }
 
 void
 draw_rotated_oriented_rectangle_t (s32 dx1, s32 dy1, s32 dx2, s32 dy2,
-                                   s32 width, u32 color, RendererPlex *rp)
+                                   s32 width, u32 color,
+                                   RendererPlex *renderer)
 {
   s32 dx = dx2 - dx1, dy = dy2 - dy1;
   f32 length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
@@ -531,14 +543,14 @@ draw_rotated_oriented_rectangle_t (s32 dx1, s32 dy1, s32 dx2, s32 dy2,
   // Triangle 2 points:
   // (x0, y0), (x2, y2), (x3, y3)
   draw_triangle_t ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
-                   rp);
+                   renderer);
   draw_triangle_t ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
-                   rp);
+                   renderer);
 }
 
 void
 draw_arrow_t (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
-              u32 color, RendererPlex *rp)
+              u32 color, RendererPlex *renderer)
 {
   // Same geometry from draw_rotated_oriented_rectangle
   s32 dx = endx - startx, dy = endy - starty;
@@ -563,17 +575,17 @@ draw_arrow_t (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
 
   draw_rotated_oriented_rectangle_t ((int)startx, (int)starty,
                                      (int)shaft_end_x, (int)shaft_end_y,
-                                     thickness, color, rp);
+                                     thickness, color, renderer);
   draw_triangle_t ((int)endx, (int)endy, (int)leftx, (int)lefty, (int)rightx,
-                   (int)righty, color, rp);
+                   (int)righty, color, renderer);
 }
 
 // Present the current image and keep it available until a newer frame replaces
 // it. The platform buffer is persistent across UI updates.
 void
-renderer_present (PlatformState *platform_state, RendererPlex *rp)
+renderer_present (PlatformState *platform_state, RendererPlex *renderer)
 {
-  assert (rp != NULL);
+  assert (renderer != NULL);
   platform_present (platform_state);
-  (void)rp;
+  (void)renderer;
 }

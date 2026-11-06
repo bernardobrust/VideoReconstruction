@@ -15,12 +15,12 @@
 #include "frame_queue.h"
 #include "input.h"
 #include "macros.h"
+#include "motion_vectors.h"
 #include "operations.h"
 #include "platform.h"
 #include "playback.h"
 #include "renderer.h"
 #include "renderer_pool.h"
-#include "motion_vectors.h"
 
 s32
 main (s32 argc, byte **argv)
@@ -67,7 +67,7 @@ main (s32 argc, byte **argv)
   // Video only
   else if (export->count == 0)
     goto video_only;
-  // We'll latter want to find a way to both export and inspect the video at
+  // We'll later want to find a way to both export and inspect the video at
   // once
   else
     {
@@ -100,24 +100,25 @@ video_only:
   Arena video_arena = { 0 }, renderer_arena = { 0 };
   PlatformState platform_state = { 0 };
   InspectorPlayback playback = { 0 };
-  VideoPlex *vp = NULL;
+  VideoPlex *video_plex = NULL;
   arena_init (&video_arena, sizeof (VideoPlex) + _Alignof (VideoPlex));
 
-  // Reserve the main, decoder-coordinator, and systems threads. The remaining
-  // helper budget supports up to three dav1d workers and two renderer workers
+  // Reserve the main, decoder coordinator, and systems threads. The remaining
+  // helper budget supports up to three dav1d threads and two renderer workers
   s32 logical_cores = platform_get_logical_core_count (),
       worker_budget = MAX (0, logical_cores - 3),
       decoder_threads = MIN (3, (worker_budget * 3 + 2) / 5),
       renderer_workers = MAX (0, MIN (2, worker_budget - decoder_threads));
-  if (decoder_threads == 0)
+  if (worker_budget == 0)
     decoder_threads = 1;
 
   // Initializing video
-  vp = init_video (&video_arena, video_file, decoder_threads);
-  if (!vp)
+  video_plex = init_video (&video_arena, video_file, decoder_threads);
+  if (!video_plex)
     goto end;
 
-  s32 w = vp->codec->width, h = vp->codec->height;
+  s32 video_width = video_plex->codec->width;
+  s32 video_height = video_plex->codec->height;
 
   enum
   {
@@ -125,22 +126,24 @@ video_only:
     DECODED_FRAME_CACHE_BYTES = GIGABYTE (1)
   };
 
-  s32 decoded_frame_cache_capacity
-      = frame_queue_capacity_for_bytes (w, h, DECODED_FRAME_CACHE_BYTES);
+  s32 decoded_frame_cache_capacity = frame_queue_capacity_for_bytes (
+      video_width, video_height, DECODED_FRAME_CACHE_BYTES);
 
   u64 renderer_capacity
-      = operations_memory_required (w, h)
-        + frame_queue_memory_required (w, h, decoded_frame_cache_capacity)
-        + (u64)w * h * sizeof (u32)
+      = operations_memory_required (video_width, video_height)
+        + frame_queue_memory_required (video_width, video_height,
+                                       decoded_frame_cache_capacity)
+        + (u64)video_width * video_height * sizeof (u32)
         + renderer_pool_memory_required (renderer_workers);
   arena_init (&renderer_arena, renderer_capacity);
 
   // Renderer and inspector buffers share one arena and lifetime
-  RendererPlex *rp = init_renderer (&renderer_arena, w, h);
-  operations_init (rp, &renderer_arena);
+  RendererPlex *renderer
+      = init_renderer (&renderer_arena, video_width, video_height);
+  operations_init (renderer, &renderer_arena);
 
-  platform_init (&platform_state, "Inspector", 0, 0, rp->w, rp->h,
-                 (byte *)rp->image_buffer);
+  platform_init (&platform_state, "Inspector", 0, 0, renderer->w, renderer->h,
+                 (byte *)renderer->image_buffer);
   if (platform_state.internal_state == NULL)
     goto end;
 
@@ -148,15 +151,16 @@ video_only:
       platform_get_screen_resolution (&platform_state));
 
   // Keep the video's temporal coherence by default, playback speed scales it
-  AVRational video_fps = av_guess_frame_rate (vp->fmt, vp->stream, NULL);
+  AVRational video_fps
+      = av_guess_frame_rate (video_plex->fmt, video_plex->stream, NULL);
   f64 frame_duration_ms
       = video_fps.num > 0 && video_fps.den > 0
             ? 1000.0 * (f64)video_fps.den / (f64)video_fps.num
             : 1000.0 / 30.0;
 
-  if (!inspector_playback_init (&playback, &renderer_arena, vp, rp,
-                                decoded_frame_cache_capacity, renderer_workers,
-                                frame_duration_ms))
+  if (!inspector_playback_init (&playback, &renderer_arena, video_plex,
+                                renderer, decoded_frame_cache_capacity,
+                                renderer_workers, frame_duration_ms))
     goto end;
 
   result = EXIT_SUCCESS;

@@ -3,6 +3,12 @@
 #include "renderer_internal.h"
 
 void
+renderer_backend_init (void)
+{
+  // This is intentionally a no-op. Check renderer_simd.c for actual init code
+}
+
+void
 renderer_fill_rectangle (u32 *pixels, s32 stride, s32 width, s32 height,
                          u32 color)
 {
@@ -20,8 +26,10 @@ renderer_fill_rectangle (u32 *pixels, s32 stride, s32 width, s32 height,
 }
 
 local void
-renderer_triangle_row_scalar (u32 *pixels, s32 count, u32 color, s32 w0,
-                              s32 w1, s32 w2, s32 a0, s32 a1, s32 a2,
+renderer_triangle_row_scalar (u32 *pixels, s32 count, u32 color,
+                              s32 edge_value_0, s32 edge_value_1,
+                              s32 edge_value_2, s32 edge_step_x_0,
+                              s32 edge_step_x_1, s32 edge_step_x_2,
                               bool transparent)
 {
   s32 x;
@@ -29,13 +37,13 @@ renderer_triangle_row_scalar (u32 *pixels, s32 count, u32 color, s32 w0,
 
   for (x = 0; x < count; ++x)
     {
-      weights = (u32)(w0 | w1 | w2);
+      weights = (u32)(edge_value_0 | edge_value_1 | edge_value_2);
       if ((weights & 0x80000000u) == 0)
         pixels[x] = transparent ? blend_rgba_pixel (color, pixels[x]) : color;
 
-      w0 += a0;
-      w1 += a1;
-      w2 += a2;
+      edge_value_0 += edge_step_x_0;
+      edge_value_1 += edge_step_x_1;
+      edge_value_2 += edge_step_x_2;
     }
 }
 

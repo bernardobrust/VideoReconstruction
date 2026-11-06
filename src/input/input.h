@@ -4,7 +4,7 @@
 
 #include <stdbool.h>
 
-// We'll just add here some keys we'll likely need latter
+// We'll add keys here as we need them
 typedef enum
 {
   CTRL = 100,
