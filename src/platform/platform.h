@@ -136,6 +136,9 @@ void platform_sleep (f64 ms);
 s32 platform_file_exists (byte *filepath);
 bool platform_mapped_file_create (PlatformMappedFile *file, const char *path,
                                   u64 size);
+bool platform_mapped_file_open_readonly (PlatformMappedFile *file,
+                                         const char *path);
 void platform_mapped_file_close (PlatformMappedFile *file);
+u64 platform_get_available_memory (void);
 
 void platform_stop (PlatformState *platform_state);

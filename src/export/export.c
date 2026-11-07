@@ -15,9 +15,6 @@
 #include "thread.h"
 #include "utility.h"
 
-// Read this from a config file later
-#define EXPORT_BUFFER_SIZE MEGABYTE (8)
-
 typedef struct
 {
   s32 src_x, src_y, dst_x, dst_y, width, height, source;
@@ -39,9 +36,9 @@ typedef struct
   ExportMotionVector *vectors;
 
   u64 first_frame, end_frame, buffered, output_position;
+  u64 buffer_size;
+  byte *buffer;
   bool failed;
-
-  byte buffer[EXPORT_BUFFER_SIZE];
 } ExportWorker;
 
 local inline void
@@ -426,7 +423,7 @@ worker_append (ExportWorker *worker, const char *text, u64 length)
 
   while (length > 0)
     {
-      u64 available = sizeof (worker->buffer) - worker->buffered,
+      u64 available = worker->buffer_size - worker->buffered,
           copy_size = length < available ? length : available;
 
       memcpy (worker->buffer + worker->buffered, text, copy_size);
@@ -434,8 +431,7 @@ worker_append (ExportWorker *worker, const char *text, u64 length)
       text += copy_size;
       length -= copy_size;
 
-      if (worker->buffered == sizeof (worker->buffer)
-          && !worker_flush (worker))
+      if (worker->buffered == worker->buffer_size && !worker_flush (worker))
         return false;
     }
 
@@ -497,7 +493,8 @@ write_frames (void *arg)
 }
 
 bool
-export_data_to (const char *video_file, const char *data_file)
+export_data_to (const char *video_file, const char *data_file,
+                u64 output_buffer_size)
 {
   Arena arena = { 0 };
   VideoPlex *video = NULL;
@@ -507,13 +504,16 @@ export_data_to (const char *video_file, const char *data_file)
   ExportWorker *workers = NULL;
   PlatformThread *threads = NULL;
   bool *started = NULL;
-  s32 worker_count, i;
+  s32 worker_count = 0, i;
   u64 output_size = 0;
 
   assert (video_file != NULL);
   assert (data_file != NULL);
+  assert (output_buffer_size > 0);
+  if (output_buffer_size == 0 || output_buffer_size > SIZE_MAX)
+    return false;
 
-  arena_init (&arena, EXPORT_BUFFER_SIZE);
+  arena_init (&arena, sizeof (VideoPlex) + _Alignof (VideoPlex));
 
   if (!dyn_arr64_try_init (&frame_array, 0, sizeof (ExportFrame))
       || !dyn_arr64_try_init (&vector_array, 0, sizeof (ExportMotionVector)))
@@ -524,7 +524,7 @@ export_data_to (const char *video_file, const char *data_file)
 
   worker_count = MAX (1, platform_get_logical_core_count ());
 
-  video = init_video (&arena, (byte *)video_file, worker_count - 3);
+  video = init_video (&arena, (byte *)video_file, MAX (1, worker_count - 3));
   if (video == NULL)
     goto cleanup;
 
@@ -562,6 +562,7 @@ export_data_to (const char *video_file, const char *data_file)
     }
 
   shutdown_video (video);
+  video = NULL;
 
   if (!calculate_output_size ((ExportFrame *)frame_array.data, frame_array.len,
                               (ExportMotionVector *)vector_array.data,
@@ -602,6 +603,17 @@ export_data_to (const char *video_file, const char *data_file)
     {
       fprintf (stderr, "Not enough memory to start export workers.\n");
       goto cleanup;
+    }
+
+  for (i = 0; i < worker_count; ++i)
+    {
+      workers[i].buffer = malloc ((size_t)output_buffer_size);
+      if (workers[i].buffer == NULL)
+        {
+          fprintf (stderr, "Not enough memory for exporter output buffers.\n");
+          goto cleanup;
+        }
+      workers[i].buffer_size = output_buffer_size;
     }
 
   {
@@ -653,6 +665,22 @@ export_data_to (const char *video_file, const char *data_file)
     fprintf (stderr, "Failed while writing mapped export output.\n");
 
 cleanup:
+
+  if (video != NULL)
+    shutdown_video (video);
+
+  if (workers != NULL)
+    {
+      for (i = 0; i < worker_count; ++i)
+        free (workers[i].buffer);
+    }
+
+  free (workers);
+  free (threads);
+  free (started);
+  dyn_arr64_release (&frame_array);
+  dyn_arr64_release (&vector_array);
+  arena_release (&arena);
 
   platform_mapped_file_close (&output);
 

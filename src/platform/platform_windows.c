@@ -620,6 +620,16 @@ platform_file_exists (byte *filepath)
   return 0;
 }
 
+u64
+platform_get_available_memory (void)
+{
+  MEMORYSTATUSEX memory_status
+      = { .dwLength = (DWORD)sizeof (MEMORYSTATUSEX) };
+
+  return GlobalMemoryStatusEx (&memory_status) ? memory_status.ullAvailPhys
+                                               : 0;
+}
+
 bool
 platform_mapped_file_create (PlatformMappedFile *file, const char *path,
                              u64 size)
@@ -683,6 +693,62 @@ platform_mapped_file_create (PlatformMappedFile *file, const char *path,
   return true;
 }
 
+bool
+platform_mapped_file_open_readonly (PlatformMappedFile *file, const char *path)
+{
+  HANDLE input, mapping;
+  LARGE_INTEGER length;
+  void *data;
+
+  assert (file != NULL && path != NULL);
+
+  memset (file, 0, sizeof (*file));
+  file->native_file = -1;
+  input = CreateFileA (path, GENERIC_READ,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                       NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (input == INVALID_HANDLE_VALUE)
+    return false;
+
+  if (!GetFileSizeEx (input, &length) || length.QuadPart < 0
+      || (u64)length.QuadPart > SIZE_MAX)
+    {
+      CloseHandle (input);
+      return false;
+    }
+
+  file->native_file = (intptr_t)input;
+  file->size = (u64)length.QuadPart;
+  if (file->size == 0)
+    return true;
+
+  mapping = CreateFileMappingA (input, NULL, PAGE_READONLY, 0, 0, NULL);
+  if (mapping == NULL)
+    {
+      CloseHandle (input);
+      file->native_file = -1;
+      file->size = 0;
+
+      return false;
+    }
+
+  data = MapViewOfFile (mapping, FILE_MAP_READ, 0, 0, 0);
+  if (data == NULL)
+    {
+      CloseHandle (mapping);
+      CloseHandle (input);
+      file->native_file = -1;
+      file->size = 0;
+
+      return false;
+    }
+
+  file->data = data;
+  file->native_mapping = mapping;
+
+  return true;
+}
+
 void
 platform_mapped_file_close (PlatformMappedFile *file)
 {
@@ -698,6 +764,7 @@ platform_mapped_file_close (PlatformMappedFile *file)
     CloseHandle ((HANDLE)file->native_file);
 
   memset (file, 0, sizeof (*file));
+  file->native_file = -1;
 }
 
 void

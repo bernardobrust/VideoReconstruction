@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <time.h>
@@ -19,6 +20,20 @@ platform_get_time (void)
 
   gettimeofday (&time, NULL);
   return (f64)time.tv_sec * 1000.0 + (f64)time.tv_usec / 1000.0;
+}
+
+u64
+platform_get_available_memory (void)
+{
+  long available_pages, page_size;
+
+  available_pages = sysconf (_SC_AVPHYS_PAGES);
+  page_size = sysconf (_SC_PAGESIZE);
+  if (available_pages <= 0 || page_size <= 0
+      || (u64)available_pages > UINT64_MAX / (u64)page_size)
+    return 0;
+
+  return (u64)available_pages * (u64)page_size;
 }
 
 void
@@ -97,6 +112,49 @@ platform_mapped_file_create (PlatformMappedFile *file, const char *path,
   file->data = data;
   file->size = size;
   file->native_file = fd;
+
+  return true;
+}
+
+bool
+platform_mapped_file_open_readonly (PlatformMappedFile *file, const char *path)
+{
+  int fd;
+  struct stat file_info;
+  void *data;
+
+  assert (file != NULL && path != NULL);
+
+  memset (file, 0, sizeof (*file));
+  file->native_file = -1;
+  fd = open (path, O_RDONLY);
+  if (fd < 0)
+    return false;
+
+  if (fstat (fd, &file_info) != 0 || file_info.st_size < 0
+      || (u64)file_info.st_size > SIZE_MAX)
+    {
+      close (fd);
+
+      return false;
+    }
+
+  file->size = (u64)file_info.st_size;
+  file->native_file = fd;
+  if (file->size == 0)
+    return true;
+
+  data = mmap (NULL, (size_t)file->size, PROT_READ, MAP_PRIVATE, fd, 0);
+  if (data == MAP_FAILED)
+    {
+      close (fd);
+      memset (file, 0, sizeof (*file));
+      file->native_file = -1;
+
+      return false;
+    }
+
+  file->data = data;
 
   return true;
 }

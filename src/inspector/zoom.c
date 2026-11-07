@@ -225,6 +225,12 @@ operations_init (RendererPlex *renderer, Arena *arena)
 }
 
 void
+operations_set_fullscreen (bool enabled)
+{
+  fullscreen = enabled;
+}
+
+void
 operations_on_frame_decoded (RendererPlex *renderer,
                              const AVMotionVector *motion_vectors,
                              s32 motion_vector_count)

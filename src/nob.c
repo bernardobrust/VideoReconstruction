@@ -387,8 +387,8 @@ main (s32 argc, byte **argv)
   nob_cmd_append (&compile_cmd, entry_point);
 
   if (str_eq (*target, "inspector"))
-    nob_cmd_append (&compile_cmd, "inspector/operations.c",
-                    "inspector/playback.c");
+    nob_cmd_append (&compile_cmd, "inspector/load_config.c",
+                    "inspector/operations.c", "inspector/playback.c");
 
   // Math
   nob_cmd_append (&compile_cmd, "math/basic.c");

@@ -14,6 +14,7 @@
 #include "export.h"
 #include "frame_queue.h"
 #include "input.h"
+#include "load_config.h"
 #include "macros.h"
 #include "motion_vectors.h"
 #include "operations.h"
@@ -40,6 +41,9 @@ main (s32 argc, byte **argv)
   argc = flag_rest_argc ();
   argv = flag_rest_argv ();
 
+  InspectorConfig config;
+  inspector_config_load (&config);
+
   // No arguments
   if ((*inspect_video)[0] == '\0' && export->count == 0)
     {
@@ -60,7 +64,8 @@ main (s32 argc, byte **argv)
           return EXIT_FAILURE;
         }
 
-      return export_data_to (export->items[0], export->items[1])
+      return export_data_to (export->items[0], export->items[1],
+                             config.exporter_output_buffer_bytes)
                  ? EXIT_SUCCESS
                  : EXIT_FAILURE;
     }
@@ -76,6 +81,8 @@ main (s32 argc, byte **argv)
     }
 
 video_only:
+  inspector_config_validate (&config);
+
   byte *video_file = *inspect_video;
   s32 file_exists = platform_file_exists (video_file);
 
@@ -117,17 +124,11 @@ video_only:
   if (!video_plex)
     goto end;
 
-  s32 video_width = video_plex->codec->width;
-  s32 video_height = video_plex->codec->height;
-
-  enum
-  {
-    // We'll later get this from a config file
-    DECODED_FRAME_CACHE_BYTES = GIGABYTE (1)
-  };
+  s32 video_width = video_plex->codec->width,
+      video_height = video_plex->codec->height;
 
   s32 decoded_frame_cache_capacity = frame_queue_capacity_for_bytes (
-      video_width, video_height, DECODED_FRAME_CACHE_BYTES);
+      video_width, video_height, config.frame_cache_bytes);
 
   u64 renderer_capacity
       = operations_memory_required (video_width, video_height)
@@ -146,6 +147,12 @@ video_only:
                  (byte *)renderer->image_buffer);
   if (platform_state.internal_state == NULL)
     goto end;
+
+  if (config.auto_full_screen)
+    {
+      operations_set_fullscreen (true);
+      platform_set_fullscreen (&platform_state, true);
+    }
 
   renderer_motion_vectors_set_display_resolution (
       platform_get_screen_resolution (&platform_state));

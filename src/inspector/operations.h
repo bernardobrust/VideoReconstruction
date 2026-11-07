@@ -24,6 +24,7 @@ typedef struct
 u64 operations_memory_required (s32 w, s32 h);
 
 void operations_init (RendererPlex *renderer, Arena *arena);
+void operations_set_fullscreen (bool enabled);
 
 void operations_on_frame_decoded (RendererPlex *renderer,
                                   const AVMotionVector *motion_vectors,
