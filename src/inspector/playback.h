@@ -18,7 +18,7 @@ typedef struct
   PlatformMutex state_mutex;
   PlatformCondition state_changed;
   f64 frame_duration_ms;
-  s32 result;
+  s32 result, frame_step_request;
   bool stopping, render_in_progress, has_frame, frame_ready, done;
 } InspectorPlayback;
 

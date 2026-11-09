@@ -20,7 +20,9 @@ inspector -inspect (video_file)
 ```
 
 Then use the following commands:
-- SPACE: Pauses/unpauses the video
+- SPACE: Start or pause playback
+- LEFT ARROW: Pause and step backward one frame
+- RIGHT ARROW: Pause and step forward one frame
 - DOWN ARROW: Decrease playback speed
 - UP ARROW: Increase playback speed
 - F: Toggle full screen

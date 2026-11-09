@@ -12,7 +12,7 @@ local void
 decoder_thread (void *arg)
 {
   InspectorPlayback *playback;
-  FrameQueueFrame frame;
+  FrameQueueFrame frame = { 0 };
   AVFrameSideData *side_data;
   AVMotionVector *motion_vectors;
   u64 motion_vector_count_u64;
@@ -76,18 +76,22 @@ local void
 systems_thread (void *arg)
 {
   InspectorPlayback *playback;
-  FrameQueueFrame frame;
+  FrameQueueFrame frame = { 0 };
   OperationsRenderState render_state;
   f64 next_frame, speed, now;
-  bool stopping;
+  bool stopping, stepping, from_history, has_frame, first_frame;
+  s32 step_direction;
 
   playback = arg;
   next_frame = platform_get_time ();
+  speed = playback_speed;
 
   for (;;)
     {
       platform_mutex_lock (&playback->state_mutex);
-      while (!playback->stopping && paused)
+
+      while (!playback->stopping && paused && playback->has_frame
+             && playback->frame_step_request == 0)
         {
           // The main thread signals after input changes. The condition wait
           // releases state_mutex so input handling can resume playback
@@ -95,34 +99,117 @@ systems_thread (void *arg)
                                    &playback->state_mutex);
         }
       stopping = playback->stopping;
+      speed = playback_speed;
+      first_frame = !playback->has_frame;
+      stepping = paused && playback->frame_step_request != 0;
+      step_direction = 0;
+      if (stepping)
+        {
+          step_direction = playback->frame_step_request < 0 ? -1 : 1;
+          playback->frame_step_request -= step_direction;
+        }
 
       platform_mutex_unlock (&playback->state_mutex);
+
       if (stopping)
         break;
 
-      if (!frame_queue_take (&playback->decoded_frames, &frame))
-        break;
+      from_history = false;
+      if (stepping)
+        {
+          has_frame = frame_queue_history_move (&playback->decoded_frames,
+                                                step_direction, &frame);
+          from_history = has_frame;
+          if (!has_frame && step_direction < 0)
+            continue;
+        }
+      else
+        {
+          has_frame = frame_queue_history_move (&playback->decoded_frames, 1,
+                                                &frame);
+          from_history = has_frame;
+        }
+
+      if (!has_frame && !frame_queue_take (&playback->decoded_frames, &frame))
+        {
+          if (stepping)
+            continue;
+
+          if (frame_queue_result (&playback->decoded_frames) == 1)
+            {
+              platform_mutex_lock (&playback->state_mutex);
+
+              timeline_pause ();
+              while (!playback->stopping && playback->frame_step_request == 0)
+                platform_condition_wait (&playback->state_changed,
+                                         &playback->state_mutex);
+              stopping = playback->stopping;
+
+              platform_mutex_unlock (&playback->state_mutex);
+
+              if (stopping)
+                break;
+
+              continue;
+            }
+
+          break;
+        }
 
       if (playback_stopping (playback))
         {
-          frame_queue_release (&playback->decoded_frames, frame);
+          if (from_history)
+            frame_queue_history_release (&playback->decoded_frames, frame);
+          else
+            frame_queue_release (&playback->decoded_frames, frame);
 
           break;
         }
 
       // Keep decoded frames queued ahead, but publish them at the video's
       // cadence. Speed changes adjust this interval without dropping frames
-      for (;;)
+      for (; !stepping && !first_frame;)
         {
           platform_mutex_lock (&playback->state_mutex);
 
-          while (paused && !playback->stopping)
+          while (paused && !playback->stopping
+                 && playback->frame_step_request == 0)
             platform_condition_wait (&playback->state_changed,
                                      &playback->state_mutex);
           stopping = playback->stopping;
+          if (paused && playback->frame_step_request != 0)
+            {
+              step_direction = playback->frame_step_request < 0 ? -1 : 1;
+              playback->frame_step_request -= step_direction;
+              stepping = true;
+            }
           speed = playback_speed;
 
           platform_mutex_unlock (&playback->state_mutex);
+
+          if (stepping)
+            {
+              if (step_direction < 0)
+                {
+                  if (from_history)
+                    {
+                      if (!frame_queue_history_move (&playback->decoded_frames,
+                                                     -1, &frame))
+                        goto next_iteration;
+                    }
+                  else
+                    {
+                      frame_queue_requeue_front (&playback->decoded_frames,
+                                                 frame);
+                      if (!frame_queue_history_move (&playback->decoded_frames,
+                                                     -1, &frame))
+                        goto next_iteration;
+                    }
+                  from_history = true;
+                }
+
+              break;
+            }
 
           if (stopping)
             break;
@@ -136,17 +223,15 @@ systems_thread (void *arg)
 
       if (stopping)
         {
-          frame_queue_release (&playback->decoded_frames, frame);
+          if (from_history)
+            frame_queue_history_release (&playback->decoded_frames, frame);
+          else
+            frame_queue_release (&playback->decoded_frames, frame);
 
           break;
         }
 
       platform_mutex_lock (&playback->state_mutex);
-
-      while (paused && !playback->stopping)
-        platform_condition_wait (&playback->state_changed,
-                                 &playback->state_mutex);
-
       stopping = playback->stopping;
       if (!stopping)
         {
@@ -160,7 +245,10 @@ systems_thread (void *arg)
 
       if (stopping)
         {
-          frame_queue_release (&playback->decoded_frames, frame);
+          if (from_history)
+            frame_queue_history_release (&playback->decoded_frames, frame);
+          else
+            frame_queue_release (&playback->decoded_frames, frame);
 
           break;
         }
@@ -193,8 +281,13 @@ systems_thread (void *arg)
 
       platform_mutex_unlock (&playback->state_mutex);
 
-      frame_queue_release (&playback->decoded_frames, frame);
+      if (from_history)
+        frame_queue_history_release (&playback->decoded_frames, frame);
+      else
+        frame_queue_release (&playback->decoded_frames, frame);
       next_frame = platform_get_time () + playback->frame_duration_ms / speed;
+
+    next_iteration:;
     }
 
   platform_mutex_lock (&playback->state_mutex);
@@ -272,6 +365,7 @@ inspector_playback_process_input (InspectorPlayback *playback,
   platform_mutex_lock (&playback->state_mutex);
 
   process_input (platform_state);
+  playback->frame_step_request += timeline_take_frame_step_request ();
   platform_condition_broadcast (&playback->state_changed);
 
   platform_mutex_unlock (&playback->state_mutex);

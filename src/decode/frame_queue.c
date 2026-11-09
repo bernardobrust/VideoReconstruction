@@ -16,6 +16,7 @@ frame_queue_memory_required (s32 w, s32 h, s32 capacity)
 
   metadata = 256 + (u64)capacity * sizeof (RendererPlex)
              + (u64)capacity * sizeof (s32) + (u64)capacity * sizeof (bool)
+             + (u64)capacity * sizeof (s32) + (u64)capacity * sizeof (bool)
              + (u64)capacity * sizeof (AVMotionVector *)
              + (u64)capacity * sizeof (s32) * 2;
   frame_bytes = (u64)w * (u64)h * sizeof (u32);
@@ -35,7 +36,8 @@ frame_queue_capacity_for_bytes (s32 w, s32 h, u64 byte_budget)
   assert (w > 0 && h > 0 && byte_budget > 0);
   assert ((u64)w <= UINT64_MAX / (u64)h / sizeof (u32));
   per_frame = (u64)w * (u64)h * sizeof (u32);
-  overhead_per_frame = sizeof (RendererPlex) + sizeof (s32) + sizeof (bool);
+  overhead_per_frame = sizeof (RendererPlex) + sizeof (s32) * 4
+                       + sizeof (bool) * 2 + sizeof (AVMotionVector *);
 
   if (byte_budget <= 256 || per_frame > UINT64_MAX - overhead_per_frame)
     return 1;
@@ -58,12 +60,19 @@ frame_queue_init (FrameQueue *queue, Arena *arena, s32 w, s32 h, s32 capacity)
   queue->w = w;
   queue->h = h;
   queue->capacity = capacity;
+  queue->history_capacity = (capacity + 1) / 2;
+  queue->future_capacity = MAX (1, capacity - queue->history_capacity);
+  queue->history_cursor = -1;
   queue->frames = arena_alloc (arena, (u64)capacity * sizeof (*queue->frames),
                                _Alignof (RendererPlex));
   queue->ready_indices = arena_alloc (
       arena, (u64)capacity * sizeof (*queue->ready_indices), _Alignof (s32));
+  queue->history_indices = arena_alloc (
+      arena, (u64)capacity * sizeof (*queue->history_indices), _Alignof (s32));
   queue->occupied = arena_alloc (
       arena, (u64)capacity * sizeof (*queue->occupied), _Alignof (bool));
+  queue->history_pinned = arena_alloc (
+      arena, (u64)capacity * sizeof (*queue->history_pinned), _Alignof (bool));
   queue->motion_vectors
       = arena_alloc (arena, (u64)capacity * sizeof (*queue->motion_vectors),
                      _Alignof (AVMotionVector *));
@@ -75,11 +84,14 @@ frame_queue_init (FrameQueue *queue, Arena *arena, s32 w, s32 h, s32 capacity)
       _Alignof (s32));
 
   assert (queue->frames != NULL && queue->ready_indices != NULL
-          && queue->occupied != NULL && queue->motion_vectors != NULL
+          && queue->history_indices != NULL && queue->occupied != NULL
+          && queue->history_pinned != NULL && queue->motion_vectors != NULL
           && queue->motion_vector_counts != NULL
           && queue->motion_vector_capacities != NULL);
 
   memset (queue->occupied, 0, (u64)capacity * sizeof (*queue->occupied));
+  memset (queue->history_pinned, 0,
+          (u64)capacity * sizeof (*queue->history_pinned));
   memset (queue->motion_vectors, 0,
           (u64)capacity * sizeof (*queue->motion_vectors));
   memset (queue->motion_vector_counts, 0,
@@ -118,6 +130,30 @@ frame_queue_destroy (FrameQueue *queue)
   platform_mutex_destroy (&queue->mutex);
 }
 
+local bool
+frame_queue_evict_oldest_history (FrameQueue *queue)
+{
+  s32 index;
+
+  if (queue->history_count == 0)
+    return false;
+
+  index = queue->history_indices[queue->history_head];
+  if (queue->history_pinned[index])
+    return false;
+
+  queue->occupied[index] = false;
+  queue->history_head = (queue->history_head + 1) % queue->capacity;
+  --queue->history_count;
+
+  if (queue->history_cursor > 0)
+    --queue->history_cursor;
+  else if (queue->history_count == 0)
+    queue->history_cursor = -1;
+
+  return true;
+}
+
 bool
 frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
 {
@@ -133,6 +169,13 @@ frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
 
           return false;
         }
+
+      if (queue->ready_count >= queue->future_capacity)
+        {
+          platform_condition_wait (&queue->slot_available, &queue->mutex);
+          continue;
+        }
+
       for (i = 0; i < queue->capacity; ++i)
         {
           if (!queue->occupied[i])
@@ -145,12 +188,17 @@ frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
               frame->renderer = &queue->frames[i];
               frame->motion_vectors = queue->motion_vectors[i];
               frame->motion_vector_count = 0;
+              frame->was_taken = false;
+              frame->from_history = false;
               queue->motion_vector_counts[i] = 0;
               platform_mutex_unlock (&queue->mutex);
 
               return true;
             }
         }
+
+      if (frame_queue_evict_oldest_history (queue))
+        continue;
 
       platform_condition_wait (&queue->slot_available, &queue->mutex);
     }
@@ -231,8 +279,11 @@ frame_queue_take (FrameQueue *queue, FrameQueueFrame *frame)
   frame->renderer = &queue->frames[frame->index];
   frame->motion_vectors = queue->motion_vectors[frame->index];
   frame->motion_vector_count = queue->motion_vector_counts[frame->index];
+  frame->was_taken = true;
+  frame->from_history = false;
   queue->ready_head = (queue->ready_head + 1) % queue->capacity;
   --queue->ready_count;
+  platform_condition_signal (&queue->slot_available);
 
   platform_mutex_unlock (&queue->mutex);
   return true;
@@ -241,6 +292,8 @@ frame_queue_take (FrameQueue *queue, FrameQueueFrame *frame)
 void
 frame_queue_release (FrameQueue *queue, FrameQueueFrame frame)
 {
+  s32 tail;
+
   assert (queue != NULL && frame.index >= 0 && frame.index < queue->capacity);
 
   platform_mutex_lock (&queue->mutex);
@@ -248,9 +301,104 @@ frame_queue_release (FrameQueue *queue, FrameQueueFrame frame)
   // The decoder cannot reserve this slot again until this release is visible
   // under the queue mutex, so it cannot overwrite pixels still being read.
   assert (queue->occupied[frame.index]);
-  queue->occupied[frame.index] = false;
+  if (frame.was_taken)
+    {
+      if (queue->history_cursor >= 0)
+        {
+          s32 current_index;
+
+          current_index = queue->history_indices[(queue->history_head
+                                                  + queue->history_cursor)
+                                                 % queue->capacity];
+          queue->history_pinned[current_index] = false;
+        }
+      if (queue->history_count == queue->history_capacity)
+        assert (frame_queue_evict_oldest_history (queue));
+
+      tail = (queue->history_head + queue->history_count) % queue->capacity;
+      queue->history_indices[tail] = frame.index;
+      ++queue->history_count;
+      queue->history_cursor = queue->history_count - 1;
+      queue->history_pinned[frame.index] = true;
+    }
+  else
+    queue->occupied[frame.index] = false;
   platform_condition_signal (&queue->slot_available);
 
+  platform_mutex_unlock (&queue->mutex);
+}
+
+bool
+frame_queue_history_move (FrameQueue *queue, s32 direction,
+                          FrameQueueFrame *frame)
+{
+  s32 next_cursor, index;
+
+  assert (queue != NULL && frame != NULL
+          && (direction == -1 || direction == 1));
+
+  platform_mutex_lock (&queue->mutex);
+  next_cursor = queue->history_cursor + direction;
+  if (next_cursor < 0 || next_cursor >= queue->history_count)
+    {
+      platform_mutex_unlock (&queue->mutex);
+
+      return false;
+    }
+
+  index = queue->history_indices[(queue->history_head + next_cursor)
+                                 % queue->capacity];
+  if (queue->history_cursor >= 0)
+    {
+      s32 previous_index;
+
+      previous_index
+          = queue
+                ->history_indices[(queue->history_head + queue->history_cursor)
+                                  % queue->capacity];
+      queue->history_pinned[previous_index] = false;
+    }
+
+  queue->history_cursor = next_cursor;
+  queue->history_pinned[index] = true;
+  frame->index = index;
+  frame->renderer = &queue->frames[index];
+  frame->motion_vectors = queue->motion_vectors[index];
+  frame->motion_vector_count = queue->motion_vector_counts[index];
+  frame->was_taken = false;
+  frame->from_history = true;
+
+  platform_mutex_unlock (&queue->mutex);
+
+  return true;
+}
+
+void
+frame_queue_history_release (FrameQueue *queue, FrameQueueFrame frame)
+{
+  assert (queue != NULL && frame.from_history && frame.index >= 0
+          && frame.index < queue->capacity);
+
+  platform_mutex_lock (&queue->mutex);
+  assert (queue->history_pinned[frame.index]);
+  platform_condition_broadcast (&queue->slot_available);
+  platform_mutex_unlock (&queue->mutex);
+}
+
+void
+frame_queue_requeue_front (FrameQueue *queue, FrameQueueFrame frame)
+{
+  assert (queue != NULL && frame.was_taken && !frame.from_history
+          && frame.index >= 0 && frame.index < queue->capacity);
+
+  platform_mutex_lock (&queue->mutex);
+  assert (queue->occupied[frame.index]
+          && queue->ready_count < queue->capacity);
+  queue->ready_head
+      = (queue->ready_head + queue->capacity - 1) % queue->capacity;
+  queue->ready_indices[queue->ready_head] = frame.index;
+  ++queue->ready_count;
+  platform_condition_signal (&queue->frame_ready);
   platform_mutex_unlock (&queue->mutex);
 }
 

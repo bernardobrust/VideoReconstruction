@@ -15,7 +15,7 @@
 #include "renderer_pool.h"
 
 f64 playback_speed = 1.0, speed_step = 0.125;
-bool paused = false, fullscreen = false, slow_down, speed_up;
+bool fullscreen = false, slow_down, speed_up;
 
 typedef struct
 {
@@ -337,6 +337,12 @@ operations_render_paused (PlatformState *p, RendererPlex *renderer)
 void
 process_input (PlatformState *p)
 {
+  bool timeline_changed;
+
+  timeline_changed = timeline_process_input ();
+  if (timeline_changed)
+    needs_paused_redraw = true;
+
   if (input_is_key_pressed (ESC))
     platform_stop (p);
 
@@ -369,13 +375,6 @@ process_input (PlatformState *p)
 #ifndef NDEBUG
       printf ("Playback speed decreased to: %f\n", playback_speed);
 #endif
-    }
-
-  // Toggle pause
-  if (input_is_key_just_pressed (SPACE))
-    {
-      paused = !paused;
-      needs_paused_redraw = true;
     }
 
   // Read pointer and mouse button state

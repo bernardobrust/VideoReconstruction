@@ -81,12 +81,12 @@ Should we test the rendering primitives?
 - [x] Draw rotated rectangle (with angle and with orientation)
 - [x] Draw arrow
 - [x] Framerate stability on video framerate
+- [ ] UI
 - [ ] UI fixed framerate (right now we synchronize to the video's frame rate)
 - [ ] Draw text (baked font into a `.h` file)
 - [x] Draw frame of a video
 - [x] Draw transparent rectangle on top of frame (and arrow)
 - [ ] Scale video resolution to pane dimensions
-- [ ] UI
 - [ ] Make UI fit well in the window (responsive measures)
 
 ### Systems (inspector)
@@ -107,7 +107,7 @@ Should we test the rendering primitives?
 - [x] Render motion vectors per block (a.k.a. highlight the block)
 - [x] Modify vector color based on magnitude (better than scaling the arrow)
 - [ ] More compression data...
-- [ ] Next and previous frame
+- [x] Next and previous frame
 - [ ] Jump to specific frame/time
 - [ ] Video timeline
 - [ ] Side-by-side frame comparison (basic)

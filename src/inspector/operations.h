@@ -35,3 +35,6 @@ void operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
 void operations_render_paused (PlatformState *platform_state,
                                RendererPlex *renderer);
 void process_input (PlatformState *platform_state);
+bool timeline_process_input (void);
+void timeline_pause (void);
+s32 timeline_take_frame_step_request (void);
