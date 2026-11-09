@@ -74,7 +74,7 @@ renderer_worker (void *arg)
     }
 }
 
-bool
+void
 renderer_pool_init (RendererPool *pool, Arena *arena, s32 thread_count)
 {
   assert (pool != NULL && arena != NULL && thread_count >= 0);
@@ -84,13 +84,12 @@ renderer_pool_init (RendererPool *pool, Arena *arena, s32 thread_count)
 #endif
 
   RendererWorker *workers;
-  bool started;
-  s32 started_count, i, j;
+  s32 i;
 
   memset (pool, 0, sizeof (*pool));
   pool->thread_count = thread_count;
   if (thread_count == 0)
-    return true;
+    return;
 
   pool->threads
       = arena_alloc (arena, (u64)thread_count * sizeof (*pool->threads),
@@ -104,35 +103,12 @@ renderer_pool_init (RendererPool *pool, Arena *arena, s32 thread_count)
   platform_condition_init (&pool->work_available);
   platform_condition_init (&pool->work_complete);
 
-  started_count = 0;
   for (i = 0; i < thread_count; ++i)
     {
       workers[i].pool = pool;
       workers[i].worker_index = i;
-      started = platform_thread_start (&pool->threads[i], renderer_worker,
-                                       &workers[i]);
-      if (!started)
-        {
-          platform_mutex_lock (&pool->mutex);
-          pool->stopping = true;
-          platform_condition_broadcast (&pool->work_available);
-          platform_mutex_unlock (&pool->mutex);
-
-          for (j = 0; j < started_count; ++j)
-            platform_thread_join (&pool->threads[j]);
-
-          platform_condition_destroy (&pool->work_complete);
-          platform_condition_destroy (&pool->work_available);
-          platform_mutex_destroy (&pool->run_mutex);
-          platform_mutex_destroy (&pool->mutex);
-
-          return false;
-        }
-
-      ++started_count;
+      platform_thread_start (&pool->threads[i], renderer_worker, &workers[i]);
     }
-
-  return true;
 }
 
 void

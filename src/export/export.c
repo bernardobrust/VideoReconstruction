@@ -503,7 +503,6 @@ export_data_to (const char *video_file, const char *data_file,
   PlatformMappedFile output = { .native_file = -1 };
   ExportWorker *workers = NULL;
   PlatformThread *threads = NULL;
-  bool *started = NULL;
   s32 worker_count = 0, i;
   u64 output_size = 0;
 
@@ -597,9 +596,8 @@ export_data_to (const char *video_file, const char *data_file,
 
   workers = calloc ((u64)worker_count, sizeof (*workers));
   threads = calloc ((u64)worker_count, sizeof (*threads));
-  started = calloc ((u64)worker_count, sizeof (*started));
 
-  if (workers == NULL || threads == NULL || started == NULL)
+  if (workers == NULL || threads == NULL)
     {
       fprintf (stderr, "Not enough memory to start export workers.\n");
       goto cleanup;
@@ -642,18 +640,10 @@ export_data_to (const char *video_file, const char *data_file,
   }
 
   for (i = 0; i < worker_count; ++i)
-    {
-      if (platform_thread_start (&threads[i], write_frames, &workers[i]))
-        started[i] = true;
-      else
-        write_frames (&workers[i]);
-    }
+    platform_thread_start (&threads[i], write_frames, &workers[i]);
 
   for (i = 0; i < worker_count; ++i)
-    {
-      if (started[i])
-        platform_thread_join (&threads[i]);
-    }
+    platform_thread_join (&threads[i]);
 
   success = true;
 
@@ -677,7 +667,6 @@ cleanup:
 
   free (workers);
   free (threads);
-  free (started);
   dyn_arr64_release (&frame_array);
   dyn_arr64_release (&vector_array);
   arena_release (&arena);

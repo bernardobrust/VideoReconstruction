@@ -586,12 +586,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   state->fd = -1;
   state->shmid = -1;
   state->fd = display_connect ();
-
-  if (state->fd < 0)
-    {
-      platform_shutdown (platform_state);
-      return;
-    }
+  assert (state->fd >= 0);
 
   u8 token[16] = { 0 };
   bool has_token = read_xauthority (token);
@@ -617,32 +612,27 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   free (setup);
 
-  if (!setup_sent)
-    goto fail;
+  assert (setup_sent);
 
   u8 prefix[8];
 
-  if (!read_all (state->fd, prefix, sizeof (prefix)))
-    goto fail;
+  bool prefix_read = read_all (state->fd, prefix, sizeof (prefix));
+  assert (prefix_read);
 
   u64 additional_size = (size_t)read_u16_le (prefix + 6) * 4;
   u8 *additional = malloc (additional_size);
   assert (additional != NULL);
 
-  if (prefix[0] != 1 || !read_all (state->fd, additional, additional_size))
+  bool setup_succeeded = prefix[0] == 1;
+  bool additional_read = read_all (state->fd, additional, additional_size);
+  assert (setup_succeeded && additional_read);
+  if (!setup_succeeded)
     {
-      if (prefix[0] != 1)
-        fprintf (stderr, "X11 setup failed: %.*s\n", (int)prefix[1],
-                 (byte *)additional);
-      free (additional);
-      goto fail;
+      fprintf (stderr, "X11 setup failed: %.*s\n", (int)prefix[1],
+               (byte *)additional);
     }
 
-  if (additional_size < 32)
-    {
-      free (additional);
-      goto fail;
-    }
+  assert (additional_size >= 32);
 
   state->resource_base = read_u32_le (additional + 4);
   state->resource_mask = read_u32_le (additional + 8);
@@ -657,19 +647,12 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   u64 offset = 32 + round_up_to_multiple_u32 (vendor_length, 4);
 
-  if (root_count == 0 || offset + (size_t)format_count * 8 > additional_size)
-    {
-      free (additional);
-      goto fail;
-    }
+  assert (root_count > 0
+          && offset + (size_t)format_count * 8 <= additional_size);
 
   offset += (size_t)format_count * 8;
 
-  if (offset + 40 > additional_size)
-    {
-      free (additional);
-      goto fail;
-    }
+  assert (offset + 40 <= additional_size);
 
   state->root = read_u32_le (additional + offset);
   state->screen_width = read_u16_le (additional + offset + 20);
@@ -730,13 +713,16 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   platform_state->internal_state = state;
   platform_state->running = true;
 
-  if (!create_window (state, x, y, w, h) || !set_title (state, window_name)
-      || !intern_atom (state, "WM_PROTOCOLS", &state->wm_protocols)
-      || !intern_atom (state, "WM_DELETE_WINDOW", &state->wm_delete_window)
-      || !intern_atom (state, "_NET_WM_STATE", &state->net_wm_state)
-      || !intern_atom (state, "_NET_WM_STATE_FULLSCREEN",
-                       &state->net_wm_state_fullscreen))
-    goto fail_with_state;
+  bool window_created = create_window (state, x, y, w, h);
+  bool title_set = set_title (state, window_name);
+  bool protocols_atom = intern_atom (state, "WM_PROTOCOLS", &state->wm_protocols);
+  bool delete_atom
+      = intern_atom (state, "WM_DELETE_WINDOW", &state->wm_delete_window);
+  bool net_wm_atom = intern_atom (state, "_NET_WM_STATE", &state->net_wm_state);
+  bool fullscreen_atom = intern_atom (state, "_NET_WM_STATE_FULLSCREEN",
+                                      &state->net_wm_state_fullscreen);
+  assert (window_created && title_set && protocols_atom && delete_atom
+          && net_wm_atom && fullscreen_atom);
 
   if (state->has_shm && state->shmid >= 0)
     shmctl (state->shmid, IPC_RMID, NULL);
@@ -751,23 +737,16 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   write_u32_le (protocols + 16, 1);
   write_u32_le (protocols + 20, state->wm_delete_window);
 
-  if (!send_request (state, 18, 0, protocols, sizeof (protocols))
-      || !create_gc (state)
-      || !send_request (state, 8, 0,
-                        (u8[]){ (u8)state->window, (u8)(state->window >> 8),
-                                (u8)(state->window >> 16),
-                                (u8)(state->window >> 24) },
-                        4))
-    goto fail_with_state;
-  return;
-
-fail_with_state:
-  platform_shutdown (platform_state);
-  return;
-
-fail:
-  platform_shutdown (platform_state);
-  return;
+  bool protocols_sent
+      = send_request (state, 18, 0, protocols, sizeof (protocols));
+  bool gc_created = create_gc (state);
+  bool window_mapped
+      = send_request (state, 8, 0,
+                      (u8[]){ (u8)state->window, (u8)(state->window >> 8),
+                              (u8)(state->window >> 16),
+                              (u8)(state->window >> 24) },
+                      4);
+  assert (protocols_sent && gc_created && window_mapped);
 }
 
 void

@@ -15,14 +15,18 @@ thread_start (void *data)
   return NULL;
 }
 
-bool
+void
 platform_thread_start (PlatformThread *thread, PlatformThreadFn fn, void *arg)
 {
+  int result;
+
   assert (thread != NULL && fn != NULL);
   thread->fn = fn;
   thread->arg = arg;
 
-  return pthread_create (&thread->handle, NULL, thread_start, thread) == 0;
+  result = pthread_create (&thread->handle, NULL, thread_start, thread);
+  assert (result == 0);
+  (void)result;
 }
 
 void

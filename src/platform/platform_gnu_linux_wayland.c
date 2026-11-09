@@ -1020,11 +1020,7 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   srand (tv.tv_sec * 1000 * 1000 + tv.tv_usec);
 
   s32 fd = display_connect ();
-  if (fd == -1)
-    {
-      platform_shutdown (platform_state);
-      return;
-    }
+  assert (fd != -1);
 
   state->fd = fd;
   state->image_buffer = image_buffer;

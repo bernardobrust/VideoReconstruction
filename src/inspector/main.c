@@ -145,8 +145,6 @@ video_only:
 
   platform_init (&platform_state, "Inspector", 0, 0, renderer->w, renderer->h,
                  (byte *)renderer->image_buffer);
-  if (platform_state.internal_state == NULL)
-    goto end;
 
   if (config.auto_full_screen)
     {
@@ -165,10 +163,9 @@ video_only:
             ? 1000.0 * (f64)video_fps.den / (f64)video_fps.num
             : 1000.0 / 30.0;
 
-  if (!inspector_playback_init (&playback, &renderer_arena, video_plex,
-                                renderer, decoded_frame_cache_capacity,
-                                renderer_workers, frame_duration_ms))
-    goto end;
+  inspector_playback_init (&playback, &renderer_arena, video_plex, renderer,
+                           decoded_frame_cache_capacity, renderer_workers,
+                           frame_duration_ms);
 
   result = EXIT_SUCCESS;
   while (platform_update (&platform_state))

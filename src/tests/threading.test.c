@@ -91,13 +91,8 @@ renderer_pool_test (void)
   Arena arena = { 0 };
   arena_init (&arena, 64 * 1024);
   RendererPool pool, serial_pool;
-  bool initialized = renderer_pool_init (&pool, &arena, POOL_TEST_WORKERS);
-  bool serial_initialized = renderer_pool_init (&serial_pool, &arena, 0);
-  assert (initialized);
-  assert (serial_initialized);
-
-  (void)initialized;
-  (void)serial_initialized;
+  renderer_pool_init (&pool, &arena, POOL_TEST_WORKERS);
+  renderer_pool_init (&serial_pool, &arena, 0);
 
   enum
   {
@@ -148,9 +143,8 @@ platform_thread_start_and_join_test (void)
 
   PlatformThread thread;
   s32 value = 0;
-  bool started = platform_thread_start (&thread, thread_test_entry, &value);
 
-  assert_true (started);
+  platform_thread_start (&thread, thread_test_entry, &value);
   platform_thread_join (&thread);
   assert_equal (42, value);
 
@@ -179,11 +173,8 @@ frame_queue_test_order_and_capacity (void)
 
   FrameQueueTestContext context = { &queue, FRAME_TEST_COUNT };
   PlatformThread producer, consumer;
-  bool producer_started
-      = platform_thread_start (&producer, frame_queue_test_producer, &context);
-  bool consumer_started
-      = platform_thread_start (&consumer, frame_queue_test_consumer, &context);
-  assert (producer_started && consumer_started);
+  platform_thread_start (&producer, frame_queue_test_producer, &context);
+  platform_thread_start (&consumer, frame_queue_test_consumer, &context);
 
   platform_thread_join (&producer);
   platform_thread_join (&consumer);

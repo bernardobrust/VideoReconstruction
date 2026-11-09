@@ -300,14 +300,12 @@ systems_thread (void *arg)
   platform_mutex_unlock (&playback->state_mutex);
 }
 
-bool
+void
 inspector_playback_init (InspectorPlayback *playback, Arena *arena,
                          VideoPlex *video, RendererPlex *display,
                          s32 cache_capacity, s32 renderer_workers,
                          f64 frame_duration_ms)
 {
-  bool decoder_started, systems_started;
-
   assert (playback != NULL && arena != NULL && video != NULL && display != NULL
           && cache_capacity > 0 && renderer_workers >= 0
           && frame_duration_ms > 0.0);
@@ -325,35 +323,10 @@ inspector_playback_init (InspectorPlayback *playback, Arena *arena,
   frame_queue_init (&playback->decoded_frames, arena, display->w, display->h,
                     cache_capacity);
 
-  if (!renderer_pool_init (&playback->renderer_pool, arena, renderer_workers))
-    {
-      playback_destroy_synchronization (playback);
+  renderer_pool_init (&playback->renderer_pool, arena, renderer_workers);
 
-      return false;
-    }
-
-  decoder_started = platform_thread_start (&playback->decoder_thread,
-                                           decoder_thread, playback);
-  if (!decoder_started)
-    {
-      renderer_pool_shutdown (&playback->renderer_pool);
-      playback_destroy_synchronization (playback);
-
-      return false;
-    }
-  systems_started = platform_thread_start (&playback->systems_thread,
-                                           systems_thread, playback);
-  if (!systems_started)
-    {
-      frame_queue_stop (&playback->decoded_frames);
-      platform_thread_join (&playback->decoder_thread);
-      renderer_pool_shutdown (&playback->renderer_pool);
-      playback_destroy_synchronization (playback);
-
-      return false;
-    }
-
-  return true;
+  platform_thread_start (&playback->decoder_thread, decoder_thread, playback);
+  platform_thread_start (&playback->systems_thread, systems_thread, playback);
 }
 
 void

@@ -348,11 +348,8 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   wc.hCursor = LoadCursorA (NULL, IDC_ARROW);
   wc.lpszClassName = class_name;
 
-  if (!RegisterClassExA (&wc) && GetLastError () != ERROR_CLASS_ALREADY_EXISTS)
-    {
-      platform_shutdown (platform_state);
-      return;
-    }
+  BOOL class_registered = RegisterClassExA (&wc);
+  assert (class_registered || GetLastError () == ERROR_CLASS_ALREADY_EXISTS);
 
   RECT window_rect = { 0, 0, w, h };
   DWORD style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
@@ -375,19 +372,10 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
       0, class_name,
       window_name != NULL ? window_name : "Video Reconstruction", style, pos_x,
       pos_y, window_w, window_h, NULL, NULL, instance, platform_state);
-  if (hwnd == NULL)
-    {
-      platform_shutdown (platform_state);
-      return;
-    }
+  assert (hwnd != NULL);
 
   HDC hdc = GetDC (hwnd);
-  if (hdc == NULL)
-    {
-      state->hwnd = hwnd;
-      platform_shutdown (platform_state);
-      return;
-    }
+  assert (hdc != NULL);
 
   SetStretchBltMode (hdc, COLORONCOLOR);
 

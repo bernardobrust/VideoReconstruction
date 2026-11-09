@@ -25,7 +25,7 @@ typedef struct
 // state_mutex protects inspector operation globals and frame ownership flags.
 // render_in_progress/frame_ready prevent the main thread from reading a buffer
 // while the systems thread writes it. Only the main thread calls the platform
-bool inspector_playback_init (InspectorPlayback *playback, Arena *arena,
+void inspector_playback_init (InspectorPlayback *playback, Arena *arena,
                               VideoPlex *video, RendererPlex *display,
                               s32 cache_capacity, s32 renderer_workers,
                               f64 frame_duration_ms);

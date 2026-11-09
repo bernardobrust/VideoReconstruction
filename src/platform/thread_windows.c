@@ -12,7 +12,7 @@ thread_start (LPVOID data)
   return 0;
 }
 
-bool
+void
 platform_thread_start (PlatformThread *thread, PlatformThreadFn fn, void *arg)
 {
   assert (thread != NULL && fn != NULL);
@@ -21,7 +21,7 @@ platform_thread_start (PlatformThread *thread, PlatformThreadFn fn, void *arg)
 
   thread->handle = CreateThread (NULL, 0, thread_start, thread, 0, NULL);
 
-  return thread->handle != NULL;
+  assert (thread->handle != NULL);
 }
 
 void

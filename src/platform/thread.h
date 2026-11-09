@@ -60,7 +60,7 @@ typedef struct
 
 #endif
 
-bool platform_thread_start (PlatformThread *thread, PlatformThreadFn fn,
+void platform_thread_start (PlatformThread *thread, PlatformThreadFn fn,
                             void *arg);
 void platform_thread_join (PlatformThread *thread);
 
