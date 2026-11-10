@@ -715,10 +715,12 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
 
   bool window_created = create_window (state, x, y, w, h);
   bool title_set = set_title (state, window_name);
-  bool protocols_atom = intern_atom (state, "WM_PROTOCOLS", &state->wm_protocols);
+  bool protocols_atom
+      = intern_atom (state, "WM_PROTOCOLS", &state->wm_protocols);
   bool delete_atom
       = intern_atom (state, "WM_DELETE_WINDOW", &state->wm_delete_window);
-  bool net_wm_atom = intern_atom (state, "_NET_WM_STATE", &state->net_wm_state);
+  bool net_wm_atom
+      = intern_atom (state, "_NET_WM_STATE", &state->net_wm_state);
   bool fullscreen_atom = intern_atom (state, "_NET_WM_STATE_FULLSCREEN",
                                       &state->net_wm_state_fullscreen);
   assert (window_created && title_set && protocols_atom && delete_atom
@@ -740,12 +742,11 @@ platform_init (PlatformState *platform_state, const byte *window_name, s32 x,
   bool protocols_sent
       = send_request (state, 18, 0, protocols, sizeof (protocols));
   bool gc_created = create_gc (state);
-  bool window_mapped
-      = send_request (state, 8, 0,
-                      (u8[]){ (u8)state->window, (u8)(state->window >> 8),
-                              (u8)(state->window >> 16),
-                              (u8)(state->window >> 24) },
-                      4);
+  bool window_mapped = send_request (
+      state, 8, 0,
+      (u8[]){ (u8)state->window, (u8)(state->window >> 8),
+              (u8)(state->window >> 16), (u8)(state->window >> 24) },
+      4);
   assert (protocols_sent && gc_created && window_mapped);
 }
 

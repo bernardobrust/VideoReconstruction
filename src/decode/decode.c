@@ -102,6 +102,7 @@ init_video (Arena *arena, byte *video_file, s32 decoder_threads)
 
   video_plex->packet = av_packet_alloc ();
   assert (video_plex->packet != NULL);
+  video_plex->frame_timestamps = dyn_arr_init (256, sizeof (s64));
 
   return video_plex;
 
@@ -121,6 +122,7 @@ shutdown_video (VideoPlex *video_plex)
   av_frame_free (&video_plex->frame);
   avcodec_free_context (&video_plex->codec);
   avformat_close_input (&video_plex->fmt);
+  dyn_arr_free (video_plex->frame_timestamps);
 }
 
 // We may want to factor the scaling out of here
@@ -232,4 +234,73 @@ decode_next_frame (VideoPlex *video_plex, RendererPlex *renderer)
              video_plex->frame->linesize, 0, height, dst_data, dst_linesize);
 
   return 0;
+}
+
+s32
+decode_seek_to_frame (VideoPlex *video_plex, s64 frame_number)
+{
+  s32 result;
+
+  assert (video_plex != NULL && frame_number >= 0);
+
+  result
+      = av_seek_frame (video_plex->fmt, video_plex->video_stream, frame_number,
+                       AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
+  if (result < 0)
+    {
+      fprintf (stderr, "Could not seek to frame %lld.\n",
+               (long long)frame_number);
+      return -1;
+    }
+
+  // FFmpeg seeks to an earlier independent frame, discard references from the
+  // previous decoder position before decoding forward from there
+  avcodec_flush_buffers (video_plex->codec);
+  return 0;
+}
+
+s64
+video_frame_number_from_timestamp (VideoPlex *video_plex, s64 timestamp)
+{
+  s32 low, high, middle;
+  s64 middle_timestamp;
+
+  assert (video_plex != NULL);
+  if (timestamp == AV_NOPTS_VALUE)
+    return -1;
+
+  // Decoded presentation timestamps are recorded in frame order
+  low = 0;
+  high = video_plex->frame_timestamps->len;
+  while (low < high)
+    {
+      middle = low + (high - low) / 2;
+      middle_timestamp
+          = *(s64 *)dyn_arr_get (video_plex->frame_timestamps, middle);
+      if (middle_timestamp < timestamp)
+        low = middle + 1;
+      else
+        high = middle;
+    }
+
+  if (low == video_plex->frame_timestamps->len
+      || *(s64 *)dyn_arr_get (video_plex->frame_timestamps, low) != timestamp)
+    return -1;
+
+  return low;
+}
+
+void
+video_record_frame_timestamp (VideoPlex *video_plex, s64 frame_number)
+{
+  s64 timestamp;
+
+  assert (video_plex != NULL && frame_number >= 0 && frame_number <= INT32_MAX
+          && frame_number <= video_plex->frame_timestamps->len);
+  timestamp = video_plex->frame->best_effort_timestamp;
+
+  if (frame_number == video_plex->frame_timestamps->len)
+    dyn_arr_push (video_plex->frame_timestamps, &timestamp);
+  else
+    dyn_arr_set (video_plex->frame_timestamps, (s32)frame_number, &timestamp);
 }

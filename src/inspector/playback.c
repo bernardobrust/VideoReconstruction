@@ -9,46 +9,156 @@
 #include <libavutil/motion_vector.h>
 
 local void
-decoder_thread (void *arg)
+decoder_publish_frame (InspectorPlayback *playback, FrameQueueFrame *frame,
+                       s64 frame_number, bool to_history)
 {
-  InspectorPlayback *playback;
-  FrameQueueFrame frame = { 0 };
   AVFrameSideData *side_data;
   AVMotionVector *motion_vectors;
   u64 motion_vector_count_u64;
   s32 motion_vector_count;
+
+  video_record_frame_timestamp (playback->video, frame_number);
+  frame_queue_set_frame_number (&playback->decoded_frames, frame,
+                                frame_number);
+  side_data = av_frame_get_side_data (playback->video->frame,
+                                      AV_FRAME_DATA_MOTION_VECTORS);
+  motion_vectors
+      = side_data != NULL ? (AVMotionVector *)side_data->data : NULL;
+  motion_vector_count_u64
+      = side_data != NULL ? side_data->size / sizeof (*motion_vectors) : 0;
+  assert (motion_vector_count_u64 <= INT32_MAX);
+  motion_vector_count = (s32)motion_vector_count_u64;
+  frame_queue_copy_motion_vectors (&playback->decoded_frames, frame,
+                                   motion_vectors, motion_vector_count);
+  if (to_history)
+    frame_queue_publish_history (&playback->decoded_frames, *frame);
+  else
+    frame_queue_publish (&playback->decoded_frames, *frame);
+}
+
+local void
+decoder_seek_finished (InspectorPlayback *playback, bool frame_ready)
+{
+  platform_mutex_lock (&playback->state_mutex);
+  playback->seek_in_progress = false;
+  playback->seek_frame_ready = frame_ready;
+  platform_condition_broadcast (&playback->state_changed);
+  platform_mutex_unlock (&playback->state_mutex);
+}
+
+local void
+decoder_wait_for_seek (InspectorPlayback *playback)
+{
+  platform_mutex_lock (&playback->state_mutex);
+  while (!playback->stopping && playback->seek_frame_request < 0)
+    platform_condition_wait (&playback->state_changed, &playback->state_mutex);
+  platform_mutex_unlock (&playback->state_mutex);
+}
+
+local void
+decoder_thread (void *arg)
+{
+  InspectorPlayback *playback;
+  FrameQueueFrame frame = { 0 };
+  s64 next_frame_number, seek_frame_number, decoded_frame_number;
   s32 result;
 
   playback = arg;
+  next_frame_number = 0;
   for (;;)
     {
+      platform_mutex_lock (&playback->state_mutex);
+
+      seek_frame_number = playback->seek_frame_request;
+      if (seek_frame_number >= 0)
+        playback->seek_frame_request = -1;
+
+      platform_mutex_unlock (&playback->state_mutex);
+
+      if (seek_frame_number >= 0)
+        {
+          result = decode_seek_to_frame (playback->video, seek_frame_number);
+          if (result < 0)
+            {
+              decoder_seek_finished (playback, false);
+              continue;
+            }
+
+          // Reset cached frames only after FFmpeg accepted the seek
+          frame_queue_clear (&playback->decoded_frames);
+
+          // Cache every decoded frame before the target as backward history
+          for (;;)
+            {
+              if (!frame_queue_acquire_write (&playback->decoded_frames,
+                                              &frame))
+                {
+                  if (frame_queue_should_stop (&playback->decoded_frames))
+                    return;
+                  continue;
+                }
+              result = decode_next_frame (playback->video, frame.renderer);
+              if (result != 0)
+                {
+                  frame_queue_release (&playback->decoded_frames, frame);
+                  frame_queue_finish (&playback->decoded_frames, result);
+                  decoder_seek_finished (playback, false);
+                  if (result == 1)
+                    {
+                      decoder_wait_for_seek (playback);
+                      break;
+                    }
+                  return;
+                }
+
+              decoded_frame_number = video_frame_number_from_timestamp (
+                  playback->video,
+                  playback->video->frame->best_effort_timestamp);
+              if (decoded_frame_number < 0)
+                {
+                  frame_queue_release (&playback->decoded_frames, frame);
+                  frame_queue_finish (&playback->decoded_frames, -1);
+                  decoder_seek_finished (playback, false);
+                  return;
+                }
+
+              decoder_publish_frame (playback, &frame, decoded_frame_number,
+                                     decoded_frame_number < seek_frame_number);
+              if (decoded_frame_number >= seek_frame_number)
+                {
+                  next_frame_number = decoded_frame_number + 1;
+                  decoder_seek_finished (playback, true);
+                  break;
+                }
+            }
+          continue;
+        }
+
       if (!frame_queue_acquire_write (&playback->decoded_frames, &frame))
-        return;
+        {
+          if (frame_queue_should_stop (&playback->decoded_frames))
+            return;
+          if (frame_queue_result (&playback->decoded_frames) == 1)
+            decoder_wait_for_seek (playback);
+          continue;
+        }
 
       result = decode_next_frame (playback->video, frame.renderer);
       if (result == 0)
         {
-          side_data = av_frame_get_side_data (playback->video->frame,
-                                              AV_FRAME_DATA_MOTION_VECTORS);
-          motion_vectors
-              = side_data != NULL ? (AVMotionVector *)side_data->data : NULL;
-          motion_vector_count_u64
-              = side_data != NULL ? side_data->size / sizeof (*motion_vectors)
-                                  : 0;
-          assert (motion_vector_count_u64 <= INT32_MAX);
-          motion_vector_count = (s32)motion_vector_count_u64;
-          frame_queue_copy_motion_vectors (&playback->decoded_frames, &frame,
-                                           motion_vectors,
-                                           motion_vector_count);
-          frame_queue_publish (&playback->decoded_frames, frame);
+          decoder_publish_frame (playback, &frame, next_frame_number++, false);
+          continue;
         }
-      else
-        {
-          frame_queue_release (&playback->decoded_frames, frame);
-          frame_queue_finish (&playback->decoded_frames, result);
 
-          return;
+      frame_queue_release (&playback->decoded_frames, frame);
+      frame_queue_finish (&playback->decoded_frames, result);
+      if (result == 1)
+        {
+          decoder_wait_for_seek (playback);
+          continue;
         }
+
+      return;
     }
 }
 
@@ -62,6 +172,20 @@ playback_stopping (InspectorPlayback *playback)
   platform_mutex_unlock (&playback->state_mutex);
 
   return stopping;
+}
+
+local void
+playback_request_backward_seek (InspectorPlayback *playback)
+{
+  platform_mutex_lock (&playback->state_mutex);
+  if (!playback->seek_in_progress && playback->current_frame_number > 0)
+    {
+      playback->seek_frame_request = playback->current_frame_number - 1;
+      playback->seek_in_progress = true;
+      platform_condition_broadcast (&playback->state_changed);
+      frame_queue_wake_producer (&playback->decoded_frames);
+    }
+  platform_mutex_unlock (&playback->state_mutex);
 }
 
 local void
@@ -79,7 +203,8 @@ systems_thread (void *arg)
   FrameQueueFrame frame = { 0 };
   OperationsRenderState render_state;
   f64 next_frame, speed, now;
-  bool stopping, stepping, from_history, has_frame, first_frame;
+  bool stopping, stepping, from_history, has_frame, first_frame,
+      seek_frame_ready;
   s32 step_direction;
 
   playback = arg;
@@ -90,8 +215,11 @@ systems_thread (void *arg)
     {
       platform_mutex_lock (&playback->state_mutex);
 
-      while (!playback->stopping && paused && playback->has_frame
-             && playback->frame_step_request == 0)
+      while (!playback->stopping
+             && (playback->seek_in_progress
+                 || (paused && playback->has_frame
+                     && playback->frame_step_request == 0
+                     && !playback->seek_frame_ready)))
         {
           // The main thread signals after input changes. The condition wait
           // releases state_mutex so input handling can resume playback
@@ -101,9 +229,12 @@ systems_thread (void *arg)
       stopping = playback->stopping;
       speed = playback_speed;
       first_frame = !playback->has_frame;
-      stepping = paused && playback->frame_step_request != 0;
+      seek_frame_ready = playback->seek_frame_ready;
+      playback->seek_frame_ready = false;
+      stepping
+          = seek_frame_ready || (paused && playback->frame_step_request != 0);
       step_direction = 0;
-      if (stepping)
+      if (stepping && !seek_frame_ready)
         {
           step_direction = playback->frame_step_request < 0 ? -1 : 1;
           playback->frame_step_request -= step_direction;
@@ -115,13 +246,21 @@ systems_thread (void *arg)
         break;
 
       from_history = false;
-      if (stepping)
+      if (seek_frame_ready)
+        {
+          // The target is ready to take, decoded frames before it are history
+          has_frame = false;
+        }
+      else if (stepping)
         {
           has_frame = frame_queue_history_move (&playback->decoded_frames,
                                                 step_direction, &frame);
           from_history = has_frame;
           if (!has_frame && step_direction < 0)
-            continue;
+            {
+              playback_request_backward_seek (playback);
+              continue;
+            }
         }
       else
         {
@@ -195,7 +334,12 @@ systems_thread (void *arg)
                     {
                       if (!frame_queue_history_move (&playback->decoded_frames,
                                                      -1, &frame))
-                        goto next_iteration;
+                        {
+                          frame_queue_history_release (
+                              &playback->decoded_frames, frame);
+                          playback_request_backward_seek (playback);
+                          goto next_iteration;
+                        }
                     }
                   else
                     {
@@ -203,7 +347,10 @@ systems_thread (void *arg)
                                                  frame);
                       if (!frame_queue_history_move (&playback->decoded_frames,
                                                      -1, &frame))
-                        goto next_iteration;
+                        {
+                          playback_request_backward_seek (playback);
+                          goto next_iteration;
+                        }
                     }
                   from_history = true;
                 }
@@ -277,6 +424,7 @@ systems_thread (void *arg)
       playback->render_in_progress = false;
       playback->frame_ready = true;
       playback->has_frame = true;
+      playback->current_frame_number = frame.frame_number;
       playback->result = 0;
 
       platform_mutex_unlock (&playback->state_mutex);
@@ -316,6 +464,8 @@ inspector_playback_init (InspectorPlayback *playback, Arena *arena,
   playback->display = display;
   playback->frame_duration_ms = frame_duration_ms;
   playback->result = 0;
+  playback->seek_frame_request = -1;
+  playback->current_frame_number = -1;
   playback->render_target = init_renderer (arena, display->w, display->h);
 
   platform_mutex_init (&playback->state_mutex);

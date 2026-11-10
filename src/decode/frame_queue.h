@@ -11,11 +11,14 @@ typedef struct
   s32 *ready_indices;
   s32 *history_indices;
   bool *occupied, *history_pinned;
+  bool *history_reading;
   AVMotionVector **motion_vectors;
   s32 *motion_vector_counts, *motion_vector_capacities;
+  s64 *frame_numbers;
   s32 capacity, ready_head, ready_count, history_head, history_count,
       history_cursor, history_capacity, future_capacity, w, h, terminal_result;
-  bool stopped, producer_finished;
+  u64 generation;
+  bool stopped, producer_finished, producer_wakeup;
   PlatformMutex mutex;
   PlatformCondition frame_ready, slot_available;
 } FrameQueue;
@@ -26,6 +29,8 @@ typedef struct
   RendererPlex *renderer;
   AVMotionVector *motion_vectors;
   s32 motion_vector_count;
+  s64 frame_number;
+  u64 generation;
   bool was_taken, from_history;
 } FrameQueueFrame;
 
@@ -42,6 +47,11 @@ void frame_queue_copy_motion_vectors (FrameQueue *queue,
                                       const AVMotionVector *motion_vectors,
                                       s32 count);
 void frame_queue_publish (FrameQueue *queue, FrameQueueFrame frame);
+void frame_queue_publish_history (FrameQueue *queue, FrameQueueFrame frame);
+void frame_queue_set_frame_number (FrameQueue *queue, FrameQueueFrame *frame,
+                                   s64 frame_number);
+void frame_queue_clear (FrameQueue *queue);
+void frame_queue_wake_producer (FrameQueue *queue);
 bool frame_queue_take (FrameQueue *queue, FrameQueueFrame *frame);
 bool frame_queue_history_move (FrameQueue *queue, s32 direction,
                                FrameQueueFrame *frame);

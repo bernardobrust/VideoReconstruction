@@ -1,5 +1,6 @@
 ## Notes
-Check if everything also works on GNU Linux
+- Check if everything also works on GNU Linux
+- Optimize going back frames beyond cache
 
 ### Per-file basis
 ...

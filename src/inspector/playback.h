@@ -19,6 +19,8 @@ typedef struct
   PlatformCondition state_changed;
   f64 frame_duration_ms;
   s32 result, frame_step_request;
+  s64 seek_frame_request, current_frame_number;
+  bool seek_in_progress, seek_frame_ready;
   bool stopping, render_in_progress, has_frame, frame_ready, done;
 } InspectorPlayback;
 

@@ -239,6 +239,7 @@ frame_queue_test_history_window (void)
     {
       assert_true (frame_queue_acquire_write (&queue, &frame));
       frame.renderer->image_buffer[0] = value;
+      frame_queue_set_frame_number (&queue, &frame, value - 1);
       frame_queue_publish (&queue, frame);
       assert_true (frame_queue_take (&queue, &frame));
       frame_queue_release (&queue, frame);
@@ -246,6 +247,7 @@ frame_queue_test_history_window (void)
 
   assert_true (frame_queue_history_move (&queue, -1, &frame));
   assert_equal (2, frame.renderer->image_buffer[0]);
+  assert_true (frame.frame_number == 1);
   frame_queue_history_release (&queue, frame);
   assert_true (frame_queue_history_move (&queue, -1, &frame));
   assert_equal (1, frame.renderer->image_buffer[0]);
@@ -261,6 +263,7 @@ frame_queue_test_history_window (void)
     {
       assert_true (frame_queue_acquire_write (&queue, &frame));
       frame.renderer->image_buffer[0] = value;
+      frame_queue_set_frame_number (&queue, &frame, value - 1);
       frame_queue_publish (&queue, frame);
     }
 
@@ -269,6 +272,68 @@ frame_queue_test_history_window (void)
   frame_queue_release (&queue, frame);
   assert_true (frame_queue_history_move (&queue, -1, &frame));
   assert_equal (3, frame.renderer->image_buffer[0]);
+  frame_queue_history_release (&queue, frame);
+
+  frame_queue_stop (&queue);
+  frame_queue_destroy (&queue);
+  arena_release (&arena);
+
+  retrieve_results ();
+}
+
+local void
+frame_queue_test_clear_with_live_frames (void)
+{
+  start_test_suite ("Frame queue: clear while a consumer owns a frame");
+
+  Arena arena = { 0 };
+  arena_init (&arena, 64 * 1024);
+  FrameQueue queue;
+  FrameQueueFrame frame;
+  frame_queue_init (&queue, &arena, 1, 1, 4);
+
+  assert_true (frame_queue_acquire_write (&queue, &frame));
+  frame_queue_publish (&queue, frame);
+  assert_true (frame_queue_take (&queue, &frame));
+  frame_queue_clear (&queue);
+  frame_queue_release (&queue, frame);
+  assert_true (frame_queue_acquire_write (&queue, &frame));
+  frame_queue_release (&queue, frame);
+
+  frame_queue_stop (&queue);
+  frame_queue_destroy (&queue);
+  arena_release (&arena);
+
+  retrieve_results ();
+}
+
+local void
+frame_queue_test_seeded_history (void)
+{
+  start_test_suite ("Frame queue: seek-prefilled history window");
+
+  Arena arena = { 0 };
+  arena_init (&arena, 64 * 1024);
+  FrameQueue queue;
+  FrameQueueFrame frame;
+  frame_queue_init (&queue, &arena, 1, 1, 4);
+
+  for (s32 i = 0; i < 2; ++i)
+    {
+      assert_true (frame_queue_acquire_write (&queue, &frame));
+      frame.renderer->image_buffer[0] = i;
+      frame_queue_set_frame_number (&queue, &frame, i);
+      frame_queue_publish_history (&queue, frame);
+    }
+
+  assert_true (frame_queue_acquire_write (&queue, &frame));
+  frame.renderer->image_buffer[0] = 2;
+  frame_queue_set_frame_number (&queue, &frame, 2);
+  frame_queue_publish (&queue, frame);
+  assert_true (frame_queue_take (&queue, &frame));
+  frame_queue_release (&queue, frame);
+  assert_true (frame_queue_history_move (&queue, -1, &frame));
+  assert_true (frame.frame_number == 1);
   frame_queue_history_release (&queue, frame);
 
   frame_queue_stop (&queue);
@@ -288,6 +353,8 @@ threading_all_tests (void)
   frame_queue_test_order_and_capacity ();
   frame_queue_test_finish_and_stop ();
   frame_queue_test_history_window ();
+  frame_queue_test_clear_with_live_frames ();
+  frame_queue_test_seeded_history ();
   renderer_pool_test ();
 
   end_group ();
