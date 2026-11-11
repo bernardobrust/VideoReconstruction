@@ -1,9 +1,10 @@
 #include "input.h"
 #include "operations.h"
 
-local s32 frame_step_request;
+s32 frame_step_request;
 bool paused = true;
 
+// Pause playback without changing any pending frame-step requests
 void
 timeline_pause (void)
 {
@@ -15,6 +16,7 @@ timeline_process_input (void)
 {
   bool changed, step_backward, step_forward;
 
+  // Return whether playback state changed so paused rendering can refresh
   changed = false;
   if (input_is_key_just_pressed (SPACE))
     {
@@ -37,6 +39,7 @@ timeline_process_input (void)
 s32
 timeline_take_frame_step_request (void)
 {
+  // Consume the accumulated steps as one request
   s32 request;
 
   request = frame_step_request;

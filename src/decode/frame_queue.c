@@ -6,6 +6,7 @@
 
 #include "basic.h"
 
+// Calculation for required memory for the FrameQueue for arena allocation
 u64
 frame_queue_memory_required (s32 w, s32 h, s32 capacity)
 {
@@ -28,6 +29,7 @@ frame_queue_memory_required (s32 w, s32 h, s32 capacity)
   return metadata + (u64)capacity * frame_bytes;
 }
 
+// Give the budget in the config file, calculate how much capacity we have
 s32
 frame_queue_capacity_for_bytes (s32 w, s32 h, u64 byte_budget)
 {
@@ -36,6 +38,7 @@ frame_queue_capacity_for_bytes (s32 w, s32 h, u64 byte_budget)
 
   assert (w > 0 && h > 0 && byte_budget > 0);
   assert ((u64)w <= UINT64_MAX / (u64)h / sizeof (u32));
+
   per_frame = (u64)w * (u64)h * sizeof (u32);
   overhead_per_frame = sizeof (RendererPlex) + sizeof (s32) * 4
                        + sizeof (bool) * 2 + sizeof (AVMotionVector *);
@@ -136,7 +139,7 @@ frame_queue_destroy (FrameQueue *queue)
 
   assert (queue != NULL);
 
-  // Call only after the decoder and consumer threads have stopped.
+  // Call only after the decoder and consumer threads have stopped
   for (i = 0; i < queue->capacity; ++i)
     free (queue->motion_vectors[i]);
 
@@ -145,6 +148,7 @@ frame_queue_destroy (FrameQueue *queue)
   platform_mutex_destroy (&queue->mutex);
 }
 
+// The queue is a circular data structure in practice
 local bool
 frame_queue_evict_oldest_history (FrameQueue *queue)
 {
@@ -169,6 +173,7 @@ frame_queue_evict_oldest_history (FrameQueue *queue)
   return true;
 }
 
+// Threading function for write
 bool
 frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
 {
@@ -181,7 +186,6 @@ frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
       if (queue->stopped || queue->producer_finished)
         {
           platform_mutex_unlock (&queue->mutex);
-
           return false;
         }
 
@@ -204,7 +208,7 @@ frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
             {
               // The occupied flag reserves this slot until the consumer
               // returns it. The producer may now write without holding the
-              // queue mutex.
+              // queue mutex
               queue->occupied[i] = true;
               queue->history_pinned[i] = false;
               queue->history_reading[i] = false;
@@ -217,8 +221,8 @@ frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
               frame->frame_number = -1;
               frame->generation = queue->generation;
               queue->motion_vector_counts[i] = 0;
-              platform_mutex_unlock (&queue->mutex);
 
+              platform_mutex_unlock (&queue->mutex);
               return true;
             }
         }
@@ -236,6 +240,7 @@ frame_queue_set_frame_number (FrameQueue *queue, FrameQueueFrame *frame,
 {
   assert (queue != NULL && frame != NULL && frame_number >= 0);
   assert (frame->index >= 0 && frame->index < queue->capacity);
+
   queue->frame_numbers[frame->index] = frame_number;
   frame->frame_number = frame_number;
 }
@@ -246,14 +251,17 @@ frame_queue_clear (FrameQueue *queue)
   s32 i, index;
 
   assert (queue != NULL);
+
   platform_mutex_lock (&queue->mutex);
-  // Preserve slots currently read by the consumer; their old generation makes
+
+  // Preserve slots currently read by the consumer, their old generation makes
   // their release discard them instead of adding stale frames to history
   for (i = 0; i < queue->ready_count; ++i)
     {
       index = queue->ready_indices[(queue->ready_head + i) % queue->capacity];
       queue->occupied[index] = false;
     }
+
   for (i = 0; i < queue->history_count; ++i)
     {
       index
@@ -265,6 +273,7 @@ frame_queue_clear (FrameQueue *queue)
           queue->history_pinned[index] = false;
         }
     }
+
   ++queue->generation;
   queue->ready_head = 0;
   queue->ready_count = 0;
@@ -275,16 +284,21 @@ frame_queue_clear (FrameQueue *queue)
   queue->terminal_result = 0;
   queue->producer_wakeup = false;
   platform_condition_broadcast (&queue->slot_available);
+
   platform_mutex_unlock (&queue->mutex);
 }
 
+// Unlock + broadcast as avaliable
 void
 frame_queue_wake_producer (FrameQueue *queue)
 {
   assert (queue != NULL);
+
   platform_mutex_lock (&queue->mutex);
+
   queue->producer_wakeup = true;
   platform_condition_broadcast (&queue->slot_available);
+
   platform_mutex_unlock (&queue->mutex);
 }
 
@@ -298,20 +312,28 @@ frame_queue_copy_motion_vectors (FrameQueue *queue, FrameQueueFrame *frame,
   assert (queue != NULL && frame != NULL && frame->index >= 0
           && frame->index < queue->capacity
           && (motion_vectors != NULL || count == 0) && count >= 0);
+
+  // Frame slot needs to be reserved
   assert (queue->occupied[frame->index]);
 
   if (count > queue->motion_vector_capacities[frame->index])
     {
+      // Grow
       resized = realloc (queue->motion_vectors[frame->index],
                          (u64)count * sizeof (*resized));
+
       assert (resized != NULL);
+
       queue->motion_vectors[frame->index] = resized;
       queue->motion_vector_capacities[frame->index] = count;
     }
 
+  // Now we copy
   if (count > 0)
     memcpy (queue->motion_vectors[frame->index], motion_vectors,
             (u64)count * sizeof (*motion_vectors));
+
+  // Update metadata
   queue->motion_vector_counts[frame->index] = count;
   frame->motion_vectors = queue->motion_vectors[frame->index];
   frame->motion_vector_count = count;
@@ -327,7 +349,7 @@ frame_queue_publish (FrameQueue *queue, FrameQueueFrame frame)
   platform_mutex_lock (&queue->mutex);
 
   // Lock/unlock publishes the producer's completed pixel writes to the
-  // consumer, which takes this same mutex before it can see the slot index.
+  // consumer, which takes this same mutex before it can see the slot index
   assert (queue->occupied[frame.index]);
   assert (queue->ready_count < queue->capacity);
   tail = (queue->ready_head + queue->ready_count) % queue->capacity;
@@ -345,17 +367,23 @@ frame_queue_publish_history (FrameQueue *queue, FrameQueueFrame frame)
   s32 tail;
 
   assert (queue != NULL && frame.index >= 0 && frame.index < queue->capacity);
+
   platform_mutex_lock (&queue->mutex);
+
   // Keep frames decoded before a seek target available for backward steps
   assert (queue->occupied[frame.index]);
   assert (frame.generation == queue->generation);
+
   if (queue->history_count == queue->history_capacity)
     assert (frame_queue_evict_oldest_history (queue));
+
   tail = (queue->history_head + queue->history_count) % queue->capacity;
+
   queue->history_indices[tail] = frame.index;
   ++queue->history_count;
   queue->history_pinned[frame.index] = false;
   queue->history_reading[frame.index] = false;
+
   platform_mutex_unlock (&queue->mutex);
 }
 
@@ -373,12 +401,11 @@ frame_queue_take (FrameQueue *queue, FrameQueueFrame *frame)
   if (queue->ready_count == 0)
     {
       platform_mutex_unlock (&queue->mutex);
-
       return false;
     }
 
   // Ownership transfers to the consumer, but the slot remains occupied until
-  // frame_queue_release, preventing the decoder from overwriting a live frame.
+  // frame_queue_release, preventing the decoder from overwriting a live frame
   frame->index = queue->ready_indices[queue->ready_head];
   frame->renderer = &queue->frames[frame->index];
   frame->motion_vectors = queue->motion_vectors[frame->index];
@@ -389,9 +416,10 @@ frame_queue_take (FrameQueue *queue, FrameQueueFrame *frame)
   frame->from_history = false;
   queue->ready_head = (queue->ready_head + 1) % queue->capacity;
   --queue->ready_count;
-  platform_condition_signal (&queue->slot_available);
 
+  platform_condition_signal (&queue->slot_available);
   platform_mutex_unlock (&queue->mutex);
+
   return true;
 }
 
@@ -405,13 +433,14 @@ frame_queue_release (FrameQueue *queue, FrameQueueFrame frame)
   platform_mutex_lock (&queue->mutex);
 
   // The decoder cannot reserve this slot again until this release is visible
-  // under the queue mutex, so it cannot overwrite pixels still being read.
+  // under the queue mutex, so it cannot overwrite pixels still being read
   assert (queue->occupied[frame.index]);
   if (frame.was_taken)
     {
       if (frame.generation != queue->generation)
         {
           queue->occupied[frame.index] = false;
+
           platform_condition_signal (&queue->slot_available);
           platform_mutex_unlock (&queue->mutex);
           return;
@@ -437,11 +466,12 @@ frame_queue_release (FrameQueue *queue, FrameQueueFrame frame)
     }
   else
     queue->occupied[frame.index] = false;
-  platform_condition_signal (&queue->slot_available);
 
+  platform_condition_signal (&queue->slot_available);
   platform_mutex_unlock (&queue->mutex);
 }
 
+// Sliding window for the queue
 bool
 frame_queue_history_move (FrameQueue *queue, s32 direction,
                           FrameQueueFrame *frame)
@@ -452,11 +482,11 @@ frame_queue_history_move (FrameQueue *queue, s32 direction,
           && (direction == -1 || direction == 1));
 
   platform_mutex_lock (&queue->mutex);
+
   next_cursor = queue->history_cursor + direction;
   if (next_cursor < 0 || next_cursor >= queue->history_count)
     {
       platform_mutex_unlock (&queue->mutex);
-
       return false;
     }
 
@@ -487,7 +517,6 @@ frame_queue_history_move (FrameQueue *queue, s32 direction,
   queue->history_reading[index] = true;
 
   platform_mutex_unlock (&queue->mutex);
-
   return true;
 }
 
@@ -498,17 +527,22 @@ frame_queue_history_release (FrameQueue *queue, FrameQueueFrame frame)
           && frame.index < queue->capacity);
 
   platform_mutex_lock (&queue->mutex);
+
   if (frame.generation != queue->generation)
     {
       queue->occupied[frame.index] = false;
       queue->history_pinned[frame.index] = false;
       queue->history_reading[frame.index] = false;
+
       platform_condition_signal (&queue->slot_available);
       platform_mutex_unlock (&queue->mutex);
       return;
     }
+
   assert (queue->history_pinned[frame.index]);
+
   queue->history_reading[frame.index] = false;
+
   platform_condition_broadcast (&queue->slot_available);
   platform_mutex_unlock (&queue->mutex);
 }
@@ -520,6 +554,8 @@ frame_queue_requeue_front (FrameQueue *queue, FrameQueueFrame frame)
           && frame.index >= 0 && frame.index < queue->capacity);
 
   platform_mutex_lock (&queue->mutex);
+
+  // Mismatch of generations: free slot
   if (frame.generation != queue->generation)
     {
       queue->occupied[frame.index] = false;
@@ -527,15 +563,21 @@ frame_queue_requeue_front (FrameQueue *queue, FrameQueueFrame frame)
       platform_mutex_unlock (&queue->mutex);
       return;
     }
+
   assert (queue->occupied[frame.index]
           && queue->ready_count < queue->capacity);
+
+  // Match: move head back
   queue->ready_head
       = (queue->ready_head + queue->capacity - 1) % queue->capacity;
   queue->ready_indices[queue->ready_head] = frame.index;
   ++queue->ready_count;
+
   platform_condition_signal (&queue->frame_ready);
   platform_mutex_unlock (&queue->mutex);
 }
+
+// Helper threading functions
 
 void
 frame_queue_finish (FrameQueue *queue, s32 result)
@@ -546,9 +588,9 @@ frame_queue_finish (FrameQueue *queue, s32 result)
 
   queue->terminal_result = result;
   queue->producer_finished = true;
+
   platform_condition_broadcast (&queue->frame_ready);
   platform_condition_broadcast (&queue->slot_available);
-
   platform_mutex_unlock (&queue->mutex);
 }
 
@@ -560,9 +602,9 @@ frame_queue_stop (FrameQueue *queue)
   platform_mutex_lock (&queue->mutex);
 
   queue->stopped = true;
+
   platform_condition_broadcast (&queue->frame_ready);
   platform_condition_broadcast (&queue->slot_available);
-
   platform_mutex_unlock (&queue->mutex);
 }
 
@@ -572,6 +614,7 @@ frame_queue_should_stop (FrameQueue *queue)
   assert (queue != NULL);
 
   bool stopped;
+
   platform_mutex_lock (&queue->mutex);
   stopped = queue->stopped;
   platform_mutex_unlock (&queue->mutex);

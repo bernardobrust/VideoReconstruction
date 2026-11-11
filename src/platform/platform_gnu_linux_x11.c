@@ -1,10 +1,4 @@
-// The platform layers contain substantial duplicated code
-
-// Use these definitions if and only if we're on GNU + Linux and X11
-
-// Note: this is some of the worst code I've ever written. It has gotos,
-// bithacks and I honestly do not understand a massive part of the code here
-// (copy pasted from many places). But it works so I'll take it.
+// X11 backend for GNU/Linux. Protocol messages are sent over the X server socket
 
 #define _POSIX_C_SOURCE 200112L
 #define _DEFAULT_SOURCE
@@ -27,9 +21,7 @@
 #include "platform.h"
 #include "utility.h"
 
-// Don't memorize numbers
-// I'm adding the +8 here as they are the same as wayland's but with an offset
-// of 8
+// X11 keycodes use the evdev values with an offset of eight
 enum X11KeyValues
 {
   CTRL = 29 + 8,

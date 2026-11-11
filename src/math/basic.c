@@ -35,17 +35,8 @@ hypot_f32 (f32 a, f32 b)
   return max_val + 0.3375f * min_val; // Maximum relative error is about 5.5%
 }
 
-/*
-Returns det(AB, AP), where
-det |Px - Ax,  Py - Ay|
-    |Bx - Ax,  By - Ay|
-
-Positive if P is on one side of AB
-Negative if P is on the other side
-Zero     if A, B, and P are collinear
-
-The result is also 2 * signed area of the triangle ABP
-*/
+// Return the signed doubled area of triangle ABP. The sign identifies which
+// side of directed segment AB contains P, and zero means the points are collinear
 s32
 determinant_ab_ap_s32 (s32 ax, s32 ay, s32 bx, s32 by, s32 px, s32 py)
 {

@@ -23,7 +23,7 @@
 int
 main (s32 argc, byte **argv)
 {
-  // CLI parsing
+  // Parse optional test whitelist and blacklist filters
   Flag_List *enabled_tests = flag_list ("enable", "Enabled tests (whitelist)");
   Flag_List *disabled_tests
       = flag_list ("disable", "Disabled tests (blacklist)");
@@ -45,7 +45,7 @@ main (s32 argc, byte **argv)
       return EXIT_FAILURE;
     }
 
-  // Tests to run
+  // Resolve the selected suites before starting the test harness
   bool dyn_arr, arena, math, input, utility, renderer, threading;
 
   // Whitelist
@@ -55,8 +55,7 @@ main (s32 argc, byte **argv)
 
       for (u64 i = 0; i < enabled_tests->count; ++i)
         {
-          // We use the bool to short-circuit and avoid doing strcmp every
-          // iteration
+          // Skip string comparisons for suites already selected
           if (dyn_arr == false
               && strcmp (enabled_tests->items[i], "dyn_arr") == 0)
             dyn_arr = true;
@@ -84,8 +83,7 @@ main (s32 argc, byte **argv)
 
       for (u64 i = 0; i < disabled_tests->count; ++i)
         {
-          if (dyn_arr == false
-              && strcmp (disabled_tests->items[i], "dyn_arr") == 0)
+          if (strcmp (disabled_tests->items[i], "dyn_arr") == 0)
             dyn_arr = false;
           if (strcmp (disabled_tests->items[i], "math") == 0)
             math = false;
@@ -102,7 +100,7 @@ main (s32 argc, byte **argv)
         }
     }
 
-  // Running the tests
+  // Run selected suites inside one harness session
   start_testing ();
 
   if (dyn_arr)

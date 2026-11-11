@@ -29,7 +29,7 @@ typedef enum
   MOUSE_RIGHT
 } MouseButton;
 
-// Just these ones for now
+// Just these ones for now (we don't even use them, just for testing)
 typedef enum
 {
   CTRL_P,

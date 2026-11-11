@@ -1,5 +1,7 @@
 #define _POSIX_C_SOURCE 200112L
 
+// Implement the shared thread API with POSIX threads
+
 #include "thread.h"
 
 #include <assert.h>

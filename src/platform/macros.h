@@ -3,6 +3,7 @@
  * - Better data types
  * - Better pointer access
  * - Better "static" definitions
+ * - SIMD data types
  * - Data sizes
  */
 
@@ -23,7 +24,7 @@
 #endif
 
 // Static is confusing
-#define local static
+#define local static inline
 #define persist static
 #define global static
 

@@ -28,7 +28,7 @@ main (s32 argc, byte **argv)
 {
   s32 result = EXIT_FAILURE;
 
-  // CLI parsing
+  // Parse the inspector and export command-line options
   byte **inspect_video = flag_str ("inspect", "", "Video to inspect");
   Flag_List *export = flag_list ("export", "Where to export the data to");
 
@@ -44,7 +44,7 @@ main (s32 argc, byte **argv)
   InspectorConfig config;
   inspector_config_load (&config);
 
-  // No arguments
+  // Require at least one supported action
   if ((*inspect_video)[0] == '\0' && export->count == 0)
     {
       fprintf (stderr,
@@ -54,7 +54,7 @@ main (s32 argc, byte **argv)
                "file\n\t'-inspect' opens the video inspector on that file\n");
       return EXIT_FAILURE;
     }
-  // Only export
+  // Export without opening the inspector window when no video was requested
   else if ((*inspect_video)[0] == '\0')
     {
       if (export->count != 2)
@@ -69,11 +69,10 @@ main (s32 argc, byte **argv)
                  ? EXIT_SUCCESS
                  : EXIT_FAILURE;
     }
-  // Video only
+  // Initialize the inspector for the selected video
   else if (export->count == 0)
     goto video_only;
-  // We'll later want to find a way to both export and inspect the video at
-  // once
+  // Exporting and inspecting the same video is not supported yet
   else
     {
       fprintf (stderr, "Unimplemented path\n");
@@ -119,7 +118,7 @@ video_only:
   if (worker_budget == 0)
     decoder_threads = 1;
 
-  // Initializing video
+  // Open the video and start its decoder
   video_plex = init_video (&video_arena, video_file, decoder_threads);
   if (!video_plex)
     goto end;
@@ -155,7 +154,7 @@ video_only:
   renderer_motion_vectors_set_display_resolution (
       platform_get_screen_resolution (&platform_state));
 
-  // Keep the video's temporal coherence by default, playback speed scales it
+  // Derive the default frame interval from the video's frame rate
   AVRational video_fps
       = av_guess_frame_rate (video_plex->fmt, video_plex->stream, NULL);
   f64 frame_duration_ms

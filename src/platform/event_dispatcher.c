@@ -8,11 +8,11 @@ DynArr event_queue;
 void
 platform_dispatch_events (void)
 {
+  // Apply queued platform events to the shared input state
   for (s32 i = 0; i < event_queue.len; ++i)
     {
       PlatformEvent ev = *(PlatformEvent *)dyn_arr_get (&event_queue, i);
 
-      // Absolute Coding BTW
       switch (ev.type)
         {
         case KeyCtrlPress:
@@ -121,7 +121,6 @@ platform_dispatch_events (void)
         }
     }
 
-  // We are sure we ran all of the events so there's no need to call pop every
-  // iteration
+  // All queued events have been handled, so reset the queue in one operation
   event_queue.len = 0;
 }

@@ -1,4 +1,4 @@
-// Common GNU + Linux functions
+// Shared GNU/Linux timing, file, and memory operations
 
 #define _POSIX_C_SOURCE 200112L
 

@@ -7,7 +7,7 @@
 #include "renderer.h"
 #include "renderer_internal.h"
 
-// The 'a' only affects transparent shapes
+// Pack channels as 0xAARRGGBB. Opaque drawing ignores the alpha channel
 u32
 rgba (u32 r, u32 g, u32 b, u32 a)
 {
@@ -37,8 +37,7 @@ blend_rgba_pixel (u32 src, u32 dst)
   return rgba (r, g, b, a);
 }
 
-// Interpolates a color from blue (0, 0, 255) -> red (255, 0, 0) based on a
-// interpolation term Includes alpha in the calculation
+// Interpolate blue-to-green-to-red across the unit interval
 u32
 interpolate_color_br (f32 interp_term)
 {
@@ -48,7 +47,7 @@ interpolate_color_br (f32 interp_term)
 
   if (interp_term < 0.5f)
     {
-      // Lower half [0.0 - 0.5]: blue (small) -> green (medium)
+      // The lower half transitions from blue to green
       float factor = interp_term * 2.0f; // Scale [0.0, 0.5] -> [0.0, 1.0]
       r = 0;
       g = (u8)(factor * 255.0f);
@@ -56,7 +55,7 @@ interpolate_color_br (f32 interp_term)
     }
   else
     {
-      // Upper half [0.5 - 1.0]: green (Medium) -> red (Large)
+      // The upper half transitions from green to red
       float factor
           = (interp_term - 0.5f) * 2.0f; // Scale [0.5, 1.0] -> [0.0, 1.0]
       r = (u8)(factor * 255.0f);
@@ -64,11 +63,10 @@ interpolate_color_br (f32 interp_term)
       b = 0;
     }
 
-  return rgba (r, g, b, 180); // Adjust alpha as needed
+  return rgba (r, g, b, 180);
 }
 
-// For now it's this simple allocation; later we can check for aspect ratio &&
-// all
+// Allocate a renderer and its tightly packed pixel buffer from the arena
 RendererPlex *
 init_renderer (Arena *arena, s32 w, s32 h)
 {
@@ -99,10 +97,9 @@ draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *renderer)
   if (y < 0 || y >= renderer->h)
     return;
 
-  // Wrong order, may actually never happen
+  // Normalize the endpoints so clipping and width calculation use one order
   if (unlikely (x0 > x1))
     {
-      // Trust me it's not worth swapping with XOR
       s32 t = x0;
       x0 = x1;
       x1 = t;
@@ -121,9 +118,7 @@ draw_hline (s32 x0, s32 x1, s32 y, u32 color, RendererPlex *renderer)
 
 // Standard shapes
 
-// This uses the edge function method instead of the barycentric method used in
-// Olive.c. Profiling with VTune showed that edge functions were more efficient
-// and easier to reason about
+// Rasterize triangles with edge functions and pass each row to the backend
 local void
 draw_triangle_internal (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3,
                         u32 color, bool transparent, RendererPlex *renderer)
@@ -258,9 +253,7 @@ draw_circle (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *renderer)
     }
 }
 
-// For the rotated rectangle it makes more sense to take center, width, height
-// and angle instead of four points. It's geometrically easier to reason about
-// it this way
+// Build rotated rectangle corners from its center, dimensions, and angle
 void
 draw_rotated_rectangle (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
                         RendererPlex *renderer)
@@ -291,20 +284,14 @@ draw_rotated_rectangle (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
   f32 x3 = cx - hw * ux + hh * vx;
   f32 y3 = cy - hw * uy + hh * vy;
 
-  // Triangle 1 points:
-  // (x0, y0), (x1, y1), (x2, y2)
-  // Triangle 2 points:
-  // (x0, y0), (x2, y2), (x3, y3)
+  // Split the rectangle into two triangles along one diagonal
   draw_triangle ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
                  renderer);
   draw_triangle ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
                  renderer);
 }
 
-// It's also reasonable to think about in terms of start, end + width. The
-// The start-to-end vector gives the direction along the center line.
-// This vector is also useful for calculating the arrowhead
-// for the arrow
+// Build a rectangle around the line segment between the two endpoints
 void
 draw_rotated_oriented_rectangle (s32 dx1, s32 dy1, s32 dx2, s32 dy2, s32 width,
                                  u32 color, RendererPlex *renderer)
@@ -331,17 +318,14 @@ draw_rotated_oriented_rectangle (s32 dx1, s32 dy1, s32 dx2, s32 dy2, s32 width,
   f32 x2 = dx2 - ox, y2 = dy2 - oy;
   f32 x3 = dx1 - ox, y3 = dy1 - oy;
 
-  // Triangle 1 points:
-  // (x0, y0), (x1, y1), (x2, y2)
-  // Triangle 2 points:
-  // (x0, y0), (x2, y2), (x3, y3)
+  // Split the rectangle into two triangles along one diagonal
   draw_triangle ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
                  renderer);
   draw_triangle ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
                  renderer);
 }
 
-// It's just a rectangle with a triangle on top
+// Draw an arrow from a rectangular shaft and a triangular head
 void
 draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
             u32 color, RendererPlex *renderer)
@@ -374,10 +358,7 @@ draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
                  (int)righty, color, renderer);
 }
 
-// Transparent shapes
-// In these shapes we blend the color passed with the already existing color in
-// the image buffer. The 'a' channel of the color passed is used for blending
-// All triangle coverage and color writes use the selected renderer backend.
+// Transparent shapes blend source color with existing pixels using source alpha
 void
 draw_triangle_t (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3, u32 color,
                  RendererPlex *renderer)

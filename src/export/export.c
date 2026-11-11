@@ -11,58 +11,29 @@
 #include "basic.h"
 #include "decode.h"
 #include "dyn_arr.h"
-#include "platform.h"
-#include "thread.h"
 #include "utility.h"
 
-typedef struct
-{
-  s32 src_x, src_y, dst_x, dst_y, width, height, source;
-  s64 magnitude_1000, angle_1000, normalized_x_1000, normalized_y_1000;
-  u64 line_length;
-  u8 negative_mask;
-} ExportMotionVector;
-
-typedef struct
-{
-  s64 pts;
-  u64 first_vector, vector_count, output_offset, output_size;
-} ExportFrame;
-
-typedef struct
-{
-  PlatformMappedFile *output;
-  ExportFrame *frames;
-  ExportMotionVector *vectors;
-
-  u64 first_frame, end_frame, buffered, output_position;
-  u64 buffer_size;
-  byte *buffer;
-  bool failed;
-} ExportWorker;
-
-local inline void
+local void
 vector_values (const ExportMotionVector *mv, f32 *magnitude, f32 *angle,
                f32 *normalized_x, f32 *normalized_y)
 {
   f32 dx, dy;
 
-  assert (mv != NULL);
-  assert (magnitude != NULL);
-  assert (angle != NULL);
-  assert (normalized_x != NULL);
-  assert (normalized_y != NULL);
+  assert (mv != NULL && magnitude != NULL && angle != NULL
+          && normalized_x != NULL && normalized_y != NULL);
 
   dx = (f32)(mv->dst_x - mv->src_x);
   dy = (f32)(mv->dst_y - mv->src_y);
 
+  // We don't use the approximate hypotenuze function as we require precision
+  // here
   *magnitude = hypotf (dx, dy);
   *angle = atan2f (dy, dx);
   *normalized_x = *magnitude == 0.0f ? 0.0f : dx / *magnitude;
   *normalized_y = *magnitude == 0.0f ? 0.0f : dy / *magnitude;
 }
 
-local inline u64
+local u64
 vector_line_length (u64 index, const ExportMotionVector *mv)
 {
   // Please do not question, it works OK?
@@ -86,7 +57,7 @@ vector_line_length (u64 index, const ExportMotionVector *mv)
          + 2;
 }
 
-local inline bool
+local bool
 append_vectors (DynArr64 *vectors, const AVFrame *frame)
 {
   AVFrameSideData *side_data;
@@ -94,8 +65,7 @@ append_vectors (DynArr64 *vectors, const AVFrame *frame)
   ExportMotionVector *destination;
   u64 vector_count, i;
 
-  assert (vectors != NULL);
-  assert (frame != NULL);
+  assert (vectors != NULL && frame != NULL);
 
   side_data = av_frame_get_side_data (frame, AV_FRAME_DATA_MOTION_VECTORS);
 
@@ -114,6 +84,7 @@ append_vectors (DynArr64 *vectors, const AVFrame *frame)
   source = (const AVMotionVector *)side_data->data;
   destination = (ExportMotionVector *)vectors->data + vectors->len;
 
+  // Build the vector data
   for (i = 0; i < vector_count; ++i)
     {
       ExportMotionVector *mv = &destination[i];
@@ -127,7 +98,6 @@ append_vectors (DynArr64 *vectors, const AVFrame *frame)
       mv->source = source[i].source;
 
       f32 magnitude, angle, normalized_x, normalized_y;
-
       vector_values (mv, &magnitude, &angle, &normalized_x, &normalized_y);
 
       mv->magnitude_1000 = fixed_3_scaled (magnitude);
@@ -142,7 +112,6 @@ append_vectors (DynArr64 *vectors, const AVFrame *frame)
     }
 
   vectors->len += vector_count;
-
   return true;
 }
 
@@ -150,7 +119,8 @@ append_vectors (DynArr64 *vectors, const AVFrame *frame)
 // negative = error
 // 0 = ok
 // 1 = end
-local inline s32
+// This is a version of decode_next_frame that ignores the actual frame
+local s32
 read_decoded_frame (VideoPlex *video, bool *flushing)
 {
   assert (video != NULL);
@@ -197,9 +167,13 @@ read_decoded_frame (VideoPlex *video, bool *flushing)
     }
 }
 
-local inline char *
+// Helper function because snprintf is slow
+
+// Convert u64 into string
+local char *
 append_u64 (char *output, u64 value)
 {
+  // Lookup table
   persist const char digit_pairs[] = "00010203040506070809"
                                      "10111213141516171819"
                                      "20212223242526272829"
@@ -210,9 +184,11 @@ append_u64 (char *output, u64 value)
                                      "70717273747576777879"
                                      "80818283848586878889"
                                      "90919293949596979899";
+  // 20 is sufficient
   char digits[20];
   u64 count = 0;
 
+  // more than 2 digits
   while (value >= 100)
     {
       u64 quotient = value / 100;
@@ -223,21 +199,25 @@ append_u64 (char *output, u64 value)
       value = quotient;
     }
 
+  // 1 digit
   if (value < 10)
     digits[count++] = (char)('0' + value);
+  // 2 digits
   else
     {
       digits[count++] = digit_pairs[value * 2 + 1];
       digits[count++] = digit_pairs[value * 2];
     }
 
+  // Reverse to the output
   while (count > 0)
     *output++ = digits[--count];
 
   return output;
 }
 
-local inline char *
+// Same as append_u64 but we have a sign bit
+local char *
 append_s64 (char *output, s64 value)
 {
   u64 magnitude;
@@ -253,7 +233,9 @@ append_s64 (char *output, s64 value)
   return append_u64 (output, magnitude);
 }
 
-local inline char *
+// Converts a s64 integer representing a fixed-point number with
+// three decimal places into a decimal string (explanation in the header)
+local char *
 append_fixed_3 (char *output, s64 value, bool negative_zero)
 {
   u64 magnitude = value < 0 ? (u64)(-(value + 1)) + 1 : (u64)value,
@@ -271,14 +253,14 @@ append_fixed_3 (char *output, s64 value, bool negative_zero)
   return output;
 }
 
-local inline u64
+local u64
 frame_header_length (u64 index, const ExportFrame *frame)
 {
   return 6 + decimal_length_u64 (index) + 5 + decimal_length_s64 (frame->pts)
          + 10 + decimal_length_u64 (frame->vector_count) + 1;
 }
 
-local inline u64
+local u64
 format_frame_header (char *buffer, u64 index, const ExportFrame *frame)
 {
   char *output = buffer;
@@ -300,7 +282,8 @@ format_frame_header (char *buffer, u64 index, const ExportFrame *frame)
   return (u64)(output - buffer);
 }
 
-local inline char *
+// String formatting function
+local char *
 append_vector (char *output, u64 index, const ExportMotionVector *mv)
 {
   *output++ = 'M';
@@ -348,7 +331,8 @@ append_vector (char *output, u64 index, const ExportMotionVector *mv)
   return output;
 }
 
-local inline bool
+// We need to know the optut size for threading effectivelly
+local bool
 calculate_output_size (ExportFrame *frames, u64 frame_count,
                        const ExportMotionVector *vectors, u64 *total_size)
 {
@@ -384,16 +368,16 @@ calculate_output_size (ExportFrame *frames, u64 frame_count,
       if (total == UINT64_MAX)
         return false;
 
-      ++total; // Blank line after each frame.
+      ++total; // Blank line after each frame
       frames[i].output_size = total - frames[i].output_offset;
     }
 
   *total_size = total;
-
   return true;
 }
 
-local inline bool
+// Threading functions
+local bool
 worker_flush (ExportWorker *worker)
 {
   assert (worker != NULL);
@@ -415,7 +399,7 @@ worker_flush (ExportWorker *worker)
   return true;
 }
 
-local inline bool
+local bool
 worker_append (ExportWorker *worker, const char *text, u64 length)
 {
   assert (worker != NULL);
@@ -438,7 +422,7 @@ worker_append (ExportWorker *worker, const char *text, u64 length)
   return true;
 }
 
-local inline void
+local void
 write_frames (void *arg)
 {
   ExportWorker *worker = (ExportWorker *)arg;
@@ -499,16 +483,16 @@ export_data_to (const char *video_file, const char *data_file,
   Arena arena = { 0 };
   VideoPlex *video = NULL;
   DynArr64 frame_array = { 0 }, vector_array = { 0 };
-  bool flushing = false, success = false;
   PlatformMappedFile output = { .native_file = -1 };
   ExportWorker *workers = NULL;
   PlatformThread *threads = NULL;
+  bool flushing = false, success = false;
   s32 worker_count = 0, i;
   u64 output_size = 0;
 
-  assert (video_file != NULL);
-  assert (data_file != NULL);
+  assert (video_file != NULL && data_file != NULL);
   assert (output_buffer_size > 0);
+
   if (output_buffer_size == 0 || output_buffer_size > SIZE_MAX)
     return false;
 
@@ -518,14 +502,14 @@ export_data_to (const char *video_file, const char *data_file,
       || !dyn_arr64_try_init (&vector_array, 0, sizeof (ExportMotionVector)))
     {
       fprintf (stderr, "Not enough memory to initialize export arrays.\n");
-      goto cleanup;
+      goto end;
     }
 
   worker_count = MAX (1, platform_get_logical_core_count ());
 
   video = init_video (&arena, (byte *)video_file, MAX (1, worker_count - 3));
   if (video == NULL)
-    goto cleanup;
+    goto end;
 
   for (;;)
     {
@@ -537,7 +521,7 @@ export_data_to (const char *video_file, const char *data_file,
       if (result < 0)
         {
           fprintf (stderr, "Could not decode video while exporting.\n");
-          goto cleanup;
+          goto end;
         }
 
       ExportFrame frame
@@ -546,7 +530,7 @@ export_data_to (const char *video_file, const char *data_file,
       if (!append_vectors (&vector_array, video->frame))
         {
           fprintf (stderr, "Not enough memory to collect motion vectors.\n");
-          goto cleanup;
+          goto end;
         }
 
       frame.vector_count = vector_array.len - frame.first_vector;
@@ -554,12 +538,13 @@ export_data_to (const char *video_file, const char *data_file,
       if (!dyn_arr64_try_append (&frame_array, &frame, 1))
         {
           fprintf (stderr, "Not enough memory to collect video frames.\n");
-          goto cleanup;
+          goto end;
         }
 
       av_frame_unref (video->frame);
     }
 
+  // Free it up, we don't need it anymore
   shutdown_video (video);
   video = NULL;
 
@@ -568,14 +553,14 @@ export_data_to (const char *video_file, const char *data_file,
                               &output_size))
     {
       fprintf (stderr, "Export output is too large to represent.\n");
-      goto cleanup;
+      goto end;
     }
 
   if (output_size > 0
       && !platform_mapped_file_create (&output, data_file, output_size))
     {
       fprintf (stderr, "Could not create mapped output file: %s\n", data_file);
-      goto cleanup;
+      goto end;
     }
 
   if (frame_array.len == 0)
@@ -584,11 +569,11 @@ export_data_to (const char *video_file, const char *data_file,
       if (!platform_mapped_file_create (&output, data_file, 0))
         {
           fprintf (stderr, "Could not create output file: %s\n", data_file);
-          goto cleanup;
+          goto end;
         }
 
       success = true;
-      goto cleanup;
+      goto end;
     }
 
   if (frame_array.len < (u64)worker_count)
@@ -600,7 +585,7 @@ export_data_to (const char *video_file, const char *data_file,
   if (workers == NULL || threads == NULL)
     {
       fprintf (stderr, "Not enough memory to start export workers.\n");
-      goto cleanup;
+      goto end;
     }
 
   for (i = 0; i < worker_count; ++i)
@@ -609,7 +594,7 @@ export_data_to (const char *video_file, const char *data_file,
       if (workers[i].buffer == NULL)
         {
           fprintf (stderr, "Not enough memory for exporter output buffers.\n");
-          goto cleanup;
+          goto end;
         }
       workers[i].buffer_size = output_buffer_size;
     }
@@ -654,24 +639,6 @@ export_data_to (const char *video_file, const char *data_file,
   if (!success)
     fprintf (stderr, "Failed while writing mapped export output.\n");
 
-cleanup:
-
-  if (video != NULL)
-    shutdown_video (video);
-
-  if (workers != NULL)
-    {
-      for (i = 0; i < worker_count; ++i)
-        free (workers[i].buffer);
-    }
-
-  free (workers);
-  free (threads);
-  dyn_arr64_release (&frame_array);
-  dyn_arr64_release (&vector_array);
-  arena_release (&arena);
-
-  platform_mapped_file_close (&output);
-
+end:
   return success;
 }

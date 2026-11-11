@@ -1,6 +1,4 @@
-// The platform layers contain substantial duplicated code
-
-// Use these definitions if and only if we're on GNU + Linux and Wayland
+// Wayland backend for GNU/Linux. It communicates with the compositor directly
 
 #define _POSIX_C_SOURCE 200112L
 
@@ -23,7 +21,7 @@
 #include "platform.h"
 #include "utility.h"
 
-// Don't memorize numbers
+// Wayland key values use the Linux evdev keycode values
 enum WaylandKeyValues
 {
   CTRL = 29,

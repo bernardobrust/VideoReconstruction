@@ -14,8 +14,11 @@
 // Computes floor(x / 255), which is useful for alpha blending in the renderer
 #define DIV_255(x) (u8) ((x + 1 + ((x) >> 8)) >> 8)
 
+// Clamp a value to the inclusive range [min, max]
 s32 clamp_s32 (s32 v, s32 min, s32 max);
 f32 clamp_f32 (f32 v, f32 min, f32 max);
+// Approximate sqrt(a*a + b*b) with bounded relative error
 f32 hypot_f32 (f32 a, f32 b);
 
+// Return the signed doubled area of triangle ABP
 s32 determinant_ab_ap_s32 (s32 ax, s32 ay, s32 bx, s32 by, s32 px, s32 py);

@@ -1,4 +1,4 @@
-// Use these definition if and only if we are on Windows
+// Windows implementation of the platform window, input, and system APIs
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN

@@ -5,6 +5,7 @@
 
 #include <string.h>
 
+// Verify protocol serialization, endian conversion, and numeric formatting
 static void
 utility_test_round_up_to_multiple_u32 (void)
 {

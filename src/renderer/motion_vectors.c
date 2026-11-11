@@ -10,7 +10,7 @@
 const f32 MAX_MOTION_MAGNITUDE = 90.0f;
 f32 MAX_DISPLAY_LENGTH = 15.0f;
 // Neutral color for blocks with zero motion
-local const u32 MOTION_BLOCK_COLOR = 0x30FFFFFF;
+const u32 MOTION_BLOCK_COLOR = 0x30FFFFFF;
 
 void
 renderer_motion_vectors_set_display_resolution (ScreenResolution resolution)

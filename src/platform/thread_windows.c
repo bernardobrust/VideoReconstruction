@@ -1,5 +1,7 @@
 #include "thread.h"
 
+// Implement the shared thread API with Windows synchronization primitives
+
 #include <assert.h>
 
 local DWORD WINAPI

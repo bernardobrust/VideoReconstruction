@@ -196,6 +196,7 @@ playback_destroy_synchronization (InspectorPlayback *playback)
   platform_mutex_destroy (&playback->state_mutex);
 }
 
+// Coordinate decoding, frame selection, rendering, and publication
 local void
 systems_thread (void *arg)
 {

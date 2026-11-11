@@ -5,7 +5,7 @@
 #include "basic.h"
 #include "utility.h"
 
-// Buffer functions
+// Serialize aligned protocol fields and length-prefixed strings
 void
 buf_write_u32 (byte *buf, u64 *buf_size, u64 buf_cap, u32 x)
 {
@@ -117,7 +117,7 @@ write_u32_le (u8 *buf, u32 value)
   buf[3] = (u8)(value >> 24);
 }
 
-// Formatting functions
+// Count decimal characters without converting values to temporary strings
 u64
 decimal_length_u64 (u64 value)
 {

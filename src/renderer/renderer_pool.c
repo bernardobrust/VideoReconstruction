@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
+// Divide row work between the calling thread and a persistent worker pool
 u64
 renderer_pool_memory_required (s32 thread_count)
 {

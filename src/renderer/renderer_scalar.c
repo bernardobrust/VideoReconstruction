@@ -2,10 +2,11 @@
 
 #include "renderer_internal.h"
 
+// Portable fallback for builds without a supported SIMD renderer backend
 void
 renderer_backend_init (void)
 {
-  // This is intentionally a no-op. Check renderer_simd.c for actual init code
+  // The scalar backend needs no runtime initialization
 }
 
 void

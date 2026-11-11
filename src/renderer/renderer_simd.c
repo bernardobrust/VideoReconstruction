@@ -210,12 +210,12 @@ typedef void (*RendererBlendRectangleFn) (u32 *pixels, s32 stride, s32 width,
 typedef void (*RendererFillRectangleFn) (u32 *pixels, s32 stride, s32 width,
                                          s32 height, u32 color);
 
-local RendererBlendRectangleFn renderer_blend_rectangle_impl;
-local RendererFillRectangleFn renderer_fill_rectangle_impl;
-local RendererTriangleRowFn renderer_triangle_row_impl;
+RendererBlendRectangleFn renderer_blend_rectangle_impl;
+RendererFillRectangleFn renderer_fill_rectangle_impl;
+RendererTriangleRowFn renderer_triangle_row_impl;
 
 #if defined(_WIN32)
-local INIT_ONCE renderer_backend_once = INIT_ONCE_STATIC_INIT;
+INIT_ONCE renderer_backend_once = INIT_ONCE_STATIC_INIT;
 
 local BOOL CALLBACK
 renderer_blend_rectangle_init (PINIT_ONCE once, PVOID parameter,

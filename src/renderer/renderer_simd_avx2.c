@@ -3,6 +3,8 @@
 #include "performance.h"
 #include "renderer_internal.h"
 
+// AVX2 implementations of triangle-row and rectangle pixel operations
+
 #ifndef simd256i
 #error AVX2 compiler target is required for renderer_simd_avx2.c
 #endif

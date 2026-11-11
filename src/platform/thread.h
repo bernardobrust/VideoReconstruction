@@ -18,6 +18,7 @@
 
 typedef void (*PlatformThreadFn) (void *arg);
 
+// Native thread handle and entry-point data
 typedef struct
 {
   HANDLE handle;
@@ -41,6 +42,7 @@ typedef struct
 
 typedef void (*PlatformThreadFn) (void *arg);
 
+// Native thread handle and entry-point data
 typedef struct
 {
   pthread_t handle;
@@ -60,15 +62,18 @@ typedef struct
 
 #endif
 
+// Start a worker with the supplied callback and argument
 void platform_thread_start (PlatformThread *thread, PlatformThreadFn fn,
                             void *arg);
 void platform_thread_join (PlatformThread *thread);
 
+// Initialize, destroy, lock, and unlock a platform mutex
 void platform_mutex_init (PlatformMutex *mutex);
 void platform_mutex_destroy (PlatformMutex *mutex);
 void platform_mutex_lock (PlatformMutex *mutex);
 void platform_mutex_unlock (PlatformMutex *mutex);
 
+// Condition waits release the mutex until signaled, then reacquire it
 void platform_condition_init (PlatformCondition *condition);
 void platform_condition_destroy (PlatformCondition *condition);
 void platform_condition_wait (PlatformCondition *condition,

@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 
+// Verify arena alignment, capacity accounting, and release behavior
 static void
 arena_test_alignment_and_capacity (void)
 {

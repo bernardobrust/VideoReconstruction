@@ -1,13 +1,11 @@
 ## Notes
 - Check if everything also works on GNU Linux
 - Optimize going back frames beyond cache
-- Clean up more
 - More asserts
-- More comments
 - Benchmark again
 
 ### Per-file basis
-- macros.h : local => static inline?
+...
 
 ## Checklists
 ### Modified libraries

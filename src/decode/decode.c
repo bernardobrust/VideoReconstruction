@@ -42,6 +42,7 @@ init_video (Arena *arena, byte *video_file, s32 decoder_threads)
       goto fail;
     }
 
+  // Get only the video stream (ignore audio for example)
   video_plex->video_stream = -1;
   for (u32 i = 0; i < video_plex->fmt->nb_streams; ++i)
     {
@@ -61,7 +62,9 @@ init_video (Arena *arena, byte *video_file, s32 decoder_threads)
     }
 
   video_plex->stream = video_plex->fmt->streams[video_plex->video_stream];
+  // Requesting the modified libdav1d codec
   video_plex->decoder = avcodec_find_decoder_by_name ("libdav1d");
+  // Impossible if compiled using nob
   if (!video_plex->decoder)
     {
       fprintf (stderr, "No decoder found, did you install the FFmpeg "
@@ -102,6 +105,8 @@ init_video (Arena *arena, byte *video_file, s32 decoder_threads)
 
   video_plex->packet = av_packet_alloc ();
   assert (video_plex->packet != NULL);
+
+  // Used for going back, we need the timestamps for seek
   video_plex->frame_timestamps = dyn_arr_init (256, sizeof (s64));
 
   return video_plex;
@@ -158,6 +163,7 @@ decode_next_frame (VideoPlex *video_plex, RendererPlex *renderer)
               ret = avcodec_receive_frame (video_plex->codec,
                                            video_plex->frame);
 
+              // OK
               if (ret == 0)
                 {
                   got_frame = true;
@@ -186,6 +192,7 @@ decode_next_frame (VideoPlex *video_plex, RendererPlex *renderer)
           continue;
         }
 
+      // Let the decoder do it's thing
       ret = avcodec_send_packet (video_plex->codec, video_plex->packet);
       av_packet_unref (video_plex->packet);
 
@@ -198,8 +205,10 @@ decode_next_frame (VideoPlex *video_plex, RendererPlex *renderer)
       // A packet can produce zero, one, or multiple frames
       while (!got_frame)
         {
+          // Get the decoded frame
           ret = avcodec_receive_frame (video_plex->codec, video_plex->frame);
 
+          // OK
           if (ret == 0)
             {
               got_frame = true;
@@ -221,15 +230,23 @@ decode_next_frame (VideoPlex *video_plex, RendererPlex *renderer)
   s32 width = video_plex->codec->width, height = video_plex->codec->height;
   s32 pixel_format = video_plex->frame->format;
 
-  // Using RGBA was swapping the colors, so we use BGRA instead.
+  // Using RGBA was swapping the colors, so we use BGRA instead (has to do with
+  // endiannes, swizzle operations may help?)
   video_plex->sws = sws_getCachedContext (
       video_plex->sws, width, height, pixel_format, width, height,
       AV_PIX_FMT_BGRA, SWS_BILINEAR, NULL, NULL, NULL);
   assert (video_plex->sws != NULL);
 
+  // 0 => Y (luminance)
+  // 1 => U (chroma)
+  // 2 => V (chroma)
+  // 3 => Alpha
   u8 *dst_data[4] = { (u8 *)renderer->image_buffer, NULL, NULL, NULL };
+  // In preactice this is the stride, we have 4 bytes (RGBA) per slot in the
+  // array
   s32 dst_linesize[4] = { width * 4, 0, 0, 0 };
 
+  // Converting the image to the format used by the platform layer image buffer
   sws_scale (video_plex->sws, (const u8 *const *)video_plex->frame->data,
              video_plex->frame->linesize, 0, height, dst_data, dst_linesize);
 
@@ -243,6 +260,7 @@ decode_seek_to_frame (VideoPlex *video_plex, s64 frame_number)
 
   assert (video_plex != NULL && frame_number >= 0);
 
+  // Going back requires seeking an indepent frame
   result
       = av_seek_frame (video_plex->fmt, video_plex->video_stream, frame_number,
                        AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
@@ -269,7 +287,8 @@ video_frame_number_from_timestamp (VideoPlex *video_plex, s64 timestamp)
   if (timestamp == AV_NOPTS_VALUE)
     return -1;
 
-  // Decoded presentation timestamps are recorded in frame order
+  // Decoded presentation timestamps are recorded in frame order. Literaly
+  // binary search
   low = 0;
   high = video_plex->frame_timestamps->len;
   while (low < high)
@@ -277,6 +296,7 @@ video_frame_number_from_timestamp (VideoPlex *video_plex, s64 timestamp)
       middle = low + (high - low) / 2;
       middle_timestamp
           = *(s64 *)dyn_arr_get (video_plex->frame_timestamps, middle);
+
       if (middle_timestamp < timestamp)
         low = middle + 1;
       else
@@ -297,6 +317,7 @@ video_record_frame_timestamp (VideoPlex *video_plex, s64 frame_number)
 
   assert (video_plex != NULL && frame_number >= 0 && frame_number <= INT32_MAX
           && frame_number <= video_plex->frame_timestamps->len);
+
   timestamp = video_plex->frame->best_effort_timestamp;
 
   if (frame_number == video_plex->frame_timestamps->len)

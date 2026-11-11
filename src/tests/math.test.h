@@ -1,4 +1,6 @@
 #pragma once
+
+// Run the math macro, numeric helper, and geometry tests
 void math_all_tests (void);
 void math_macro_tests (void);
 void math_function_tests (void);

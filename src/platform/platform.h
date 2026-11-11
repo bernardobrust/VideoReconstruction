@@ -73,15 +73,14 @@ typedef struct
   s32 x, y;
 } PlatformEvent;
 
-// platform_update will push the events onto the queue, from where
-// platform_dispatch_events will call the associated function (such as
-// input_set_key_pressed)
+// platform_update queues native events for platform_dispatch_events to apply
+// to the shared input state.
 extern DynArr event_queue;
 void platform_dispatch_events (void);
 
 #define PLATFORM_EVENT_CAPACITY 4096
 
-inline local void *
+local void *
 platform_storage_init (PlatformState *platform_state, u64 internal_size,
                        u64 internal_alignment, u64 arena_capacity)
 {
@@ -101,14 +100,14 @@ platform_storage_init (PlatformState *platform_state, u64 internal_size,
   return state;
 }
 
-inline local void
+local void
 platform_storage_release (PlatformState *platform_state)
 {
   dyn_arr_free (&event_queue);
   arena_release (&platform_state->arena);
 }
 
-inline local void
+local void
 platform_event_push (EventType type, s32 x, s32 y)
 {
   PlatformEvent ev = { type, x, y };
@@ -121,11 +120,14 @@ platform_event_push (EventType type, s32 x, s32 y)
     }
 }
 
+// Create a window whose pixels are backed by the supplied renderer buffer
 void platform_init (PlatformState *platform_state, const byte *window_name,
                     s32 x, s32 y, s32 w, s32 h, byte *image_buffer);
 void platform_shutdown (PlatformState *platform_state);
 
+// Poll native events and return whether the window should remain open
 bool platform_update (PlatformState *platform_state);
+// Present the current renderer buffer to the window
 void platform_present (PlatformState *platform_state);
 ScreenResolution
 platform_get_screen_resolution (PlatformState *platform_state);
@@ -133,7 +135,9 @@ void platform_set_fullscreen (PlatformState *platform_state, bool fullscreen);
 
 f64 platform_get_time (void);
 void platform_sleep (f64 ms);
+// Return 0 when accessible, 1 when missing, and 2 on other access errors
 s32 platform_file_exists (byte *filepath);
+// Map a file for read/write access or read-only access, respectively
 bool platform_mapped_file_create (PlatformMappedFile *file, const char *path,
                                   u64 size);
 bool platform_mapped_file_open_readonly (PlatformMappedFile *file,

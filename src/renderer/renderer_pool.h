@@ -23,9 +23,9 @@ typedef struct
   s32 worker_index;
 } RendererWorker;
 
-// Concurrent callers are serialized; each caller renders the first row range
-// itself. Worker ranges are disjoint, callback and context stay valid until
-// return
+// Concurrent calls are serialized. The caller renders the first row range,
+// worker ranges do not overlap, and callback data stays valid until return.
+// A zero-thread pool runs the callback synchronously on the caller.
 void renderer_pool_init (RendererPool *pool, Arena *arena, s32 thread_count);
 void renderer_pool_shutdown (RendererPool *pool);
 

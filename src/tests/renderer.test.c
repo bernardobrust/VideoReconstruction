@@ -430,7 +430,7 @@ renderer_all_tests (void)
   end_group ();
 }
 
-// Just for good practice
+// Keep test dimensions local to this implementation file
 #undef TEST_W
 #undef TEST_H
 #undef TEST_PIXELS

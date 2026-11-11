@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <string.h>
 
+// Check worker completion, condition signaling, and row-pool synchronization
 enum
 {
   FRAME_TEST_COUNT = 128,

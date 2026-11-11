@@ -4,6 +4,7 @@
 #include "input.test.h"
 #include "platform.h"
 
+// Verify pressed, released, and just-pressed input transitions
 static void
 input_test_keys_and_commands (void)
 {

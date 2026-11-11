@@ -11,18 +11,18 @@ enum
   CONFIG_MEGABYTE = MEGABYTE (1)
 };
 
-local const bool DEFAULT_FULLSCREEN = true;
-local const u64 DEFAULT_FRAME_CACHE_BYTES = 256ULL * CONFIG_MEGABYTE;
-local const u64 DEFAULT_EXPORTER_OUTPUT_BUFFER_BYTES = 8ULL * CONFIG_MEGABYTE;
-local const char CONFIG_FILE_PATH[] = "inspector.conf";
+const bool DEFAULT_FULLSCREEN = true;
+const u64 DEFAULT_FRAME_CACHE_BYTES = 256ULL * CONFIG_MEGABYTE;
+const u64 DEFAULT_EXPORTER_OUTPUT_BUFFER_BYTES = 8ULL * CONFIG_MEGABYTE;
+const char CONFIG_FILE_PATH[] = "inspector.conf";
 
-local inline bool
+local bool
 is_space (char c)
 {
   return c == ' ' || c == '\t' || c == '\r' || c == '\v' || c == '\f';
 }
 
-local inline bool
+local bool
 parse_boolean (const char *value, u64 length, bool *result)
 {
   assert (value != NULL && result != NULL);
@@ -50,6 +50,7 @@ parse_megabytes (const char *value, u64 length, u64 *result)
   u64 megabytes, i;
 
   assert (value != NULL && result != NULL);
+
   if (length == 0)
     return false;
 
@@ -72,7 +73,6 @@ parse_megabytes (const char *value, u64 length, u64 *result)
     return false;
 
   *result = megabytes * CONFIG_MEGABYTE;
-
   return true;
 }
 
@@ -158,6 +158,7 @@ parse_config_line (const char *line, const char *line_end, u64 line_number,
       return;
     }
 
+  // Validate the complete value and trailing comment before applying a setting
   if (token_equals (key_start, (u64)(key_end - key_start), "auto_full_screen"))
     {
       if (parse_boolean (value_start, (u64)(value_end - value_start),
@@ -215,7 +216,6 @@ inspector_config_load (InspectorConfig *config)
 
   if (mapped_file.size > 0)
     {
-      // Scan the mapped bytes line by line without copying or allocating
       cursor = mapped_file.data;
       file_end = cursor + mapped_file.size;
       line_number = 1;

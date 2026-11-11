@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-// This is actually really good for testing
+// Include the implementation so each test binary contains the tested code
 #include "dyn_arr.c"
 
 #include "dyn_arr.test.h"
@@ -16,6 +16,7 @@ typedef struct
   byte c;
 } St;
 
+// Verify allocation, indexing, and mutation behavior for dynamic arrays
 void
 dyn_arr_test_init (void)
 {

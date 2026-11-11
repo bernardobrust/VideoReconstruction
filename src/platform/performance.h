@@ -1,11 +1,10 @@
-// The reason this file is in platform/ is because some functions here are
-// platform-specific
-
 #pragma once
 
 #include "macros.h"
 
-// Satarting with _mm_ sucks
+// SIMD aliases and branch hints vary by compiler and target architecture
+
+// Normalize the compiler-specific SSE2 intrinsics
 #ifdef simd128i
 #define PERFORMANCE_HAS_SSE2 1
 
@@ -50,7 +49,7 @@
 
 // MSVC does not have __builtin_expect, so we define likely and unlikely as
 // no-ops for MSVC. For other compilers, we use __builtin_expect to provide
-// branch prediction hints
+// branch prediction hints.
 #ifdef _MSC_VER
 #define likely(x) (x)
 #define unlikely(x) (x)

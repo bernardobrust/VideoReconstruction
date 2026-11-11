@@ -3,6 +3,7 @@
 #include "astf.h"
 #include "basic.h"
 
+// Check numeric helpers and geometric calculations against expected values
 static void
 math_test_min_max (void)
 {
