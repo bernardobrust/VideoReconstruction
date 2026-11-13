@@ -3,6 +3,7 @@
 - Optimize going back frames beyond cache
 - More asserts
 - Benchmark again
+- Update the docs
 
 ### Per-file basis
 ...
@@ -104,6 +105,7 @@ Should we test the rendering primitives?
 - [x] Zoom-in and Zoom-out
 - [x] Panning
 - [x] Hide data overlay
+- [ ] Restart video
 - [ ] Scale/downscale video to a given WxH
 - [ ] Frame information (requires fonts working)
 - [x] Render motion vectors on top of the frame

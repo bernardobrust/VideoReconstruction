@@ -1,17 +1,17 @@
 # Build Instructions
-This project only uses C, the build system is a separate C file [`nob.c`](nob.c) (check the structure section).
+This project only uses C, the build system is a separate C file [`nob.c`](nob.c) (check the structure section)
 
 ### Requirements:
-- A C11 compatible compiler, tested mainly with `gcc` on GNU + Linux, `cl` (a.k.a msvc) on Windows (make sure you are using a 64-bit version).
-- `curl` on both platforms to download the modified libraries when needed.
-- `unzip` on GNU + Linux or `tar` on Windows to extract the library bundle.
+- A C11 compatible compiler, tested mainly with `gcc` on GNU + Linux, `cl` (a.k.a msvc) on Windows (make sure you are using a 64-bit version)
+- `curl` on both platforms to download the modified libraries when needed
+- `unzip` on GNU + Linux or `tar` on Windows to extract the library bundle
 
 The modified FFmpeg and dav1d libraries are downloaded from the project's "releases" page on GitHub the first time you build if they are missing
 
 ### Building:
 There is a sample `project.4coder` file along with sample build scripts on this directory. For now it just binds "F1" to compile the inspector (for x11 on the .sh) and F2 to run for "1080_jellyfin.mp4". It's more of an example than something to actually be used
 
-The first time you compile you will have to generate the build tool, simply run (uses `gcc` by default):
+The first time you compile you will have to generate the build tool, simply run (uses `gcc` by default on GNU + Linux, `cl` on Windows):
 `gcc nob.c -o nob` or `cl nob.c`
 
 Now you can compile the project with:
@@ -23,7 +23,7 @@ The platform libraries are pulled if they are not found. You will be asked if yo
 - PLATFORM (optional, autodetects if not provided): gnu_linux_x11 | gnu_linux_wayland | windows
 - MODE (optional, defaults to debug): debug | release
 
-For example, to build the inspector for GNU + Linux with X11:
+For example, to build the inspector for GNU + Linux with X11 with release optimizations:
 `./nob -target inspector -platform gnu_linux_x11 -mode release`
 
 Both GNU + Linux back-ends speak their display protocols directly, so no X11 or Wayland development packages are required
@@ -34,13 +34,13 @@ The generated executable will be in the form `TARGET_MODE_PLATFORM(.exe)` in the
 
 ### Running:
 You can run the inspector by passing a video path to the executable:
-`build/inspector_...(.exe) video_path`
+`build/inspector_...(.exe) -inspect video_path` or `build/inspector_...(.exe) -eport video_path data_file.dat`
 
 ### Testing:
 Testing can be performed with either a whitelist or a blacklist:
 `./build/tests_...(.exe) -enable TESTS_TO_RUN` or `./build/tests_...(.exe) -disable TESTS_TO_EXCLUDE`
 
-**The `flag.h` version in this project is modified so list flags consume consecutive values until the next flag. For example, pass `-enable arena math`. Repeating a list flag is still supported.**
+**The `flag.h` version in this project is modified so list flags consume consecutive values until the next flag. For example, pass `-enable arena math`. Repeating a list flag is still supported**
 
 **Not providing any option will run all of the tests.**
 
@@ -54,15 +54,19 @@ List of tests (to be expanded):
 - threading: platform independent multithreading and frame/render pooling tests
 
 # Structure
-### Common code (shared across inspector and reconstructor)
 This includes the following directories:
+1. `decode`, the AV1 decoding pipeline
+2. `docs`, information on file and data formats (will have papers and analysis latter)
+3. `ds`, the data structures used in the projects
+4. `export`, the `-export` mode of the inspector
+5. `input`, input system
+6. `inspector`, the inspector's main entry point and operations
+7. `lib`, third-party code used in the project; the modified Windows libraries are included
+8. `math`, the mathematical functions and objects used in the code
 1. `platform`, with the platform layers for GNU + Linux (X11 and Wayland) and Windows
-2. `input`, input system
 3. `renderer`, the source code for the software renderer
-4. `ds`, the data structures used in the projects
-5. `math`, the mathematical functions and objects used in the code
-6. `lib`, third-party code used in the project; the modified Windows libraries are included
 7. `test_files`, files used to test the correctness of the programs. For now this is empty as I didn't write any tests that directly require video data, but I recommend checking the sources for where to get some testing data.
+8. `tests`, unit tests
 
 The following are present in `lib/` (the `.h` files are in there):
 - [nob](https://github.com/tsoding/nob.h), the build system (by TSoding)
