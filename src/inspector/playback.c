@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "basic.h"
+#include "input.h"
 #include "operations.h"
 #include <libavutil/frame.h>
 #include <libavutil/motion_vector.h>
@@ -280,7 +281,9 @@ systems_thread (void *arg)
               platform_mutex_lock (&playback->state_mutex);
 
               timeline_pause ();
-              while (!playback->stopping && playback->frame_step_request == 0)
+              while (!playback->stopping && paused
+                     && playback->frame_step_request == 0
+                     && !playback->seek_in_progress)
                 platform_condition_wait (&playback->state_changed,
                                          &playback->state_mutex);
               stopping = playback->stopping;
@@ -489,6 +492,13 @@ inspector_playback_process_input (InspectorPlayback *playback,
   platform_mutex_lock (&playback->state_mutex);
 
   process_input (platform_state);
+  if (input_is_key_just_pressed (R))
+    {
+      playback->seek_frame_request = 0;
+      playback->seek_in_progress = true;
+      playback->frame_step_request = 0;
+      frame_queue_wake_producer (&playback->decoded_frames);
+    }
   playback->frame_step_request += timeline_take_frame_step_request ();
   platform_condition_broadcast (&playback->state_changed);
 

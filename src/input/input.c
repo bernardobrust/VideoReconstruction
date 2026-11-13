@@ -9,7 +9,7 @@ input_set_key_pressed (KeyValue k)
     input_state.ctrl_mod = true;
   else if (k == SHIFT)
     input_state.shift_mod = true;
-  else if (k >= 0 && k < 12)
+  else if (k >= 0 && k < 13)
     {
       if (!input_state.keys_pressed[k])
         input_state.keys_just_pressed[k] = true;
@@ -24,7 +24,7 @@ input_set_key_released (KeyValue k)
     input_state.ctrl_mod = false;
   else if (k == SHIFT)
     input_state.shift_mod = false;
-  else if (k >= 0 && k < 12)
+  else if (k >= 0 && k < 13)
     input_state.keys_pressed[k] = 0;
 }
 
@@ -35,7 +35,7 @@ input_is_key_pressed (KeyValue k)
     return input_state.ctrl_mod;
   if (k == SHIFT)
     return input_state.shift_mod;
-  if (k >= 0 && k < 12)
+  if (k >= 0 && k < 13)
     return input_state.keys_pressed[k] != 0;
   return false;
 }
@@ -43,7 +43,7 @@ input_is_key_pressed (KeyValue k)
 bool
 input_is_key_just_pressed (KeyValue k)
 {
-  if (k < 0 || k >= 12)
+  if (k < 0 || k >= 13)
     return false;
 
   bool just_pressed = input_state.keys_just_pressed[k];

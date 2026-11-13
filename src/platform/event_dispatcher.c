@@ -99,6 +99,12 @@ platform_dispatch_events (void)
         case KeyTRelease:
           input_set_key_released (T);
           break;
+        case KeyRPress:
+          input_set_key_pressed (R);
+          break;
+        case KeyRRelease:
+          input_set_key_released (R);
+          break;
         case MouseMove:
           input_set_mouse_pos (ev.x, ev.y);
           break;
