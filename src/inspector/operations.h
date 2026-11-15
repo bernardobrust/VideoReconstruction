@@ -16,7 +16,7 @@ typedef struct
   s32 zoom_x, zoom_y, zoom_w, zoom_h;
   // Selection rectangle in display coordinates
   s32 drag_start_x, drag_start_y, drag_cur_x, drag_cur_y;
-  bool is_dragging, show_data_overlay;
+  bool is_dragging, show_data_overlay, split_screen;
 } OperationsRenderState;
 
 // Copy operation state under the inspector state lock before worker rendering

@@ -1,7 +1,6 @@
 ## Notes
 - Check if everything also works on GNU Linux
-- Optimize going back frames beyond cache
-- Benchmark again
+- Optimize going back frames beyond cache (maybe study how VLC does it?)
 
 ### Per-file basis
 ...
@@ -30,7 +29,7 @@ We'll add a lot more stuff here as the project advances
 - [ ] Define a file format for the data
 - [ ] Add the paper (after it gets approved)
 
-### Build System (shared)
+### Build System
 - [x] Setup the build system (nob + flag)
 - [x] Setup debug build
 - [x] Setup release build
@@ -50,7 +49,7 @@ We'll add a lot more stuff here as the project advances
 - [x] SIMD the renderer
 - [ ] Lock-free paralelism (if possible ofc)
 
-### Platform Layer (shared)
+### Platform Layer
 We won't need audio for this project
 
 - [x] Raw X11 platform Layer
@@ -61,19 +60,19 @@ We won't need audio for this project
 - [x] OS independent threading
 - [ ] Mac platform layer? (Sounds like a pain for little gain)
 
-### Math Library (shared)
+### Math Library
 - [x] Basic utilities (clamp, round, fast operations, etc.)
 - [x] Tests for basic utilities
 - [ ] ...
 
-### Data Structures (shared)
+### Data Structures
 - [x] Dynamic array
 - [x] Dynamic array tests
 - [x] Move tests to separate testing file for shared code
 - [x] Arena + tests
 - [ ] Add others later as needed ...
 
-### Renderer (CPU / software renderer) (shared)
+### Renderer (CPU / software renderer)
 Should we test the rendering primitives?
 
 - [x] Open window + set defaults
@@ -91,12 +90,12 @@ Should we test the rendering primitives?
 - [ ] Scale video resolution to pane dimensions
 - [ ] Make UI fit well in the window (responsive measures)
 
-### Systems (inspector)
+### Systems
 - [x] Event system (key presses and UI buttons)
 - [x] Input system (input struct)
 - [x] Add mouse to the input system
 
-### Core (inspector)
+### Core
 - [x] Take the video to use as a parameter of the inspector binary
 - [x] Pause
 - [x] Slow down and speed up
@@ -104,7 +103,7 @@ Should we test the rendering primitives?
 - [x] Panning
 - [x] Hide data overlay
 - [x] Restart video
-- [ ] Scale/downscale video to a given WxH
+- [x] Scale/downscale video to a given WxH
 - [ ] Frame information (requires fonts working)
 - [x] Render motion vectors on top of the frame
 - [x] Render motion vectors per block (a.k.a. highlight the block)
@@ -113,12 +112,13 @@ Should we test the rendering primitives?
 - [x] Next and previous frame
 - [ ] Jump to specific frame/time
 - [ ] Video timeline
-- [ ] Side-by-side frame comparison (basic)
+- [x] Side-by-side frame comparison (basic)
 - [ ] Side-by-side frame comparison (mapping block translations)
+- [ ] Frame adjustable comparassion
 - [x] Config file with preferences (such as video cache size)
 - [x] Export data to file (plaintext)
 - [ ] Export and inspect at the same time
 
-### Extra (inspector)
+### Extra
 - [ ] Parallelized build (?)
 - [ ] Data analysis

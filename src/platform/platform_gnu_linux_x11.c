@@ -1,4 +1,5 @@
-// X11 backend for GNU/Linux. Protocol messages are sent over the X server socket
+// X11 backend for GNU/Linux. Protocol messages are sent over the X server
+// socket
 
 #define _POSIX_C_SOURCE 200112L
 #define _DEFAULT_SOURCE
@@ -39,6 +40,7 @@ enum X11KeyValues
   KEY_F = 33 + 8,
   KEY_T = 28 + 8,
   KEY_R = 19 + 8,
+  KEY_S = 31 + 8,
 };
 
 enum
@@ -535,6 +537,9 @@ dispatch_event (PlatformState *platform_state, const u8 event[32])
           break;
         case KEY_R:
           ev = is_press ? KeyRPress : KeyRRelease;
+          break;
+        case KEY_S:
+          ev = is_press ? KeySPress : KeySRelease;
           break;
         default:
           valid = false;

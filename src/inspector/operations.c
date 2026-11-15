@@ -46,7 +46,10 @@ s32 drag_start_x = 0, drag_start_y = 0, drag_cur_x = 0, drag_cur_y = 0;
 s32 pan_start_x = 0, pan_start_y = 0;
 ZoomRect pan_start_zoom;
 
-// The included zoom implementation uses these helpers defined later
+local void zoom_process_input (void);
+local void split_screen_toggle (void);
+local bool split_screen_is_enabled (void);
+local void split_screen_apply (RendererPlex *renderer, u32 *scratch);
 local void scale_image_rows (void *arg, s32 first_row, s32 end_row);
 local void scale_image_region (u32 *src, s32 src_w, s32 src_h, s32 zx, s32 zy,
                                s32 zw, s32 zh, u32 *dst, s32 dst_w, s32 dst_h,
@@ -145,6 +148,68 @@ operations_set_fullscreen (bool enabled)
 }
 
 void
+process_input (PlatformState *p)
+{
+  bool timeline_changed;
+
+  timeline_changed = timeline_process_input ();
+  if (timeline_changed)
+    needs_paused_redraw = true;
+
+  if (input_is_key_pressed (ESC))
+    platform_stop (p);
+
+  if (input_is_key_just_pressed (S))
+    {
+      split_screen_toggle ();
+      needs_paused_redraw = true;
+#ifndef NDEBUG
+      printf ("Split screen %s\n",
+              split_screen_is_enabled () ? "enabled" : "disabled");
+#endif
+    }
+
+  if (input_is_key_just_pressed (F))
+    {
+      fullscreen = !fullscreen;
+      platform_set_fullscreen (p, fullscreen);
+#ifndef NDEBUG
+      printf ("Fullscreen %s\n", fullscreen ? "enabled" : "disabled");
+#endif
+    }
+
+  if (input_is_key_just_pressed (T))
+    {
+      show_data_overlay = !show_data_overlay;
+      needs_paused_redraw = true;
+#ifndef NDEBUG
+      printf ("Motion-vector overlay %s\n",
+              show_data_overlay ? "enabled" : "disabled");
+#endif
+    }
+
+  speed_up = input_is_key_just_pressed (UP);
+  if (speed_up)
+    {
+      playback_speed += speed_step;
+#ifndef NDEBUG
+      printf ("Playback speed increased to: %f\n", playback_speed);
+#endif
+    }
+
+  slow_down = input_is_key_just_pressed (DOWN);
+  if (slow_down)
+    {
+      playback_speed = MAX (speed_step, playback_speed - speed_step);
+#ifndef NDEBUG
+      printf ("Playback speed decreased to: %f\n", playback_speed);
+#endif
+    }
+
+  zoom_process_input ();
+}
+
+void
 operations_on_frame_decoded (RendererPlex *renderer,
                              const AVMotionVector *motion_vectors,
                              s32 motion_vector_count)
@@ -186,6 +251,7 @@ operations_get_render_state (OperationsRenderState *state)
   state->zoom_h = zoom.h;
   state->is_dragging = is_dragging;
   state->show_data_overlay = show_data_overlay;
+  state->split_screen = split_screen_is_enabled ();
   state->drag_start_x = drag_start_x;
   state->drag_start_y = drag_start_y;
   state->drag_cur_x = drag_cur_x;
@@ -214,6 +280,8 @@ operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
                       state->zoom_x, state->zoom_y, state->zoom_w,
                       state->zoom_h, renderer->image_buffer, renderer->w,
                       renderer->h, pool);
+  if (state->split_screen)
+    split_screen_apply (renderer, overlay_frame_buffer);
 
   if (state->is_dragging)
     draw_selection_box (state->drag_start_x, state->drag_start_y,
@@ -239,6 +307,8 @@ operations_render_paused (PlatformState *p, RendererPlex *renderer)
   scale_image_region (overlay_frame_buffer, renderer->w, renderer->h, cur.x,
                       cur.y, cur.w, cur.h, renderer->image_buffer, renderer->w,
                       renderer->h, NULL);
+  if (split_screen_is_enabled ())
+    split_screen_apply (renderer, overlay_frame_buffer);
 
   if (is_dragging)
     draw_selection_box (drag_start_x, drag_start_y, drag_cur_x, drag_cur_y,
@@ -249,5 +319,6 @@ operations_render_paused (PlatformState *p, RendererPlex *renderer)
 }
 
 // Keep the inspector implementation in one translation unit
+#include "split_screen.c"
 #include "timeline.c"
 #include "zoom.c"

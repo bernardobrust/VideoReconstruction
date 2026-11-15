@@ -92,58 +92,73 @@ draw_selection_box (s32 x1, s32 y1, s32 x2, s32 y2, RendererPlex *renderer)
   draw_rectangle_t (min_x, min_y, max_x, max_y, fill_color, renderer);
 }
 
-void
-process_input (PlatformState *p)
+local void
+zoom_apply_selection (void)
 {
-  bool timeline_changed;
+  s32 sx1, sx2, sy1, sy2, new_w, new_h, new_x1, new_x2, new_y1, new_y2;
+  ZoomRect cur, next_zoom;
 
-  // Timeline changes invalidate the paused frame shown on screen
-  timeline_changed = timeline_process_input ();
-  if (timeline_changed)
-    needs_paused_redraw = true;
+  is_dragging = false;
+  needs_paused_redraw = true;
 
-  if (input_is_key_pressed (ESC))
-    platform_stop (p);
+  if (!current_renderer)
+    return;
 
-  if (input_is_key_just_pressed (F))
+  sx1 = MIN (drag_start_x, drag_cur_x);
+  sx2 = MAX (drag_start_x, drag_cur_x);
+  sy1 = MIN (drag_start_y, drag_cur_y);
+  sy2 = MAX (drag_start_y, drag_cur_y);
+
+  sx1 = clamp_s32 (sx1, 0, current_renderer->w);
+  sx2 = clamp_s32 (sx2, 0, current_renderer->w);
+  sy1 = clamp_s32 (sy1, 0, current_renderer->h);
+  sy2 = clamp_s32 (sy2, 0, current_renderer->h);
+
+  // Only zoom selections at least 8x8, the smallest AV1 block
+  if (sx2 - sx1 < 8 || sy2 - sy1 < 8)
+    return;
+
+  cur = get_current_zoom ();
+  new_x1 = cur.x + (s32)(((s64)sx1 * cur.w) / current_renderer->w);
+  new_y1 = cur.y + (s32)(((s64)sy1 * cur.h) / current_renderer->h);
+  new_x2 = cur.x + (s32)(((s64)sx2 * cur.w) / current_renderer->w);
+  new_y2 = cur.y + (s32)(((s64)sy2 * cur.h) / current_renderer->h);
+
+  // Integer mapping can collapse a small screen selection to zero source
+  // pixels after a few zoom levels. Keep the crop valid so later zooms work
+  new_w = MAX (1, new_x2 - new_x1);
+  new_h = MAX (1, new_y2 - new_y1);
+  new_w = MIN (new_w, current_renderer->w);
+  new_h = MIN (new_h, current_renderer->h);
+  new_x1 = clamp_s32 (new_x1, 0, current_renderer->w - new_w);
+  new_y1 = clamp_s32 (new_y1, 0, current_renderer->h - new_h);
+
+  if (new_x1 != cur.x || new_y1 != cur.y || new_w != cur.w || new_h != cur.h)
     {
-      fullscreen = !fullscreen;
-      platform_set_fullscreen (p, fullscreen);
-    }
-
-  if (input_is_key_just_pressed (T))
-    {
-      show_data_overlay = !show_data_overlay;
-      needs_paused_redraw = true;
-    }
-
-  // Adjust the multiplier applied to the video's frame cadence
-  speed_up = input_is_key_just_pressed (UP);
-  if (speed_up)
-    {
-      playback_speed += speed_step;
+      next_zoom = (ZoomRect){ new_x1, new_y1, new_w, new_h };
+      push_zoom (next_zoom);
 #ifndef NDEBUG
-      printf ("Playback speed increased to: %f\n", playback_speed);
+      printf ("Zoom in: [%d, %d, %dx%d] (zoom level: %d)\n", new_x1, new_y1,
+              new_w, new_h, (s32)zoom_stack.len - 1);
 #endif
     }
-
-  slow_down = input_is_key_just_pressed (DOWN);
-  if (slow_down)
-    {
-      playback_speed = MAX (speed_step, playback_speed - speed_step);
+}
+local void
+zoom_process_input (void)
+{
+  s32 mx, my;
+  bool left_pressed, left_just_released, right_pressed, right_just_pressed,
+      right_just_released;
 #ifndef NDEBUG
-      printf ("Playback speed decreased to: %f\n", playback_speed);
+  ZoomRect cur;
 #endif
-    }
 
-  // Read pointer coordinates and button transitions once for this input update
-  s32 mx = 0, my = 0;
   input_get_mouse_pos (&mx, &my);
-  bool left_pressed = input_is_mouse_button_pressed (MOUSE_LEFT);
-  bool left_just_released = input_is_mouse_button_just_released (MOUSE_LEFT);
-  bool right_pressed = input_is_mouse_button_pressed (MOUSE_RIGHT);
-  bool right_just_pressed = input_is_mouse_button_just_pressed (MOUSE_RIGHT);
-  bool right_just_released = input_is_mouse_button_just_released (MOUSE_RIGHT);
+  left_pressed = input_is_mouse_button_pressed (MOUSE_LEFT);
+  left_just_released = input_is_mouse_button_just_released (MOUSE_LEFT);
+  right_pressed = input_is_mouse_button_pressed (MOUSE_RIGHT);
+  right_just_pressed = input_is_mouse_button_just_pressed (MOUSE_RIGHT);
+  right_just_released = input_is_mouse_button_just_released (MOUSE_RIGHT);
 
   // Ctrl+Right Click undoes the last zoom level
   if (input_is_key_pressed (CTRL) && right_just_pressed)
@@ -157,7 +172,7 @@ process_input (PlatformState *p)
         {
           --zoom_stack.len;
 #ifndef NDEBUG
-          ZoomRect cur = get_current_zoom ();
+          cur = get_current_zoom ();
           printf ("Zoom out (undo): [%d, %d, %dx%d] (zoom level: %d)\n", cur.x,
                   cur.y, cur.w, cur.h, (s32)zoom_stack.len - 1);
 #endif
@@ -240,72 +255,5 @@ process_input (PlatformState *p)
 
   // Apply the selected rectangle as the next zoom level on release
   if (is_dragging && (!left_pressed || left_just_released))
-    {
-      is_dragging = false;
-      needs_paused_redraw = true;
-
-      if (current_renderer)
-        {
-          s32 sx1 = MIN (drag_start_x, drag_cur_x),
-              sx2 = MAX (drag_start_x, drag_cur_x),
-              sy1 = MIN (drag_start_y, drag_cur_y),
-              sy2 = MAX (drag_start_y, drag_cur_y);
-
-          sx1 = clamp_s32 (sx1, 0, current_renderer->w),
-          sx2 = clamp_s32 (sx2, 0, current_renderer->w),
-          sy1 = clamp_s32 (sy1, 0, current_renderer->h),
-          sy2 = clamp_s32 (sy2, 0, current_renderer->h);
-
-          s32 sel_w = sx2 - sx1, sel_h = sy2 - sy1;
-
-          // Only zoom if the area selected is at least 8x8 (smallest AV1
-          // block)
-          if (likely (sel_w >= 8 && sel_h >= 8))
-            {
-              ZoomRect cur = get_current_zoom ();
-
-              s32 new_x1
-                  = cur.x + (s32)(((s64)sx1 * cur.w) / current_renderer->w),
-                  new_y1
-                  = cur.y + (s32)(((s64)sy1 * cur.h) / current_renderer->h),
-                  new_x2
-                  = cur.x + (s32)(((s64)sx2 * cur.w) / current_renderer->w),
-                  new_y2
-                  = cur.y + (s32)(((s64)sy2 * cur.h) / current_renderer->h);
-
-              // Integer mapping can collapse a small screen selection to
-              // zero source pixels after a few zoom levels. Keep the crop
-              // valid so later zooms do not get stuck on a zero-sized rect.
-              s32 new_w = MAX (1, new_x2 - new_x1),
-                  new_h = MAX (1, new_y2 - new_y1);
-
-              // Clamp to video dimensions
-              if (new_w > current_renderer->w)
-                new_w = current_renderer->w;
-              if (new_h > current_renderer->h)
-                new_h = current_renderer->h;
-
-              if (new_x1 < 0)
-                new_x1 = 0;
-              if (new_y1 < 0)
-                new_y1 = 0;
-              if (new_x1 + new_w > current_renderer->w)
-                new_x1 = current_renderer->w - new_w;
-              if (new_y1 + new_h > current_renderer->h)
-                new_y1 = current_renderer->h - new_h;
-
-              if (likely (new_x1 != cur.x || new_y1 != cur.y || new_w != cur.w
-                          || new_h != cur.h))
-                {
-                  ZoomRect next_zoom = { new_x1, new_y1, new_w, new_h };
-                  push_zoom (next_zoom);
-#ifndef NDEBUG
-                  printf ("Zoom in: [%d, %d, %dx%d] (zoom level: %d)\n",
-                          new_x1, new_y1, new_w, new_h,
-                          (s32)zoom_stack.len - 1);
-#endif
-                }
-            }
-        }
-    }
+    zoom_apply_selection ();
 }

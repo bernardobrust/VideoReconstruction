@@ -358,7 +358,8 @@ draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
                  (int)righty, color, renderer);
 }
 
-// Transparent shapes blend source color with existing pixels using source alpha
+// Transparent shapes blend source color with existing pixels using source
+// alpha
 void
 draw_triangle_t (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3, u32 color,
                  RendererPlex *renderer)

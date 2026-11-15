@@ -36,7 +36,8 @@ hypot_f32 (f32 a, f32 b)
 }
 
 // Return the signed doubled area of triangle ABP. The sign identifies which
-// side of directed segment AB contains P, and zero means the points are collinear
+// side of directed segment AB contains P, and zero means the points are
+// collinear
 s32
 determinant_ab_ap_s32 (s32 ax, s32 ay, s32 bx, s32 by, s32 px, s32 py)
 {
