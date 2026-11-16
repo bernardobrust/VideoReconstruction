@@ -55,6 +55,13 @@ void frame_queue_wake_producer (FrameQueue *queue);
 bool frame_queue_take (FrameQueue *queue, FrameQueueFrame *frame);
 bool frame_queue_history_move (FrameQueue *queue, s32 direction,
                                FrameQueueFrame *frame);
+// Look up a frame without changing the history cursor. Return 0 when found,
+// -1 when older than cached history, or 1 when newer
+s32 frame_queue_history_find (FrameQueue *queue, s64 frame_number,
+                              FrameQueueFrame *frame);
+// Select a frame as the current history cursor with the same result codes
+s32 frame_queue_history_select (FrameQueue *queue, s64 frame_number,
+                                FrameQueueFrame *frame);
 void frame_queue_history_release (FrameQueue *queue, FrameQueueFrame frame);
 void frame_queue_requeue_front (FrameQueue *queue, FrameQueueFrame frame);
 void frame_queue_release (FrameQueue *queue, FrameQueueFrame frame);

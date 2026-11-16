@@ -1,6 +1,7 @@
 ## Notes
 - Check if everything also works on GNU Linux
 - Optimize going back frames beyond cache (maybe study how VLC does it?)
+- Zoom on split pane
 
 ### Per-file basis
 ...
@@ -113,8 +114,8 @@ Should we test the rendering primitives?
 - [ ] Jump to specific frame/time
 - [ ] Video timeline
 - [x] Side-by-side frame comparison (basic)
+- [x] Frame adjustable comparassion
 - [ ] Side-by-side frame comparison (mapping block translations)
-- [ ] Frame adjustable comparassion
 - [x] Config file with preferences (such as video cache size)
 - [x] Export data to file (plaintext)
 - [ ] Export and inspect at the same time

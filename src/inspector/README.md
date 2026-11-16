@@ -22,7 +22,9 @@ The inspector reads `inspector.conf` from the current working directory. Its set
 - **Left / Right:** Pause and step backward or forward one frame
 - **Down / Up:** Decrease or increase playback speed
 - **F:** Toggle fullscreen
-- **T:** Toggle the motion-vector overlay
+- **T:** Toggle the data overlay
+- **S:** Toggle split screen
+- **1, 2:** Select pane
 - **R:** Go back to beggining of the video
 - **Ctrl + Left Mouse Button:** Drag to select and zoom into a region
 - **Ctrl + Right Mouse Button:** Undo the most recent zoom level

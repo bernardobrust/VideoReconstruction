@@ -12,6 +12,7 @@
 #include "platform.h"
 #include "renderer.h"
 #include "renderer_pool.h"
+#include "split_screen.h"
 
 f64 playback_speed = 1.0, speed_step = 0.125;
 bool fullscreen = false, slow_down, speed_up;
@@ -47,9 +48,6 @@ s32 pan_start_x = 0, pan_start_y = 0;
 ZoomRect pan_start_zoom;
 
 local void zoom_process_input (void);
-local void split_screen_toggle (void);
-local bool split_screen_is_enabled (void);
-local void split_screen_apply (RendererPlex *renderer, u32 *scratch);
 local void scale_image_rows (void *arg, s32 first_row, s32 end_row);
 local void scale_image_region (u32 *src, s32 src_w, s32 src_h, s32 zx, s32 zy,
                                s32 zw, s32 zh, u32 *dst, s32 dst_w, s32 dst_h,
@@ -150,10 +148,11 @@ operations_set_fullscreen (bool enabled)
 void
 process_input (PlatformState *p)
 {
-  bool timeline_changed;
+  bool split_input_changed, timeline_changed;
 
-  timeline_changed = timeline_process_input ();
-  if (timeline_changed)
+  split_input_changed = split_screen_process_input ();
+  timeline_changed = timeline_process_input (!split_screen_is_enabled ());
+  if (split_input_changed || timeline_changed)
     needs_paused_redraw = true;
 
   if (input_is_key_pressed (ESC))
@@ -251,7 +250,6 @@ operations_get_render_state (OperationsRenderState *state)
   state->zoom_h = zoom.h;
   state->is_dragging = is_dragging;
   state->show_data_overlay = show_data_overlay;
-  state->split_screen = split_screen_is_enabled ();
   state->drag_start_x = drag_start_x;
   state->drag_start_y = drag_start_y;
   state->drag_cur_x = drag_cur_x;
@@ -280,9 +278,6 @@ operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
                       state->zoom_x, state->zoom_y, state->zoom_w,
                       state->zoom_h, renderer->image_buffer, renderer->w,
                       renderer->h, pool);
-  if (state->split_screen)
-    split_screen_apply (renderer, overlay_frame_buffer);
-
   if (state->is_dragging)
     draw_selection_box (state->drag_start_x, state->drag_start_y,
                         state->drag_cur_x, state->drag_cur_y, renderer);
@@ -291,11 +286,14 @@ operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
 void
 operations_render_paused (PlatformState *p, RendererPlex *renderer)
 {
+  ZoomRect cur;
+  RendererPlex split_source;
+
   if (!clean_frame_buffer || !renderer || !p
       || (!needs_paused_redraw && !is_dragging))
     return;
 
-  ZoomRect cur = get_current_zoom ();
+  cur = get_current_zoom ();
   memcpy (overlay_frame_buffer, clean_frame_buffer,
           (u64)renderer->w * renderer->h * sizeof (u32));
   if (show_data_overlay)
@@ -308,7 +306,14 @@ operations_render_paused (PlatformState *p, RendererPlex *renderer)
                       cur.y, cur.w, cur.h, renderer->image_buffer, renderer->w,
                       renderer->h, NULL);
   if (split_screen_is_enabled ())
-    split_screen_apply (renderer, overlay_frame_buffer);
+    {
+      memcpy (overlay_frame_buffer, renderer->image_buffer,
+              (u64)renderer->w * renderer->h * sizeof (u32));
+      split_source
+          = (RendererPlex){ renderer->w, renderer->h, overlay_frame_buffer };
+      split_screen_compose_pane (renderer, &split_source, 0);
+      split_screen_compose_pane (renderer, &split_source, 1);
+    }
 
   if (is_dragging)
     draw_selection_box (drag_start_x, drag_start_y, drag_cur_x, drag_cur_y,
@@ -316,6 +321,17 @@ operations_render_paused (PlatformState *p, RendererPlex *renderer)
 
   platform_present (p);
   needs_paused_redraw = false;
+}
+
+bool
+operations_take_paused_redraw_request (void)
+{
+  bool requested;
+
+  requested = needs_paused_redraw || is_dragging;
+  needs_paused_redraw = false;
+
+  return requested;
 }
 
 // Keep the inspector implementation in one translation unit

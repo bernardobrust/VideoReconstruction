@@ -6,6 +6,7 @@
 #include "basic.h"
 #include "input.h"
 #include "operations.h"
+#include "split_screen.h"
 #include <libavutil/frame.h>
 #include <libavutil/motion_vector.h>
 
@@ -207,7 +208,7 @@ systems_thread (void *arg)
   f64 next_frame, speed, now;
   bool stopping, stepping, from_history, has_frame, first_frame,
       seek_frame_ready;
-  s32 step_direction;
+  s32 step_direction, split_result;
 
   playback = arg;
   next_frame = platform_get_time ();
@@ -215,9 +216,22 @@ systems_thread (void *arg)
 
   for (;;)
     {
+      split_result = split_screen_update_playback (playback, &next_frame);
+      if (split_result < 0)
+        break;
+      if (split_result > 0)
+        continue;
+
       platform_mutex_lock (&playback->state_mutex);
 
-      while (!playback->stopping
+      if (split_screen_is_enabled () && playback->has_frame)
+        {
+          platform_mutex_unlock (&playback->state_mutex);
+
+          continue;
+        }
+
+      while (!playback->stopping && !split_screen_is_enabled ()
              && (playback->seek_in_progress
                  || (paused && playback->has_frame
                      && playback->frame_step_request == 0
@@ -283,6 +297,7 @@ systems_thread (void *arg)
               timeline_pause ();
               while (!playback->stopping && paused
                      && playback->frame_step_request == 0
+                     && !split_screen_is_enabled ()
                      && !playback->seek_in_progress)
                 platform_condition_wait (&playback->state_changed,
                                          &playback->state_mutex);
@@ -315,7 +330,7 @@ systems_thread (void *arg)
         {
           platform_mutex_lock (&playback->state_mutex);
 
-          while (paused && !playback->stopping
+          while (paused && !playback->stopping && !split_screen_is_enabled ()
                  && playback->frame_step_request == 0)
             platform_condition_wait (&playback->state_changed,
                                      &playback->state_mutex);
@@ -429,7 +444,9 @@ systems_thread (void *arg)
       playback->frame_ready = true;
       playback->has_frame = true;
       playback->current_frame_number = frame.frame_number;
+      split_screen_initialize_frames (frame.frame_number);
       playback->result = 0;
+      platform_condition_broadcast (&playback->state_changed);
 
       platform_mutex_unlock (&playback->state_mutex);
 
@@ -487,17 +504,62 @@ void
 inspector_playback_process_input (InspectorPlayback *playback,
                                   PlatformState *platform_state)
 {
+  bool split_was_enabled, split_enabled;
+  FrameQueueFrame current_frame = { 0 };
+  s64 selected_frame_number;
+  s32 history_result;
+
   assert (playback != NULL && platform_state != NULL);
 
   platform_mutex_lock (&playback->state_mutex);
 
+  split_was_enabled = split_screen_is_enabled ();
   process_input (platform_state);
+  split_enabled = split_screen_is_enabled ();
+  if (split_enabled)
+    split_screen_initialize_frames (playback->current_frame_number);
+
+  if (!split_was_enabled && split_enabled)
+    playback->frame_step_request = 0;
+  else if (split_was_enabled && !split_enabled)
+    {
+      selected_frame_number
+          = split_screen_get_frame_number (split_screen_get_selected_pane ());
+      playback->current_frame_number = selected_frame_number;
+      if (selected_frame_number >= 0)
+        {
+          history_result = playback->render_in_progress
+                               ? -1
+                               : frame_queue_history_select (
+                                     &playback->decoded_frames,
+                                     selected_frame_number, &current_frame);
+          if (history_result == 0)
+            frame_queue_history_release (&playback->decoded_frames,
+                                         current_frame);
+          else if (!playback->seek_in_progress)
+            {
+              playback->seek_frame_request = selected_frame_number;
+              playback->seek_in_progress = true;
+              playback->seek_frame_ready = false;
+              frame_queue_wake_producer (&playback->decoded_frames);
+            }
+        }
+    }
+
   if (input_is_key_just_pressed (R))
     {
-      playback->seek_frame_request = 0;
-      playback->seek_in_progress = true;
-      playback->frame_step_request = 0;
-      frame_queue_wake_producer (&playback->decoded_frames);
+      if (split_enabled)
+        {
+          split_screen_reset_frames (0);
+          playback->frame_step_request = 0;
+        }
+      else
+        {
+          playback->seek_frame_request = 0;
+          playback->seek_in_progress = true;
+          playback->frame_step_request = 0;
+          frame_queue_wake_producer (&playback->decoded_frames);
+        }
     }
   playback->frame_step_request += timeline_take_frame_step_request ();
   platform_condition_broadcast (&playback->state_changed);
@@ -509,9 +571,9 @@ bool
 inspector_playback_update (InspectorPlayback *playback,
                            PlatformState *platform_state)
 {
-  assert (playback != NULL && platform_state != NULL);
+  bool running, redraw_requested;
 
-  bool running;
+  assert (playback != NULL && platform_state != NULL);
 
   platform_mutex_lock (&playback->state_mutex);
 
@@ -526,9 +588,21 @@ inspector_playback_update (InspectorPlayback *playback,
   if (playback->has_frame && !playback->frame_ready
       && !playback->render_in_progress)
     {
-      // Reuse the last decoded image to refresh zoom/selection UI even when
-      // the decoder has not produced another frame yet
-      operations_render_paused (platform_state, playback->display);
+      if (split_screen_is_enabled ())
+        {
+          redraw_requested = operations_take_paused_redraw_request ();
+          if (redraw_requested)
+            {
+              split_screen_request_all ();
+              platform_condition_broadcast (&playback->state_changed);
+            }
+        }
+      else
+        {
+          // Reuse the last decoded image to refresh zoom/selection UI even
+          // when the decoder has not produced another frame yet
+          operations_render_paused (platform_state, playback->display);
+        }
     }
 
   running = !playback->done;

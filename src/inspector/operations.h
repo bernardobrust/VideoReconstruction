@@ -16,7 +16,7 @@ typedef struct
   s32 zoom_x, zoom_y, zoom_w, zoom_h;
   // Selection rectangle in display coordinates
   s32 drag_start_x, drag_start_y, drag_cur_x, drag_cur_y;
-  bool is_dragging, show_data_overlay, split_screen;
+  bool is_dragging, show_data_overlay;
 } OperationsRenderState;
 
 // Copy operation state under the inspector state lock before worker rendering
@@ -41,11 +41,12 @@ void operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
 // Redraw and present the current frame when paused state changes
 void operations_render_paused (PlatformState *platform_state,
                                RendererPlex *renderer);
+bool operations_take_paused_redraw_request (void);
 
 // Update zoom, overlay, playback, and timeline controls from current input
 void process_input (PlatformState *platform_state);
 // Update the timeline from input and report whether its state changed
-bool timeline_process_input (void);
+bool timeline_process_input (bool allow_frame_step);
 // Pause playback without clearing queued frame-step requests
 void timeline_pause (void);
 // Consume and clear accumulated frame-step requests

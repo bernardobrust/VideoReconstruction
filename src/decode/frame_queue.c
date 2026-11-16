@@ -158,7 +158,7 @@ frame_queue_evict_oldest_history (FrameQueue *queue)
     return false;
 
   index = queue->history_indices[queue->history_head];
-  if (queue->history_pinned[index])
+  if (queue->history_pinned[index] || queue->history_reading[index])
     return false;
 
   queue->occupied[index] = false;
@@ -520,6 +520,92 @@ frame_queue_history_move (FrameQueue *queue, s32 direction,
   return true;
 }
 
+local s32
+frame_queue_history_access (FrameQueue *queue, s64 frame_number,
+                            FrameQueueFrame *frame, bool select_cursor)
+{
+  s32 i, index, result;
+
+  assert (queue != NULL && frame != NULL && frame_number >= 0);
+
+  result = 1;
+  platform_mutex_lock (&queue->mutex);
+
+  if (queue->history_count > 0)
+    {
+      index = queue->history_indices[queue->history_head];
+      if (frame_number < queue->frame_numbers[index])
+        result = -1;
+
+      for (i = 0; i < queue->history_count; ++i)
+        {
+          index = queue->history_indices[(queue->history_head + i)
+                                         % queue->capacity];
+          if (queue->frame_numbers[index] == frame_number)
+            {
+              if (select_cursor && queue->history_cursor >= 0)
+                {
+                  s32 previous_index;
+
+                  previous_index
+                      = queue->history_indices[(queue->history_head
+                                                + queue->history_cursor)
+                                               % queue->capacity];
+                  queue->history_pinned[previous_index] = false;
+                  queue->history_reading[previous_index] = false;
+                }
+
+              if (select_cursor)
+                {
+                  queue->history_cursor = i;
+                  queue->history_pinned[index] = true;
+                }
+
+              queue->history_reading[index] = true;
+              frame->index = index;
+              frame->renderer = &queue->frames[index];
+              frame->motion_vectors = queue->motion_vectors[index];
+              frame->motion_vector_count = queue->motion_vector_counts[index];
+              frame->frame_number = queue->frame_numbers[index];
+              frame->generation = queue->generation;
+              frame->was_taken = false;
+              frame->from_history = true;
+              result = 0;
+              break;
+            }
+        }
+
+      if (result != 0)
+        {
+          index = queue->history_indices[(queue->history_head
+                                          + queue->history_count - 1)
+                                         % queue->capacity];
+          if (frame_number > queue->frame_numbers[index])
+            result = 1;
+          else
+            result = -1;
+        }
+    }
+
+  platform_mutex_unlock (&queue->mutex);
+
+  return result;
+}
+
+s32
+frame_queue_history_find (FrameQueue *queue, s64 frame_number,
+                          FrameQueueFrame *frame)
+{
+  return frame_queue_history_access (queue, frame_number, frame, false);
+}
+
+s32
+frame_queue_history_select (FrameQueue *queue, s64 frame_number,
+                            FrameQueueFrame *frame)
+{
+  return frame_queue_history_access (queue, frame_number, frame, true);
+}
+
 void
 frame_queue_history_release (FrameQueue *queue, FrameQueueFrame frame)
 {
@@ -539,7 +625,7 @@ frame_queue_history_release (FrameQueue *queue, FrameQueueFrame frame)
       return;
     }
 
-  assert (queue->history_pinned[frame.index]);
+  assert (queue->history_reading[frame.index]);
 
   queue->history_reading[frame.index] = false;
 

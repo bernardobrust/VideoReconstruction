@@ -12,7 +12,7 @@ timeline_pause (void)
 }
 
 bool
-timeline_process_input (void)
+timeline_process_input (bool allow_frame_step)
 {
   bool changed, step_backward, step_forward;
 
@@ -24,8 +24,8 @@ timeline_process_input (void)
       changed = true;
     }
 
-  step_backward = input_is_key_just_pressed (LEFT);
-  step_forward = input_is_key_just_pressed (RIGHT);
+  step_backward = allow_frame_step && input_is_key_just_pressed (LEFT);
+  step_forward = allow_frame_step && input_is_key_just_pressed (RIGHT);
   if (step_backward != step_forward)
     {
       timeline_pause ();
