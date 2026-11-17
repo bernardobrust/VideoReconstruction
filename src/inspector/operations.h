@@ -38,6 +38,7 @@ void operations_get_render_state (OperationsRenderState *state, s32 pane);
 // Render a frame using the captured crop and overlay settings
 void operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
                             const OperationsRenderState *state);
+void operations_draw_selection_box (RendererPlex *renderer, s32 pane);
 // Redraw and present the current frame when paused state changes
 void operations_render_paused (PlatformState *platform_state,
                                RendererPlex *renderer);

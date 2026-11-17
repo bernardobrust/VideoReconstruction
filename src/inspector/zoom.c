@@ -184,8 +184,8 @@ local void
 zoom_process_input (void)
 {
   s32 mx, my, pane, first_pane, pane_count, pane_w, action_pane;
-  bool left_pressed, left_just_released, right_pressed, right_just_pressed,
-      right_just_released;
+  bool left_pressed, left_just_pressed, left_just_released, right_pressed,
+      right_just_pressed, right_just_released;
 #ifndef NDEBUG
   ZoomRect cur;
 #endif
@@ -199,6 +199,7 @@ zoom_process_input (void)
                             : current_renderer->w - current_renderer->w / 2)
                : current_renderer->w;
   left_pressed = input_is_mouse_button_pressed (MOUSE_LEFT);
+  left_just_pressed = input_is_mouse_button_just_pressed (MOUSE_LEFT);
   left_just_released = input_is_mouse_button_just_released (MOUSE_LEFT);
   right_pressed = input_is_mouse_button_pressed (MOUSE_RIGHT);
   right_just_pressed = input_is_mouse_button_just_pressed (MOUSE_RIGHT);
@@ -286,8 +287,7 @@ zoom_process_input (void)
     is_panning = false;
 
   // Ctrl+Left Click starts a zoom selection
-  if (input_is_key_pressed (CTRL)
-      && input_is_mouse_button_just_pressed (MOUSE_LEFT))
+  if (input_is_key_pressed (CTRL) && left_just_pressed)
     {
       is_dragging = true;
       drag_start_x = mx;

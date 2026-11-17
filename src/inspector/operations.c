@@ -162,7 +162,8 @@ process_input (PlatformState *p)
 {
   bool split_input_changed, timeline_changed;
 
-  split_input_changed = split_screen_process_input ();
+  split_input_changed
+      = split_screen_process_input (current_renderer ? current_renderer->w : 0);
   timeline_changed = timeline_process_input (!split_screen_is_enabled ());
   if (split_input_changed || timeline_changed)
     needs_paused_redraw = true;
@@ -293,25 +294,7 @@ operations_get_render_state (OperationsRenderState *state, s32 pane)
   state->drag_start_y = drag_start_y;
   state->drag_cur_x = drag_cur_x;
   state->drag_cur_y = drag_cur_y;
-  state->is_dragging = state->is_dragging
-                       && (!split_screen_is_enabled ()
-                           || pane == split_screen_get_selected_pane ());
-
-  if (state->is_dragging && split_screen_is_enabled ())
-    {
-      s32 pane_x, pane_w;
-
-      pane_x = pane == 0 ? 0 : current_renderer->w / 2;
-      pane_w
-          = pane == 0 ? current_renderer->w / 2 : current_renderer->w - pane_x;
-      if (pane_w > 0)
-        {
-          state->drag_start_x
-              = (state->drag_start_x - pane_x) * current_renderer->w / pane_w;
-          state->drag_cur_x
-              = (state->drag_cur_x - pane_x) * current_renderer->w / pane_w;
-        }
-    }
+  state->is_dragging = state->is_dragging && !split_screen_is_enabled ();
 }
 
 void
@@ -339,6 +322,46 @@ operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
   if (state->is_dragging)
     draw_selection_box (state->drag_start_x, state->drag_start_y,
                         state->drag_cur_x, state->drag_cur_y, renderer);
+}
+
+void
+operations_draw_selection_box (RendererPlex *renderer, s32 pane)
+{
+  s32 selected_pane, selected_left, selected_width, target_left, target_width;
+  s32 x1, x2;
+
+  assert (renderer != NULL && pane >= 0 && pane < 2);
+
+  if (!is_dragging || (pane != split_screen_get_selected_pane ()
+                       && !split_screen_is_mirrored ()))
+    return;
+
+  x1 = drag_start_x;
+  x2 = drag_cur_x;
+  selected_pane = split_screen_get_selected_pane ();
+  if (pane != selected_pane)
+    {
+      selected_left = selected_pane == 0 ? 0 : renderer->w / 2;
+      selected_width = selected_pane == 0 ? renderer->w / 2
+                                          : renderer->w - selected_left;
+      target_left = pane == 0 ? 0 : renderer->w / 2;
+      target_width = pane == 0 ? renderer->w / 2 : renderer->w - target_left;
+      if (selected_width == 0)
+        return;
+
+      x1 = target_left
+           + (s32)(((s64)clamp_s32 (drag_start_x - selected_left, 0,
+                                    selected_width)
+                    * target_width)
+                   / selected_width);
+      x2 = target_left
+           + (s32)(((s64)clamp_s32 (drag_cur_x - selected_left, 0,
+                                    selected_width)
+                    * target_width)
+                   / selected_width);
+    }
+
+  draw_selection_box (x1, drag_start_y, x2, drag_cur_y, renderer);
 }
 
 void

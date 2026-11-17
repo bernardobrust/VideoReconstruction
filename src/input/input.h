@@ -57,6 +57,8 @@ bool input_is_key_pressed (KeyValue k);
 bool input_is_key_just_pressed (KeyValue k);
 bool input_is_mouse_button_pressed (MouseButton button);
 bool input_is_mouse_button_just_pressed (MouseButton button);
+// Check for a pending press without consuming it
+bool input_was_mouse_button_just_pressed (MouseButton button);
 bool input_is_mouse_button_just_released (MouseButton button);
 
 void input_get_mouse_pos (s32 *x, s32 *y);

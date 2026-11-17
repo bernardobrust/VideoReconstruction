@@ -71,6 +71,15 @@ input_is_mouse_button_just_pressed (MouseButton button)
 }
 
 bool
+input_was_mouse_button_just_pressed (MouseButton button)
+{
+  if (button < 0 || button >= 2)
+    return false;
+
+  return input_state.mouse_buttons_just_pressed[button];
+}
+
+bool
 input_is_mouse_button_just_released (MouseButton button)
 {
   if (button < 0 || button >= 2)

@@ -9,7 +9,7 @@ void split_screen_toggle (void);
 bool split_screen_is_mirrored (void);
 void split_screen_toggle_mirror (void);
 void split_screen_adjust_panes (void);
-bool split_screen_process_input (void);
+bool split_screen_process_input (s32 display_width);
 void split_screen_initialize_frames (s64 frame_number);
 void split_screen_reset_frames (s64 frame_number);
 void split_screen_request_all (void);

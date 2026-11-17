@@ -24,7 +24,7 @@ The inspector reads `inspector.conf` from the current working directory. Its set
 - **F:** Toggle fullscreen
 - **T:** Toggle the data overlay
 - **S:** Toggle split screen
-- **1, 2:** Select pane
+- **1, 2 or left click:** Select pane
 - **M:** Toggle mirror mode (actions in one pane mirrored in the other)
 - **A:** Adjust the other pane to match the selected pane
 - **R:** Go back to beggining of the video

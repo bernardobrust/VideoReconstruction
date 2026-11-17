@@ -84,26 +84,47 @@ split_screen_adjust_panes (void)
 }
 
 bool
-split_screen_process_input (void)
+split_screen_process_input (s32 display_width)
 {
   bool one_pressed, two_pressed, left_pressed, right_pressed, changed;
-  s32 direction;
+  s32 direction, mouse_x, clicked_pane;
 
   one_pressed = input_is_key_just_pressed (ONE);
   two_pressed = input_is_key_just_pressed (TWO);
   if (!split_screen_enabled)
     return false;
 
+  changed = false;
   if (one_pressed)
-    selected_pane = 0;
+    {
+      changed = selected_pane != 0;
+      selected_pane = 0;
+    }
   if (two_pressed)
-    selected_pane = 1;
+    {
+      changed = changed || selected_pane != 1;
+      selected_pane = 1;
+    }
+
+  if (display_width > 0
+      && input_was_mouse_button_just_pressed (MOUSE_LEFT))
+    {
+      input_get_mouse_pos (&mouse_x, NULL);
+      clicked_pane = mouse_x < display_width / 2 ? 0 : 1;
+      if (clicked_pane != selected_pane)
+        {
+          selected_pane = clicked_pane;
+          changed = true;
+        }
+    }
+
+  if (changed)
+    split_screen_request_all ();
 
   left_pressed = input_is_key_just_pressed (LEFT);
   right_pressed = input_is_key_just_pressed (RIGHT);
   direction = (right_pressed ? 1 : 0) - (left_pressed ? 1 : 0);
-  changed = direction != 0;
-  if (changed)
+  if (direction != 0)
     {
       timeline_pause ();
 
@@ -127,7 +148,7 @@ split_screen_process_input (void)
         }
     }
 
-  return changed;
+  return changed || direction != 0;
 }
 
 void
@@ -254,7 +275,7 @@ void
 split_screen_compose_pane (RendererPlex *display, const RendererPlex *source,
                            s32 pane)
 {
-  s32 x, y, first_x, pane_w, source_x;
+  s32 x, y, first_x, pane_w, source_x, border_width;
 
   assert (display != NULL && source != NULL && pane >= 0
           && pane < SPLIT_SCREEN_PANE_COUNT);
@@ -274,6 +295,26 @@ split_screen_compose_pane (RendererPlex *display, const RendererPlex *source,
         display->image_buffer[(u64)y * display->w + first_x + x]
             = source->image_buffer[(u64)y * source->w + source_x];
       }
+
+  if (pane == selected_pane || split_screen_is_mirrored ())
+    {
+      border_width = MIN (3, MIN (pane_w, display->h));
+      if (border_width > 0)
+        {
+          draw_rectangle (first_x, 0, first_x + pane_w - 1, border_width - 1,
+                          rgba (255, 220, 0, 255), display);
+          draw_rectangle (first_x, display->h - border_width,
+                          first_x + pane_w - 1, display->h - 1,
+                          rgba (255, 220, 0, 255), display);
+          draw_rectangle (first_x, 0, first_x + border_width - 1,
+                          display->h - 1, rgba (255, 220, 0, 255), display);
+          draw_rectangle (first_x + pane_w - border_width, 0,
+                          first_x + pane_w - 1, display->h - 1,
+                          rgba (255, 220, 0, 255), display);
+        }
+    }
+
+  operations_draw_selection_box (display, pane);
 }
 
 local void
