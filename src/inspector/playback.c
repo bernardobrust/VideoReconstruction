@@ -403,7 +403,10 @@ systems_thread (void *arg)
         {
           // Capture mutable inspector state while locked, then render from the
           // immutable snapshot so input handling does not wait for the pool
-          operations_get_render_state (&render_state);
+          operations_get_render_state (&render_state,
+                                       split_screen_is_enabled ()
+                                           ? split_screen_get_selected_pane ()
+                                           : 0);
           playback->render_in_progress = true;
         }
 

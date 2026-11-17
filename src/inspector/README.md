@@ -25,6 +25,8 @@ The inspector reads `inspector.conf` from the current working directory. Its set
 - **T:** Toggle the data overlay
 - **S:** Toggle split screen
 - **1, 2:** Select pane
+- **M:** Toggle mirror mode (actions in one pane mirrored in the other)
+- **A:** Adjust the other pane to match the selected pane
 - **R:** Go back to beggining of the video
 - **Ctrl + Left Mouse Button:** Drag to select and zoom into a region
 - **Ctrl + Right Mouse Button:** Undo the most recent zoom level

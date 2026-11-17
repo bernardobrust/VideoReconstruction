@@ -212,6 +212,12 @@ win32_window_proc (HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param)
           case 'S':
             ev = is_press ? KeySPress : KeySRelease;
             break;
+          case 'M':
+            ev = is_press ? KeyMPress : KeyMRelease;
+            break;
+          case 'A':
+            ev = is_press ? KeyAPress : KeyARelease;
+            break;
           default:
             valid = false;
             break;

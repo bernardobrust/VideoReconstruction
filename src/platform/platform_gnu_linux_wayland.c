@@ -834,6 +834,12 @@ handle_message (s32 fd, PlatformState *platform_state, byte **msg,
             case 31:
               ev = is_press ? KeySPress : KeySRelease;
               break;
+            case 50:
+              ev = is_press ? KeyMPress : KeyMRelease;
+              break;
+            case 30:
+              ev = is_press ? KeyAPress : KeyARelease;
+              break;
             default:
               valid = false;
               break;

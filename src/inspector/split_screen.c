@@ -12,6 +12,7 @@ enum
 };
 
 static bool split_screen_enabled = false;
+static bool mirror_enabled = false;
 static s32 selected_pane = 0;
 static s32 pending_pane_mask = 0;
 static s64 pane_frame_numbers[SPLIT_SCREEN_PANE_COUNT] = { -1, -1 };
@@ -53,6 +54,36 @@ split_screen_toggle (void)
 }
 
 bool
+split_screen_is_mirrored (void)
+{
+  return split_screen_enabled && mirror_enabled;
+}
+
+void
+split_screen_toggle_mirror (void)
+{
+  if (!split_screen_enabled)
+    return;
+
+  mirror_enabled = !mirror_enabled;
+}
+
+void
+split_screen_adjust_panes (void)
+{
+  s32 other_pane;
+
+  if (!split_screen_enabled)
+    return;
+
+  other_pane = 1 - selected_pane;
+  pane_frame_numbers[other_pane] = pane_frame_numbers[selected_pane];
+  pending_step_delta[other_pane] = pending_step_delta[selected_pane];
+  if (pane_frame_numbers[other_pane] >= 0)
+    split_screen_request_pane (other_pane);
+}
+
+bool
 split_screen_process_input (void)
 {
   bool one_pressed, two_pressed, left_pressed, right_pressed, changed;
@@ -81,9 +112,19 @@ split_screen_process_input (void)
           pane_frame_numbers[selected_pane]
               = MAX (0, pane_frame_numbers[selected_pane] + direction);
           split_screen_request_pane (selected_pane);
+          if (split_screen_is_mirrored ())
+            {
+              pane_frame_numbers[1 - selected_pane]
+                  = MAX (0, pane_frame_numbers[1 - selected_pane] + direction);
+              split_screen_request_pane (1 - selected_pane);
+            }
         }
       else
-        pending_step_delta[selected_pane] += direction;
+        {
+          pending_step_delta[selected_pane] += direction;
+          if (split_screen_is_mirrored ())
+            pending_step_delta[1 - selected_pane] += direction;
+        }
     }
 
   return changed;
@@ -110,12 +151,21 @@ split_screen_reset_frames (s64 frame_number)
   if (!split_screen_enabled || frame_number < 0)
     return;
 
-  pane_frame_numbers[0] = frame_number;
-  pane_frame_numbers[1] = frame_number;
-  pending_step_delta[0] = 0;
-  pending_step_delta[1] = 0;
-  split_screen_request_pane (0);
-  split_screen_request_pane (1);
+  if (split_screen_is_mirrored ())
+    {
+      pane_frame_numbers[0] = frame_number;
+      pane_frame_numbers[1] = frame_number;
+      pending_step_delta[0] = 0;
+      pending_step_delta[1] = 0;
+      split_screen_request_pane (0);
+      split_screen_request_pane (1);
+    }
+  else
+    {
+      pane_frame_numbers[selected_pane] = frame_number;
+      pending_step_delta[selected_pane] = 0;
+      split_screen_request_pane (selected_pane);
+    }
 }
 
 void
@@ -131,13 +181,15 @@ split_screen_request_all (void)
 bool
 split_screen_advance_frames (void)
 {
-  s32 pane;
+  s32 first_pane, pane, pane_count;
 
   if (!split_screen_enabled || pane_frame_numbers[0] < 0
       || pane_frame_numbers[1] < 0)
     return false;
 
-  for (pane = 0; pane < SPLIT_SCREEN_PANE_COUNT; ++pane)
+  first_pane = split_screen_is_mirrored () ? 0 : selected_pane;
+  pane_count = split_screen_is_mirrored () ? SPLIT_SCREEN_PANE_COUNT : 1;
+  for (pane = first_pane; pane < first_pane + pane_count; ++pane)
     {
       ++pane_frame_numbers[pane];
       split_screen_request_pane (pane);
@@ -259,7 +311,7 @@ playback_split_render_frame (InspectorPlayback *playback, s32 pane,
       return SPLIT_RENDER_CANCELLED;
     }
 
-  operations_get_render_state (&render_state);
+  operations_get_render_state (&render_state, pane);
   playback->render_in_progress = true;
   platform_mutex_unlock (&playback->state_mutex);
 

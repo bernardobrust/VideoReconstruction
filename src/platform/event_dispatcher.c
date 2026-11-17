@@ -111,6 +111,18 @@ platform_dispatch_events (void)
         case KeySRelease:
           input_set_key_released (S);
           break;
+        case KeyMPress:
+          input_set_key_pressed (M);
+          break;
+        case KeyMRelease:
+          input_set_key_released (M);
+          break;
+        case KeyAPress:
+          input_set_key_pressed (A);
+          break;
+        case KeyARelease:
+          input_set_key_released (A);
+          break;
         case MouseMove:
           input_set_mouse_pos (ev.x, ev.y);
           break;

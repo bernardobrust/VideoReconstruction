@@ -93,9 +93,21 @@ draw_selection_box (s32 x1, s32 y1, s32 x2, s32 y2, RendererPlex *renderer)
 }
 
 local void
+zoom_match_pane (s32 source, s32 target)
+{
+  assert (source >= 0 && source < 2 && target >= 0 && target < 2);
+
+  zoom_stack[target].len = zoom_stack[source].len;
+  memcpy (zoom_stack[target].items, zoom_stack[source].items,
+          (u64)zoom_stack[source].len * sizeof (*zoom_stack[source].items));
+}
+
+local void
 zoom_apply_selection (void)
 {
   s32 sx1, sx2, sy1, sy2, new_w, new_h, new_x1, new_x2, new_y1, new_y2;
+  s32 pane, first_pane, pane_count, pane_x, pane_w, action_pane;
+  bool zoom_changed;
   ZoomRect cur, next_zoom;
 
   is_dragging = false;
@@ -104,13 +116,23 @@ zoom_apply_selection (void)
   if (!current_renderer)
     return;
 
-  sx1 = MIN (drag_start_x, drag_cur_x);
-  sx2 = MAX (drag_start_x, drag_cur_x);
+  pane = split_screen_is_enabled () ? split_screen_get_selected_pane () : 0;
+  pane_x
+      = split_screen_is_enabled () && pane == 1 ? current_renderer->w / 2 : 0;
+  pane_w = split_screen_is_enabled ()
+               ? (pane == 0 ? current_renderer->w / 2
+                            : current_renderer->w - pane_x)
+               : current_renderer->w;
+  if (pane_w == 0)
+    return;
+
+  sx1 = MIN (drag_start_x, drag_cur_x) - pane_x;
+  sx2 = MAX (drag_start_x, drag_cur_x) - pane_x;
   sy1 = MIN (drag_start_y, drag_cur_y);
   sy2 = MAX (drag_start_y, drag_cur_y);
 
-  sx1 = clamp_s32 (sx1, 0, current_renderer->w);
-  sx2 = clamp_s32 (sx2, 0, current_renderer->w);
+  sx1 = clamp_s32 (sx1, 0, pane_w);
+  sx2 = clamp_s32 (sx2, 0, pane_w);
   sy1 = clamp_s32 (sy1, 0, current_renderer->h);
   sy2 = clamp_s32 (sy2, 0, current_renderer->h);
 
@@ -118,35 +140,50 @@ zoom_apply_selection (void)
   if (sx2 - sx1 < 8 || sy2 - sy1 < 8)
     return;
 
-  cur = get_current_zoom ();
-  new_x1 = cur.x + (s32)(((s64)sx1 * cur.w) / current_renderer->w);
-  new_y1 = cur.y + (s32)(((s64)sy1 * cur.h) / current_renderer->h);
-  new_x2 = cur.x + (s32)(((s64)sx2 * cur.w) / current_renderer->w);
-  new_y2 = cur.y + (s32)(((s64)sy2 * cur.h) / current_renderer->h);
-
-  // Integer mapping can collapse a small screen selection to zero source
-  // pixels after a few zoom levels. Keep the crop valid so later zooms work
-  new_w = MAX (1, new_x2 - new_x1);
-  new_h = MAX (1, new_y2 - new_y1);
-  new_w = MIN (new_w, current_renderer->w);
-  new_h = MIN (new_h, current_renderer->h);
-  new_x1 = clamp_s32 (new_x1, 0, current_renderer->w - new_w);
-  new_y1 = clamp_s32 (new_y1, 0, current_renderer->h - new_h);
-
-  if (new_x1 != cur.x || new_y1 != cur.y || new_w != cur.w || new_h != cur.h)
+  first_pane = split_screen_is_mirrored () ? 0 : pane;
+  pane_count = split_screen_is_mirrored () ? 2 : 1;
+  zoom_changed = false;
+  for (action_pane = first_pane; action_pane < first_pane + pane_count;
+       ++action_pane)
     {
-      next_zoom = (ZoomRect){ new_x1, new_y1, new_w, new_h };
-      push_zoom (next_zoom);
-#ifndef NDEBUG
-      printf ("Zoom in: [%d, %d, %dx%d] (zoom level: %d)\n", new_x1, new_y1,
-              new_w, new_h, (s32)zoom_stack.len - 1);
-#endif
+      cur = get_current_zoom (action_pane);
+      new_x1 = cur.x + (s32)(((s64)sx1 * cur.w) / pane_w);
+      new_y1 = cur.y + (s32)(((s64)sy1 * cur.h) / current_renderer->h);
+      new_x2 = cur.x + (s32)(((s64)sx2 * cur.w) / pane_w);
+      new_y2 = cur.y + (s32)(((s64)sy2 * cur.h) / current_renderer->h);
+
+      // Integer mapping can collapse a small screen selection to zero source
+      // pixels after a few zoom levels. Keep the crop valid so later zooms
+      // work
+      new_w = MAX (1, new_x2 - new_x1);
+      new_h = MAX (1, new_y2 - new_y1);
+      new_w = MIN (new_w, current_renderer->w);
+      new_h = MIN (new_h, current_renderer->h);
+      new_x1 = clamp_s32 (new_x1, 0, current_renderer->w - new_w);
+      new_y1 = clamp_s32 (new_y1, 0, current_renderer->h - new_h);
+
+      if (new_x1 != cur.x || new_y1 != cur.y || new_w != cur.w
+          || new_h != cur.h)
+        {
+          next_zoom = (ZoomRect){ new_x1, new_y1, new_w, new_h };
+          push_zoom (next_zoom, action_pane);
+          zoom_changed = true;
+        }
     }
+
+#ifndef NDEBUG
+  if (zoom_changed)
+    {
+      cur = get_current_zoom (pane);
+      printf ("Zoom in: [%d, %d, %dx%d] (zoom level: %d)\n", cur.x, cur.y,
+              cur.w, cur.h, (s32)zoom_stack[pane].len - 1);
+    }
+#endif
 }
 local void
 zoom_process_input (void)
 {
-  s32 mx, my;
+  s32 mx, my, pane, first_pane, pane_count, pane_w, action_pane;
   bool left_pressed, left_just_released, right_pressed, right_just_pressed,
       right_just_released;
 #ifndef NDEBUG
@@ -154,6 +191,13 @@ zoom_process_input (void)
 #endif
 
   input_get_mouse_pos (&mx, &my);
+  pane = split_screen_is_enabled () ? split_screen_get_selected_pane () : 0;
+  first_pane = split_screen_is_mirrored () ? 0 : pane;
+  pane_count = split_screen_is_mirrored () ? 2 : 1;
+  pane_w = split_screen_is_enabled ()
+               ? (pane == 0 ? current_renderer->w / 2
+                            : current_renderer->w - current_renderer->w / 2)
+               : current_renderer->w;
   left_pressed = input_is_mouse_button_pressed (MOUSE_LEFT);
   left_just_released = input_is_mouse_button_just_released (MOUSE_LEFT);
   right_pressed = input_is_mouse_button_pressed (MOUSE_RIGHT);
@@ -168,13 +212,16 @@ zoom_process_input (void)
           is_dragging = false;
           needs_paused_redraw = true;
         }
-      else if (zoom_stack.len > 1)
+      else if (zoom_stack[pane].len > 1)
         {
-          --zoom_stack.len;
+          for (action_pane = first_pane; action_pane < first_pane + pane_count;
+               ++action_pane)
+            if (zoom_stack[action_pane].len > 1)
+              --zoom_stack[action_pane].len;
 #ifndef NDEBUG
-          cur = get_current_zoom ();
+          cur = get_current_zoom (pane);
           printf ("Zoom out (undo): [%d, %d, %dx%d] (zoom level: %d)\n", cur.x,
-                  cur.y, cur.w, cur.h, (s32)zoom_stack.len - 1);
+                  cur.y, cur.w, cur.h, (s32)zoom_stack[pane].len - 1);
 #endif
           needs_paused_redraw = true;
         }
@@ -192,12 +239,14 @@ zoom_process_input (void)
       is_panning = true;
       pan_start_x = mx;
       pan_start_y = my;
-      pan_start_zoom = get_current_zoom ();
+      pan_start_zoom[0] = get_current_zoom (0);
+      pan_start_zoom[1] = get_current_zoom (1);
     }
 
   if (is_panning && (right_pressed || right_just_released))
     {
-      if (current_renderer != NULL && (mx != pan_start_x || my != pan_start_y))
+      if (current_renderer != NULL && pane_w > 0
+          && (mx != pan_start_x || my != pan_start_y))
         {
           s64 source_delta_x, source_delta_y;
           s32 max_x, max_y;
@@ -205,24 +254,30 @@ zoom_process_input (void)
 
           // Convert pointer movement to source pixels and move the crop
           // opposite it
-          source_delta_x = (((s64)mx - pan_start_x) * pan_start_zoom.w)
-                           / current_renderer->w;
-          source_delta_y = (((s64)my - pan_start_y) * pan_start_zoom.h)
-                           / current_renderer->h;
-          max_x = current_renderer->w - pan_start_zoom.w;
-          max_y = current_renderer->h - pan_start_zoom.h;
-          next_zoom.x
-              = clamp_s32 (pan_start_zoom.x - (s32)source_delta_x, 0, max_x);
-          next_zoom.y
-              = clamp_s32 (pan_start_zoom.y - (s32)source_delta_y, 0, max_y);
-          next_zoom.w = pan_start_zoom.w;
-          next_zoom.h = pan_start_zoom.h;
-
-          current_zoom = get_current_zoom ();
-          if (next_zoom.x != current_zoom.x || next_zoom.y != current_zoom.y)
+          for (action_pane = first_pane; action_pane < first_pane + pane_count;
+               ++action_pane)
             {
-              zoom_stack.items[zoom_stack.len - 1] = next_zoom;
-              needs_paused_redraw = true;
+              current_zoom = pan_start_zoom[action_pane];
+              source_delta_x
+                  = (((s64)mx - pan_start_x) * current_zoom.w) / pane_w;
+              source_delta_y = (((s64)my - pan_start_y) * current_zoom.h)
+                               / current_renderer->h;
+              max_x = current_renderer->w - current_zoom.w;
+              max_y = current_renderer->h - current_zoom.h;
+              next_zoom.x
+                  = clamp_s32 (current_zoom.x - (s32)source_delta_x, 0, max_x);
+              next_zoom.y
+                  = clamp_s32 (current_zoom.y - (s32)source_delta_y, 0, max_y);
+              next_zoom.w = current_zoom.w;
+              next_zoom.h = current_zoom.h;
+
+              if (next_zoom.x != current_zoom.x
+                  || next_zoom.y != current_zoom.y)
+                {
+                  zoom_stack[action_pane]
+                      .items[zoom_stack[action_pane].len - 1] = next_zoom;
+                  needs_paused_redraw = true;
+                }
             }
         }
     }

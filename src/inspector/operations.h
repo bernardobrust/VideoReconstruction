@@ -34,7 +34,7 @@ void operations_on_frame_decoded (RendererPlex *renderer,
                                   const AVMotionVector *motion_vectors,
                                   s32 motion_vector_count);
 // Copy mutable operation state while the caller holds the inspector state lock
-void operations_get_render_state (OperationsRenderState *state);
+void operations_get_render_state (OperationsRenderState *state, s32 pane);
 // Render a frame using the captured crop and overlay settings
 void operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
                             const OperationsRenderState *state);

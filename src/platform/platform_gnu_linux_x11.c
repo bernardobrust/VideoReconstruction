@@ -41,6 +41,8 @@ enum X11KeyValues
   KEY_T = 28 + 8,
   KEY_R = 19 + 8,
   KEY_S = 31 + 8,
+  KEY_M = 50 + 8,
+  KEY_A = 30 + 8,
 };
 
 enum
@@ -540,6 +542,12 @@ dispatch_event (PlatformState *platform_state, const u8 event[32])
           break;
         case KEY_S:
           ev = is_press ? KeySPress : KeySRelease;
+          break;
+        case KEY_M:
+          ev = is_press ? KeyMPress : KeyMRelease;
+          break;
+        case KEY_A:
+          ev = is_press ? KeyAPress : KeyARelease;
           break;
         default:
           valid = false;

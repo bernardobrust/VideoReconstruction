@@ -23,7 +23,9 @@ typedef enum
   T = 11,
   R = 12,
   S = 13,
-  KEY_VALUE_COUNT = 14,
+  M = 14,
+  A = 15,
+  KEY_VALUE_COUNT = 16,
 } KeyValue;
 
 typedef enum

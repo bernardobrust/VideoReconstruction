@@ -33,21 +33,22 @@ enum
   MAX_ZOOM_LEVELS = 16
 };
 
-ZoomStack zoom_stack = { 0 };
+ZoomStack zoom_stack[2] = { 0 };
 u32 *clean_frame_buffer = NULL;
 u32 *overlay_frame_buffer = NULL;
 s32 *scale_x_map = NULL;
 RendererPlex *current_renderer = NULL;
 
 bool is_dragging = false, is_panning = false, needs_paused_redraw = true;
-bool show_data_overlay = true;
+bool show_data_overlay[2] = { true, true };
 AVMotionVector *current_motion_vectors = NULL;
 s32 current_motion_vector_count = 0, current_motion_vector_capacity = 0;
 s32 drag_start_x = 0, drag_start_y = 0, drag_cur_x = 0, drag_cur_y = 0;
 s32 pan_start_x = 0, pan_start_y = 0;
-ZoomRect pan_start_zoom;
+ZoomRect pan_start_zoom[2];
 
 local void zoom_process_input (void);
+local void zoom_match_pane (s32 source, s32 target);
 local void scale_image_rows (void *arg, s32 first_row, s32 end_row);
 local void scale_image_region (u32 *src, s32 src_w, s32 src_h, s32 zx, s32 zy,
                                s32 zw, s32 zh, u32 *dst, s32 dst_w, s32 dst_h,
@@ -77,31 +78,35 @@ operations_memory_required (s32 w, s32 h)
   add_array_size (&total, 1, sizeof (RendererPlex));
   add_array_size (&total, pixels * 3, sizeof (u32));
   add_array_size (&total, (u64)w, sizeof (s32));
-  add_array_size (&total, MAX_ZOOM_LEVELS, sizeof (ZoomRect));
+  add_array_size (&total, 2 * MAX_ZOOM_LEVELS, sizeof (ZoomRect));
 
   return total;
 }
 
 local void
-push_zoom (ZoomRect rect)
+push_zoom (ZoomRect rect, s32 pane)
 {
-  if (zoom_stack.len >= zoom_stack.cap)
-    {
-      assert (zoom_stack.len > 1);
+  assert (pane >= 0 && pane < 2);
 
-      memmove (zoom_stack.items + 1, zoom_stack.items + 2,
-               (zoom_stack.len - 2) * sizeof (*zoom_stack.items));
-      --zoom_stack.len;
+  if (zoom_stack[pane].len >= zoom_stack[pane].cap)
+    {
+      assert (zoom_stack[pane].len > 1);
+
+      memmove (zoom_stack[pane].items + 1, zoom_stack[pane].items + 2,
+               (zoom_stack[pane].len - 2) * sizeof (*zoom_stack[pane].items));
+      --zoom_stack[pane].len;
     }
 
-  zoom_stack.items[zoom_stack.len++] = rect;
+  zoom_stack[pane].items[zoom_stack[pane].len++] = rect;
 }
 
 local ZoomRect
-get_current_zoom (void)
+get_current_zoom (s32 pane)
 {
-  if (zoom_stack.len > 0)
-    return zoom_stack.items[zoom_stack.len - 1];
+  assert (pane >= 0 && pane < 2);
+
+  if (zoom_stack[pane].len > 0)
+    return zoom_stack[pane].items[zoom_stack[pane].len - 1];
 
   ZoomRect def = { 0, 0, current_renderer ? current_renderer->w : 0,
                    current_renderer ? current_renderer->h : 0 };
@@ -122,17 +127,24 @@ operations_init (RendererPlex *renderer, Arena *arena)
   overlay_frame_buffer = arena_alloc (arena, buffer_size, _Alignof (u32));
   scale_x_map = arena_alloc (arena, (u64)renderer->w * sizeof (*scale_x_map),
                              _Alignof (s32));
-  zoom_stack.cap = MAX_ZOOM_LEVELS;
-  zoom_stack.items
-      = arena_alloc (arena, (u64)zoom_stack.cap * sizeof (*zoom_stack.items),
-                     _Alignof (ZoomRect));
-  zoom_stack.len = 0;
+  zoom_stack[0].cap = MAX_ZOOM_LEVELS;
+  zoom_stack[1].cap = MAX_ZOOM_LEVELS;
+  zoom_stack[0].items = arena_alloc (
+      arena, (u64)zoom_stack[0].cap * sizeof (*zoom_stack[0].items),
+      _Alignof (ZoomRect));
+  zoom_stack[1].items = arena_alloc (
+      arena, (u64)zoom_stack[1].cap * sizeof (*zoom_stack[1].items),
+      _Alignof (ZoomRect));
+  zoom_stack[0].len = 0;
+  zoom_stack[1].len = 0;
 
   assert (clean_frame_buffer != NULL && overlay_frame_buffer != NULL
-          && scale_x_map != NULL && zoom_stack.items != NULL);
+          && scale_x_map != NULL && zoom_stack[0].items != NULL
+          && zoom_stack[1].items != NULL);
 
   ZoomRect base_rect = { 0, 0, renderer->w, renderer->h };
-  push_zoom (base_rect);
+  push_zoom (base_rect, 0);
+  push_zoom (base_rect, 1);
 
   is_dragging = false;
   is_panning = false;
@@ -168,6 +180,27 @@ process_input (PlatformState *p)
 #endif
     }
 
+  if (input_is_key_just_pressed (M))
+    {
+      split_screen_toggle_mirror ();
+      needs_paused_redraw = true;
+#ifndef NDEBUG
+      printf ("Mirror mode %s\n",
+              split_screen_is_mirrored () ? "enabled" : "disabled");
+#endif
+    }
+
+  if (input_is_key_just_pressed (A) && split_screen_is_enabled ())
+    {
+      s32 pane;
+
+      pane = split_screen_get_selected_pane ();
+      split_screen_adjust_panes ();
+      zoom_match_pane (pane, 1 - pane);
+      show_data_overlay[1 - pane] = show_data_overlay[pane];
+      needs_paused_redraw = true;
+    }
+
   if (input_is_key_just_pressed (F))
     {
       fullscreen = !fullscreen;
@@ -179,11 +212,17 @@ process_input (PlatformState *p)
 
   if (input_is_key_just_pressed (T))
     {
-      show_data_overlay = !show_data_overlay;
+      s32 pane;
+
+      pane
+          = split_screen_is_enabled () ? split_screen_get_selected_pane () : 0;
+      show_data_overlay[pane] = !show_data_overlay[pane];
+      if (split_screen_is_mirrored ())
+        show_data_overlay[1 - pane] = !show_data_overlay[1 - pane];
       needs_paused_redraw = true;
 #ifndef NDEBUG
       printf ("Motion-vector overlay %s\n",
-              show_data_overlay ? "enabled" : "disabled");
+              show_data_overlay[pane] ? "enabled" : "disabled");
 #endif
     }
 
@@ -237,23 +276,42 @@ operations_on_frame_decoded (RendererPlex *renderer,
 }
 
 void
-operations_get_render_state (OperationsRenderState *state)
+operations_get_render_state (OperationsRenderState *state, s32 pane)
 {
   assert (state != NULL);
 
   ZoomRect zoom;
 
-  zoom = get_current_zoom ();
+  zoom = get_current_zoom (pane);
   state->zoom_x = zoom.x;
   state->zoom_y = zoom.y;
   state->zoom_w = zoom.w;
   state->zoom_h = zoom.h;
   state->is_dragging = is_dragging;
-  state->show_data_overlay = show_data_overlay;
+  state->show_data_overlay = show_data_overlay[pane];
   state->drag_start_x = drag_start_x;
   state->drag_start_y = drag_start_y;
   state->drag_cur_x = drag_cur_x;
   state->drag_cur_y = drag_cur_y;
+  state->is_dragging = state->is_dragging
+                       && (!split_screen_is_enabled ()
+                           || pane == split_screen_get_selected_pane ());
+
+  if (state->is_dragging && split_screen_is_enabled ())
+    {
+      s32 pane_x, pane_w;
+
+      pane_x = pane == 0 ? 0 : current_renderer->w / 2;
+      pane_w
+          = pane == 0 ? current_renderer->w / 2 : current_renderer->w - pane_x;
+      if (pane_w > 0)
+        {
+          state->drag_start_x
+              = (state->drag_start_x - pane_x) * current_renderer->w / pane_w;
+          state->drag_cur_x
+              = (state->drag_cur_x - pane_x) * current_renderer->w / pane_w;
+        }
+    }
 }
 
 void
@@ -293,10 +351,13 @@ operations_render_paused (PlatformState *p, RendererPlex *renderer)
       || (!needs_paused_redraw && !is_dragging))
     return;
 
-  cur = get_current_zoom ();
+  cur = get_current_zoom (
+      split_screen_is_enabled () ? split_screen_get_selected_pane () : 0);
   memcpy (overlay_frame_buffer, clean_frame_buffer,
           (u64)renderer->w * renderer->h * sizeof (u32));
-  if (show_data_overlay)
+  if (show_data_overlay[split_screen_is_enabled ()
+                            ? split_screen_get_selected_pane ()
+                            : 0])
     {
       RendererPlex source = { renderer->w, renderer->h, overlay_frame_buffer };
       renderer_draw_motion_vectors (
