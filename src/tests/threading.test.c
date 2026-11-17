@@ -344,6 +344,57 @@ frame_queue_test_seeded_history (void)
   retrieve_results ();
 }
 
+local void
+frame_queue_test_shared_cache (void)
+{
+  Arena arena = { 0 };
+  FrameQueue queue;
+  FrameQueueFrame frame, found;
+  s32 frame_number;
+
+  start_test_suite ("Frame queue: shared out-of-order cache and deduplication");
+
+  arena_init (&arena, 64 * 1024);
+  frame_queue_init (&queue, &arena, 1, 1, 4);
+  frame_queue_prepare_shared_cache (&queue);
+
+  for (s32 i = 0; i < 3; ++i)
+    {
+      frame_number = i == 0 ? 10 : (i == 1 ? 30 : 20);
+      assert_true (frame_queue_acquire_cache_write (&queue, &frame));
+      frame.renderer->image_buffer[0] = frame_number;
+      frame_queue_set_frame_number (&queue, &frame, frame_number);
+      frame_queue_publish_history (&queue, frame);
+    }
+
+  assert_equal (3, queue.history_count);
+  assert_equal (0, frame_queue_history_find (&queue, 10, &found));
+  assert_equal (10, found.renderer->image_buffer[0]);
+  frame_queue_history_release (&queue, found);
+  assert_equal (0, frame_queue_history_find (&queue, 20, &found));
+  assert_equal (20, found.renderer->image_buffer[0]);
+  frame_queue_history_release (&queue, found);
+  assert_equal (0, frame_queue_history_find (&queue, 30, &found));
+  assert_equal (30, found.renderer->image_buffer[0]);
+  frame_queue_history_release (&queue, found);
+
+  assert_true (frame_queue_acquire_cache_write (&queue, &frame));
+  frame.renderer->image_buffer[0] = 999;
+  frame_queue_set_frame_number (&queue, &frame, 20);
+  frame_queue_publish_history (&queue, frame);
+
+  assert_equal (3, queue.history_count);
+  assert_equal (0, frame_queue_history_find (&queue, 20, &found));
+  assert_equal (20, found.renderer->image_buffer[0]);
+  frame_queue_history_release (&queue, found);
+
+  frame_queue_stop (&queue);
+  frame_queue_destroy (&queue);
+  arena_release (&arena);
+
+  retrieve_results ();
+}
+
 void
 threading_all_tests (void)
 {
@@ -356,6 +407,7 @@ threading_all_tests (void)
   frame_queue_test_history_window ();
   frame_queue_test_clear_with_live_frames ();
   frame_queue_test_seeded_history ();
+  frame_queue_test_shared_cache ();
   renderer_pool_test ();
 
   end_group ();

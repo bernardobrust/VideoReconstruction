@@ -66,9 +66,19 @@ frame_queue_init (FrameQueue *queue, Arena *arena, s32 w, s32 h, s32 capacity)
   queue->w = w;
   queue->h = h;
   queue->capacity = capacity;
-  queue->history_capacity = (capacity + 1) / 2;
-  queue->future_capacity = MAX (1, capacity - queue->history_capacity);
+  // Keep most slots available for history while retaining a small decode lead
+  if (capacity == 1)
+    {
+      queue->future_capacity = 1;
+      queue->history_capacity = 1;
+    }
+  else
+    {
+      queue->future_capacity = MIN (capacity - 1, MAX (2, capacity / 4));
+      queue->history_capacity = capacity - queue->future_capacity;
+    }
   queue->history_cursor = -1;
+  queue->shared_cache_mode = false;
   queue->generation = 1;
   queue->producer_finished = false;
   queue->terminal_result = 0;
@@ -174,8 +184,9 @@ frame_queue_evict_oldest_history (FrameQueue *queue)
 }
 
 // Threading function for write
-bool
-frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
+local bool
+frame_queue_acquire_write_internal (FrameQueue *queue, FrameQueueFrame *frame,
+                                    bool shared_cache)
 {
   s32 i;
 
@@ -183,20 +194,20 @@ frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
   platform_mutex_lock (&queue->mutex);
   for (;;)
     {
-      if (queue->stopped || queue->producer_finished)
+      if (queue->stopped || (!shared_cache && queue->producer_finished))
         {
           platform_mutex_unlock (&queue->mutex);
           return false;
         }
 
-      if (queue->producer_wakeup)
+      if (!shared_cache && queue->producer_wakeup)
         {
           queue->producer_wakeup = false;
           platform_mutex_unlock (&queue->mutex);
           return false;
         }
 
-      if (queue->ready_count >= queue->future_capacity)
+      if (!shared_cache && queue->ready_count >= queue->future_capacity)
         {
           platform_condition_wait (&queue->slot_available, &queue->mutex);
           continue;
@@ -232,6 +243,53 @@ frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
 
       platform_condition_wait (&queue->slot_available, &queue->mutex);
     }
+}
+
+bool
+frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame)
+{
+  return frame_queue_acquire_write_internal (queue, frame, false);
+}
+
+bool
+frame_queue_acquire_cache_write (FrameQueue *queue, FrameQueueFrame *frame)
+{
+  return frame_queue_acquire_write_internal (queue, frame, true);
+}
+
+void
+frame_queue_prepare_shared_cache (FrameQueue *queue)
+{
+  s32 i, index;
+
+  assert (queue != NULL);
+
+  platform_mutex_lock (&queue->mutex);
+
+  for (i = 0; i < queue->ready_count; ++i)
+    {
+      index = queue->ready_indices[(queue->ready_head + i) % queue->capacity];
+      queue->occupied[index] = false;
+    }
+  queue->ready_head = 0;
+  queue->ready_count = 0;
+  if (queue->history_cursor >= 0)
+    {
+      index = queue->history_indices[(queue->history_head
+                                      + queue->history_cursor)
+                                     % queue->capacity];
+      queue->history_pinned[index] = false;
+    }
+  queue->history_cursor = -1;
+  queue->history_capacity = queue->capacity;
+  queue->shared_cache_mode = true;
+  queue->producer_finished = false;
+  queue->terminal_result = 0;
+  queue->producer_wakeup = false;
+  platform_condition_broadcast (&queue->slot_available);
+  platform_condition_broadcast (&queue->frame_ready);
+
+  platform_mutex_unlock (&queue->mutex);
 }
 
 void
@@ -280,6 +338,9 @@ frame_queue_clear (FrameQueue *queue)
   queue->history_head = 0;
   queue->history_count = 0;
   queue->history_cursor = -1;
+  queue->history_capacity
+      = queue->capacity == 1 ? 1 : queue->capacity - queue->future_capacity;
+  queue->shared_cache_mode = false;
   queue->producer_finished = false;
   queue->terminal_result = 0;
   queue->producer_wakeup = false;
@@ -343,6 +404,7 @@ void
 frame_queue_publish (FrameQueue *queue, FrameQueueFrame frame)
 {
   s32 tail;
+  bool shared_cache;
 
   assert (queue != NULL && frame.index >= 0 && frame.index < queue->capacity);
 
@@ -351,7 +413,17 @@ frame_queue_publish (FrameQueue *queue, FrameQueueFrame frame)
   // Lock/unlock publishes the producer's completed pixel writes to the
   // consumer, which takes this same mutex before it can see the slot index
   assert (queue->occupied[frame.index]);
+  shared_cache = queue->shared_cache_mode;
+  if (shared_cache)
+    {
+      platform_mutex_unlock (&queue->mutex);
+      frame_queue_publish_history (queue, frame);
+
+      return;
+    }
+
   assert (queue->ready_count < queue->capacity);
+
   tail = (queue->ready_head + queue->ready_count) % queue->capacity;
 
   queue->ready_indices[tail] = frame.index;
@@ -364,18 +436,59 @@ frame_queue_publish (FrameQueue *queue, FrameQueueFrame frame)
 void
 frame_queue_publish_history (FrameQueue *queue, FrameQueueFrame frame)
 {
-  s32 tail;
+  s32 i, index, tail;
 
   assert (queue != NULL && frame.index >= 0 && frame.index < queue->capacity);
 
   platform_mutex_lock (&queue->mutex);
 
-  // Keep frames decoded before a seek target available for backward steps
   assert (queue->occupied[frame.index]);
-  assert (frame.generation == queue->generation);
+  if (frame.generation != queue->generation)
+    {
+      queue->occupied[frame.index] = false;
+      platform_condition_broadcast (&queue->slot_available);
+      platform_mutex_unlock (&queue->mutex);
+      return;
+    }
+
+  if (queue->shared_cache_mode)
+    for (i = 0; i < queue->ready_count; ++i)
+      {
+        index = queue->ready_indices[(queue->ready_head + i)
+                                     % queue->capacity];
+        if (queue->frame_numbers[index] == frame.frame_number)
+          {
+            queue->occupied[frame.index] = false;
+            platform_condition_broadcast (&queue->slot_available);
+            platform_mutex_unlock (&queue->mutex);
+            return;
+          }
+      }
+
+  if (queue->shared_cache_mode)
+    for (i = 0; i < queue->history_count; ++i)
+      {
+        index = queue->history_indices[(queue->history_head + i)
+                                       % queue->capacity];
+        if (queue->frame_numbers[index] == frame.frame_number)
+          {
+            queue->occupied[frame.index] = false;
+            platform_condition_broadcast (&queue->slot_available);
+            platform_mutex_unlock (&queue->mutex);
+            return;
+          }
+      }
 
   if (queue->history_count == queue->history_capacity)
-    assert (frame_queue_evict_oldest_history (queue));
+    {
+      if (!frame_queue_evict_oldest_history (queue))
+        {
+          queue->occupied[frame.index] = false;
+          platform_condition_broadcast (&queue->slot_available);
+          platform_mutex_unlock (&queue->mutex);
+          return;
+        }
+    }
 
   tail = (queue->history_head + queue->history_count) % queue->capacity;
 
@@ -525,6 +638,7 @@ frame_queue_history_access (FrameQueue *queue, s64 frame_number,
                             FrameQueueFrame *frame, bool select_cursor)
 {
   s32 i, index, result;
+  s64 oldest_frame_number, newest_frame_number;
 
   assert (queue != NULL && frame != NULL && frame_number >= 0);
 
@@ -534,13 +648,17 @@ frame_queue_history_access (FrameQueue *queue, s64 frame_number,
   if (queue->history_count > 0)
     {
       index = queue->history_indices[queue->history_head];
-      if (frame_number < queue->frame_numbers[index])
-        result = -1;
+      oldest_frame_number = queue->frame_numbers[index];
+      newest_frame_number = oldest_frame_number;
 
       for (i = 0; i < queue->history_count; ++i)
         {
           index = queue->history_indices[(queue->history_head + i)
                                          % queue->capacity];
+          oldest_frame_number
+              = MIN (oldest_frame_number, queue->frame_numbers[index]);
+          newest_frame_number
+              = MAX (newest_frame_number, queue->frame_numbers[index]);
           if (queue->frame_numbers[index] == frame_number)
             {
               if (select_cursor && queue->history_cursor >= 0)
@@ -577,13 +695,13 @@ frame_queue_history_access (FrameQueue *queue, s64 frame_number,
 
       if (result != 0)
         {
-          index = queue->history_indices[(queue->history_head
-                                          + queue->history_count - 1)
-                                         % queue->capacity];
-          if (frame_number > queue->frame_numbers[index])
+          if (frame_number < oldest_frame_number)
+            result = -1;
+          else if (frame_number > newest_frame_number)
             result = 1;
           else
-            result = -1;
+            // A sparse-cache miss inside its range needs a decoder request
+            result = 1;
         }
     }
 

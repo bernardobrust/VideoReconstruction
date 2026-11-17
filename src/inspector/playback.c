@@ -70,6 +70,10 @@ decoder_thread (void *arg)
   for (;;)
     {
       platform_mutex_lock (&playback->state_mutex);
+      while (!playback->stopping && split_screen_is_enabled ()
+             && playback->has_frame)
+        platform_condition_wait (&playback->state_changed,
+                                 &playback->state_mutex);
 
       seek_frame_number = playback->seek_frame_request;
       if (seek_frame_number >= 0)
@@ -86,8 +90,16 @@ decoder_thread (void *arg)
               continue;
             }
 
+          if (split_screen_is_enabled ())
+            continue;
+
           // Reset cached frames only after FFmpeg accepted the seek
           frame_queue_clear (&playback->decoded_frames);
+          if (split_screen_is_enabled ())
+            {
+              frame_queue_prepare_shared_cache (&playback->decoded_frames);
+              continue;
+            }
 
           // Cache every decoded frame before the target as backward history
           for (;;)
@@ -111,6 +123,14 @@ decoder_thread (void *arg)
                       break;
                     }
                   return;
+                }
+
+              if (split_screen_is_enabled ())
+                {
+                  frame_queue_release (&playback->decoded_frames, frame);
+                  frame_queue_prepare_shared_cache (
+                      &playback->decoded_frames);
+                  break;
                 }
 
               decoded_frame_number = video_frame_number_from_timestamp (
@@ -148,6 +168,12 @@ decoder_thread (void *arg)
       result = decode_next_frame (playback->video, frame.renderer);
       if (result == 0)
         {
+          if (split_screen_is_enabled ())
+            {
+              frame_queue_release (&playback->decoded_frames, frame);
+              continue;
+            }
+
           decoder_publish_frame (playback, &frame, next_frame_number++, false);
           continue;
         }
@@ -218,7 +244,10 @@ systems_thread (void *arg)
     {
       split_result = split_screen_update_playback (playback, &next_frame);
       if (split_result < 0)
-        break;
+        {
+          playback->result = split_result;
+          break;
+        }
       if (split_result > 0)
         continue;
 
@@ -465,7 +494,8 @@ systems_thread (void *arg)
   platform_mutex_lock (&playback->state_mutex);
 
   playback->render_in_progress = false;
-  playback->result = frame_queue_result (&playback->decoded_frames);
+  if (playback->result >= 0)
+    playback->result = frame_queue_result (&playback->decoded_frames);
   playback->done = true;
   platform_condition_broadcast (&playback->state_changed);
 
@@ -485,12 +515,18 @@ inspector_playback_init (InspectorPlayback *playback, Arena *arena,
   memset (playback, 0, sizeof (*playback));
 
   playback->video = video;
+  playback->arena = arena;
+  playback->split_decoder_threads = MAX (1, video->codec->thread_count);
   playback->display = display;
   playback->frame_duration_ms = frame_duration_ms;
   playback->result = 0;
   playback->seek_frame_request = -1;
   playback->current_frame_number = -1;
   playback->render_target = init_renderer (arena, display->w, display->h);
+  playback->split_render_targets[0]
+      = init_renderer (arena, display->w / 2, display->h);
+  playback->split_render_targets[1]
+      = init_renderer (arena, display->w - display->w / 2, display->h);
 
   platform_mutex_init (&playback->state_mutex);
   platform_condition_init (&playback->state_changed);
@@ -508,11 +544,24 @@ inspector_playback_process_input (InspectorPlayback *playback,
                                   PlatformState *platform_state)
 {
   bool split_was_enabled, split_enabled;
-  FrameQueueFrame current_frame = { 0 };
   s64 selected_frame_number;
-  s32 history_result;
 
   assert (playback != NULL && platform_state != NULL);
+
+  if (input_is_key_pressed (S) && !split_screen_is_enabled ()
+      && !playback->split_decoders_init_attempted)
+    {
+      playback->split_decoders_init_attempted = true;
+      playback->split_decoders_initialized
+          = split_screen_decoders_init (playback, playback->arena,
+                                        playback->split_decoder_threads);
+      split_screen_set_decoder_available (
+          playback->split_decoders_initialized);
+      if (!playback->split_decoders_initialized)
+        fprintf (stderr,
+                 "Could not initialize split-screen decoders; split mode is "
+                 "unavailable\n");
+    }
 
   platform_mutex_lock (&playback->state_mutex);
 
@@ -523,29 +572,26 @@ inspector_playback_process_input (InspectorPlayback *playback,
     split_screen_initialize_frames (playback->current_frame_number);
 
   if (!split_was_enabled && split_enabled)
-    playback->frame_step_request = 0;
+    {
+      playback->frame_step_request = 0;
+      playback->seek_frame_request = -1;
+      playback->seek_in_progress = false;
+      playback->seek_frame_ready = false;
+      frame_queue_prepare_shared_cache (&playback->decoded_frames);
+      frame_queue_wake_producer (&playback->decoded_frames);
+    }
   else if (split_was_enabled && !split_enabled)
     {
       selected_frame_number
           = split_screen_get_frame_number (split_screen_get_selected_pane ());
       playback->current_frame_number = selected_frame_number;
+      frame_queue_clear (&playback->decoded_frames);
       if (selected_frame_number >= 0)
         {
-          history_result = playback->render_in_progress
-                               ? -1
-                               : frame_queue_history_select (
-                                     &playback->decoded_frames,
-                                     selected_frame_number, &current_frame);
-          if (history_result == 0)
-            frame_queue_history_release (&playback->decoded_frames,
-                                         current_frame);
-          else if (!playback->seek_in_progress)
-            {
-              playback->seek_frame_request = selected_frame_number;
-              playback->seek_in_progress = true;
-              playback->seek_frame_ready = false;
-              frame_queue_wake_producer (&playback->decoded_frames);
-            }
+          playback->seek_frame_request = selected_frame_number;
+          playback->seek_in_progress = true;
+          playback->seek_frame_ready = false;
+          frame_queue_wake_producer (&playback->decoded_frames);
         }
     }
 
@@ -593,10 +639,22 @@ inspector_playback_update (InspectorPlayback *playback,
     {
       if (split_screen_is_enabled ())
         {
+          if (operations_take_split_selection_redraw_request ())
+            {
+              split_screen_redraw_cached_frames (playback);
+              playback->frame_ready = true;
+            }
+
+          if (split_screen_take_highlight_refresh ())
+            {
+              split_screen_draw_highlights (playback->display);
+              playback->frame_ready = true;
+            }
+
           redraw_requested = operations_take_paused_redraw_request ();
           if (redraw_requested)
             {
-              split_screen_request_all ();
+              split_screen_request_action_panes ();
               platform_condition_broadcast (&playback->state_changed);
             }
         }
@@ -651,6 +709,8 @@ inspector_playback_shutdown (InspectorPlayback *playback)
   inspector_playback_stop (playback);
   platform_thread_join (&playback->systems_thread);
   platform_thread_join (&playback->decoder_thread);
+  if (playback->split_decoders_initialized)
+    split_screen_decoders_shutdown (playback);
   renderer_pool_shutdown (&playback->renderer_pool);
   playback_destroy_synchronization (playback);
 }

@@ -2,7 +2,6 @@
 - Check if everything also works on GNU Linux
 - Optimize going back frames beyond cache (maybe study how VLC does it?)
 - We are starting to have lot's of commands, so maybe an UI would start making sense now
-- Optimize more in general, we're starting to have some noticeble lag
 
 ### Per-file basis
 ...

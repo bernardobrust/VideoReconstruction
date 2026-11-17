@@ -1,6 +1,7 @@
 #include <assert.h>
 
 #include "basic.h"
+#include "decode.h"
 #include "input.h"
 #include "operations.h"
 #include "split_screen.h"
@@ -12,7 +13,10 @@ enum
 };
 
 static bool split_screen_enabled = false;
+static bool split_decoder_available = false;
 static bool mirror_enabled = false;
+static bool highlight_refresh_pending = false;
+static bool has_rendered_pane[SPLIT_SCREEN_PANE_COUNT] = { false, false };
 static s32 selected_pane = 0;
 static s32 pending_pane_mask = 0;
 static s64 pane_frame_numbers[SPLIT_SCREEN_PANE_COUNT] = { -1, -1 };
@@ -28,6 +32,203 @@ split_screen_request_pane (s32 pane)
   pending_pane_mask |= 1 << pane;
 }
 
+local bool
+split_decoder_cancelled (InspectorPlayback *playback, s32 pane,
+                         u64 generation)
+{
+  bool cancelled;
+
+  platform_mutex_lock (&playback->state_mutex);
+  cancelled = playback->stopping || !split_screen_is_enabled ()
+              || (playback->split_decoders[pane].request_pending
+                  && playback->split_decoders[pane].requested_generation
+                         != generation);
+  platform_mutex_unlock (&playback->state_mutex);
+
+  return cancelled;
+}
+
+local void
+split_decoder_worker (void *arg)
+{
+  InspectorPlayback *playback;
+  SplitDecoder *decoder;
+  FrameQueueFrame frame;
+  AVFrameSideData *side_data;
+  AVMotionVector *motion_vectors;
+  u64 motion_vector_count;
+  s64 target_frame, decoded_frame;
+  u64 generation;
+  s32 pane, result;
+  bool seek, frame_acquired;
+
+  decoder = arg;
+  playback = decoder->playback;
+  pane = decoder->pane;
+
+  for (;;)
+    {
+      platform_mutex_lock (&playback->state_mutex);
+      while (!playback->stopping
+             && (!split_screen_is_enabled () || !decoder->request_pending))
+        platform_condition_wait (&playback->state_changed,
+                                 &playback->state_mutex);
+
+      if (playback->stopping)
+        {
+          platform_mutex_unlock (&playback->state_mutex);
+
+          return;
+        }
+
+      target_frame = decoder->requested_frame_number;
+      generation = decoder->requested_generation;
+      decoder->request_pending = false;
+      decoder->busy = true;
+      decoder->result = 0;
+      seek = decoder->next_frame_number < 0
+             || target_frame < decoder->next_frame_number;
+      platform_mutex_unlock (&playback->state_mutex);
+
+      result = frame_queue_history_find (&playback->decoded_frames,
+                                         target_frame, &frame);
+      if (result == 0)
+        frame_queue_history_release (&playback->decoded_frames, frame);
+      else
+        {
+          result = frame_queue_acquire_cache_write (&playback->decoded_frames,
+                                                    &frame)
+                       ? 0
+                       : -1;
+          frame_acquired = result == 0;
+          if (result == 0 && seek)
+            result = decode_seek_to_frame (decoder->video, target_frame);
+
+          while (result == 0)
+            {
+              if (split_decoder_cancelled (playback, pane,
+                                           generation))
+                {
+                  result = 2;
+                  break;
+                }
+
+              result = decode_next_frame (decoder->video, frame.renderer);
+              if (result != 0)
+                break;
+
+              decoded_frame = video_frame_number_from_timestamp (
+                  decoder->video,
+                  decoder->video->frame->best_effort_timestamp);
+              if (decoded_frame < 0)
+                {
+                  if (decoder->next_frame_number < 0)
+                    {
+                      result = -1;
+                      break;
+                    }
+                  decoded_frame = decoder->next_frame_number;
+                  video_record_frame_timestamp (decoder->video,
+                                                decoded_frame);
+                }
+              decoder->next_frame_number = decoded_frame + 1;
+
+              if (decoded_frame >= target_frame)
+                {
+                  if (decoded_frame == target_frame)
+                    {
+                      frame_queue_set_frame_number (&playback->decoded_frames,
+                                                    &frame, decoded_frame);
+                      side_data = av_frame_get_side_data (
+                          decoder->video->frame,
+                          AV_FRAME_DATA_MOTION_VECTORS);
+                      motion_vectors
+                          = side_data != NULL
+                                ? (AVMotionVector *)side_data->data
+                                : NULL;
+                      motion_vector_count
+                          = side_data != NULL
+                                ? side_data->size / sizeof (*motion_vectors)
+                                : 0;
+                      assert (motion_vector_count <= INT32_MAX);
+                      frame_queue_copy_motion_vectors (
+                          &playback->decoded_frames, &frame, motion_vectors,
+                          (s32)motion_vector_count);
+                      frame_queue_publish_history (&playback->decoded_frames,
+                                                   frame);
+                      result = 0;
+                    }
+                  else
+                    result = 1;
+                  break;
+                }
+            }
+
+          if (result != 0 && frame_acquired)
+            frame_queue_release (&playback->decoded_frames, frame);
+        }
+
+      platform_mutex_lock (&playback->state_mutex);
+      decoder->busy = false;
+      if (result < 0 || result == 1)
+        decoder->result = result;
+      platform_condition_broadcast (&playback->state_changed);
+      platform_mutex_unlock (&playback->state_mutex);
+    }
+}
+
+bool
+split_screen_decoders_init (InspectorPlayback *playback, Arena *arena,
+                            s32 decoder_threads)
+{
+  s32 pane, threads_per_decoder;
+
+  assert (playback != NULL && arena != NULL && decoder_threads > 0);
+
+  threads_per_decoder = MAX (1, decoder_threads / 2);
+  for (pane = 0; pane < SPLIT_SCREEN_PANE_COUNT; ++pane)
+    {
+      playback->split_decoders[pane].video
+          = init_video (arena, playback->video->video_file,
+                        threads_per_decoder);
+      if (playback->split_decoders[pane].video == NULL)
+        {
+          while (--pane >= 0)
+            shutdown_video (playback->split_decoders[pane].video);
+
+          return false;
+        }
+
+      video_share_frame_timestamps (playback->split_decoders[pane].video,
+                                    playback->video);
+      playback->split_decoders[pane].playback = playback;
+      playback->split_decoders[pane].pane = pane;
+      playback->split_decoders[pane].next_frame_number = -1;
+      playback->split_decoders[pane].requested_frame_number = -1;
+    }
+
+  for (pane = 0; pane < SPLIT_SCREEN_PANE_COUNT; ++pane)
+    platform_thread_start (&playback->split_decoders[pane].thread,
+                           split_decoder_worker,
+                           &playback->split_decoders[pane]);
+
+  return true;
+}
+
+void
+split_screen_decoders_shutdown (InspectorPlayback *playback)
+{
+  s32 pane;
+
+  assert (playback != NULL);
+
+  for (pane = 0; pane < SPLIT_SCREEN_PANE_COUNT; ++pane)
+    {
+      platform_thread_join (&playback->split_decoders[pane].thread);
+      shutdown_video (playback->split_decoders[pane].video);
+    }
+}
+
 bool
 split_screen_is_enabled (void)
 {
@@ -35,16 +236,28 @@ split_screen_is_enabled (void)
 }
 
 void
+split_screen_set_decoder_available (bool available)
+{
+  split_decoder_available = available;
+}
+
+void
 split_screen_toggle (void)
 {
+  if (!split_decoder_available)
+    return;
+
   split_screen_enabled = !split_screen_enabled;
   pending_pane_mask = 0;
+  highlight_refresh_pending = true;
 
   if (split_screen_enabled)
     {
       selected_pane = 0;
       pane_frame_numbers[0] = -1;
       pane_frame_numbers[1] = -1;
+      has_rendered_pane[0] = false;
+      has_rendered_pane[1] = false;
       pending_step_delta[0] = 0;
       pending_step_delta[1] = 0;
       request_generation = 0;
@@ -66,6 +279,7 @@ split_screen_toggle_mirror (void)
     return;
 
   mirror_enabled = !mirror_enabled;
+  highlight_refresh_pending = true;
 }
 
 void
@@ -86,7 +300,7 @@ split_screen_adjust_panes (void)
 bool
 split_screen_process_input (s32 display_width)
 {
-  bool one_pressed, two_pressed, left_pressed, right_pressed, changed;
+  bool one_pressed, two_pressed, left_pressed, right_pressed, selection_changed;
   s32 direction, mouse_x, clicked_pane;
 
   one_pressed = input_is_key_just_pressed (ONE);
@@ -94,15 +308,15 @@ split_screen_process_input (s32 display_width)
   if (!split_screen_enabled)
     return false;
 
-  changed = false;
+  selection_changed = false;
   if (one_pressed)
     {
-      changed = selected_pane != 0;
+      selection_changed = selected_pane != 0;
       selected_pane = 0;
     }
   if (two_pressed)
     {
-      changed = changed || selected_pane != 1;
+      selection_changed = selection_changed || selected_pane != 1;
       selected_pane = 1;
     }
 
@@ -114,12 +328,12 @@ split_screen_process_input (s32 display_width)
       if (clicked_pane != selected_pane)
         {
           selected_pane = clicked_pane;
-          changed = true;
+          selection_changed = true;
         }
     }
 
-  if (changed)
-    split_screen_request_all ();
+  if (selection_changed)
+    highlight_refresh_pending = true;
 
   left_pressed = input_is_key_just_pressed (LEFT);
   right_pressed = input_is_key_just_pressed (RIGHT);
@@ -148,7 +362,7 @@ split_screen_process_input (s32 display_width)
         }
     }
 
-  return changed || direction != 0;
+  return direction != 0;
 }
 
 void
@@ -197,6 +411,28 @@ split_screen_request_all (void)
       split_screen_request_pane (0);
       split_screen_request_pane (1);
     }
+}
+
+void
+split_screen_request_action_panes (void)
+{
+  if (!split_screen_enabled)
+    return;
+
+  split_screen_request_pane (selected_pane);
+  if (split_screen_is_mirrored ())
+    split_screen_request_pane (1 - selected_pane);
+}
+
+bool
+split_screen_take_highlight_refresh (void)
+{
+  bool pending;
+
+  pending = highlight_refresh_pending;
+  highlight_refresh_pending = false;
+
+  return pending;
 }
 
 bool
@@ -271,11 +507,55 @@ split_screen_get_selected_pane (void)
   return selected_pane;
 }
 
+local void
+split_screen_draw_pane_border (RendererPlex *display, s32 pane)
+{
+  s32 first_x, pane_w, border_width;
+  u32 border_color;
+
+  assert (display != NULL && pane >= 0 && pane < SPLIT_SCREEN_PANE_COUNT);
+
+  first_x = pane == 0 ? 0 : display->w / 2;
+  pane_w = pane == 0 ? display->w / 2 : display->w - first_x;
+  if (pane_w == 0)
+    return;
+
+  border_width = MIN (3, MIN (pane_w, display->h));
+  border_color
+      = pane == selected_pane || split_screen_is_mirrored ()
+            ? rgba (255, 220, 0, 255)
+            : rgba (80, 80, 80, 255);
+  if (border_width > 0)
+    {
+      draw_rectangle (first_x, 0, first_x + pane_w - 1, border_width - 1,
+                      border_color, display);
+      draw_rectangle (first_x, display->h - border_width,
+                      first_x + pane_w - 1, display->h - 1, border_color,
+                      display);
+      draw_rectangle (first_x, 0, first_x + border_width - 1,
+                      display->h - 1, border_color, display);
+      draw_rectangle (first_x + pane_w - border_width, 0,
+                      first_x + pane_w - 1, display->h - 1, border_color,
+                      display);
+    }
+}
+
+void
+split_screen_draw_highlights (RendererPlex *display)
+{
+  s32 pane;
+
+  assert (display != NULL);
+
+  for (pane = 0; pane < SPLIT_SCREEN_PANE_COUNT; ++pane)
+    split_screen_draw_pane_border (display, pane);
+}
+
 void
 split_screen_compose_pane (RendererPlex *display, const RendererPlex *source,
                            s32 pane)
 {
-  s32 x, y, first_x, pane_w, source_x, border_width;
+  s32 x, y, first_x, pane_w, source_x;
 
   assert (display != NULL && source != NULL && pane >= 0
           && pane < SPLIT_SCREEN_PANE_COUNT);
@@ -285,54 +565,72 @@ split_screen_compose_pane (RendererPlex *display, const RendererPlex *source,
   if (pane_w == 0)
     return;
 
-  for (y = 0; y < display->h; ++y)
-    for (x = 0; x < pane_w; ++x)
-      {
-        source_x = (s32)(((s64)x * source->w) / pane_w);
-        if (source_x >= source->w)
-          source_x = source->w - 1;
-
-        display->image_buffer[(u64)y * display->w + first_x + x]
-            = source->image_buffer[(u64)y * source->w + source_x];
-      }
-
-  if (pane == selected_pane || split_screen_is_mirrored ())
+  if (source->w == pane_w && source->h == display->h)
     {
-      border_width = MIN (3, MIN (pane_w, display->h));
-      if (border_width > 0)
-        {
-          draw_rectangle (first_x, 0, first_x + pane_w - 1, border_width - 1,
-                          rgba (255, 220, 0, 255), display);
-          draw_rectangle (first_x, display->h - border_width,
-                          first_x + pane_w - 1, display->h - 1,
-                          rgba (255, 220, 0, 255), display);
-          draw_rectangle (first_x, 0, first_x + border_width - 1,
-                          display->h - 1, rgba (255, 220, 0, 255), display);
-          draw_rectangle (first_x + pane_w - border_width, 0,
-                          first_x + pane_w - 1, display->h - 1,
-                          rgba (255, 220, 0, 255), display);
-        }
+      for (y = 0; y < display->h; ++y)
+        memcpy (display->image_buffer + (u64)y * display->w + first_x,
+                source->image_buffer + (u64)y * source->w,
+                (u64)pane_w * sizeof (*display->image_buffer));
+    }
+  else
+    {
+      for (y = 0; y < display->h; ++y)
+        for (x = 0; x < pane_w; ++x)
+          {
+            source_x = (s32)(((s64)x * source->w) / pane_w);
+            if (source_x >= source->w)
+              source_x = source->w - 1;
+
+            display->image_buffer[(u64)y * display->w + first_x + x]
+                = source->image_buffer[(u64)y * source->w + source_x];
+          }
     }
 
+  split_screen_draw_pane_border (display, pane);
   operations_draw_selection_box (display, pane);
 }
 
-local void
-playback_request_split_seek (InspectorPlayback *playback, s64 frame_number)
+void
+split_screen_redraw_cached_frames (InspectorPlayback *playback)
 {
+  s32 pane;
+
+  assert (playback != NULL);
+
+  for (pane = 0; pane < SPLIT_SCREEN_PANE_COUNT; ++pane)
+    if (has_rendered_pane[pane])
+      split_screen_compose_pane (playback->display,
+                                 playback->split_render_targets[pane], pane);
+}
+
+local s32
+split_screen_request_decode (InspectorPlayback *playback, s32 pane,
+                             s64 frame_number, u64 generation)
+{
+  SplitDecoder *decoder;
+  s32 result;
+
+  result = 0;
   platform_mutex_lock (&playback->state_mutex);
 
-  if (split_screen_is_enabled () && !playback->seek_in_progress
-      && frame_number >= 0)
+  decoder = &playback->split_decoders[pane];
+  if (decoder->result < 0)
+    result = decoder->result;
+  else if (split_screen_is_enabled () && frame_number >= 0
+           && (!decoder->request_pending
+               || decoder->requested_frame_number != frame_number
+               || decoder->requested_generation != generation))
     {
-      playback->seek_frame_request = frame_number;
-      playback->seek_in_progress = true;
-      playback->seek_frame_ready = false;
+      decoder->requested_frame_number = frame_number;
+      decoder->requested_generation = generation;
+      decoder->request_pending = true;
+      decoder->result = 0;
       platform_condition_broadcast (&playback->state_changed);
-      frame_queue_wake_producer (&playback->decoded_frames);
     }
 
   platform_mutex_unlock (&playback->state_mutex);
+
+  return result;
 }
 
 // Render a cached frame into one split pane
@@ -368,18 +666,18 @@ playback_split_render_frame (InspectorPlayback *playback, s32 pane,
       return result;
     }
 
-  memcpy (playback->render_target->image_buffer, frame.renderer->image_buffer,
-          (u64)playback->display->w * playback->display->h * sizeof (u32));
-  operations_on_frame_decoded (playback->render_target, frame.motion_vectors,
-                               frame.motion_vector_count);
-  operations_apply_zoom (playback->render_target, &playback->renderer_pool,
-                         &render_state);
+  operations_render_frame (frame.renderer, frame.motion_vectors,
+                           frame.motion_vector_count,
+                           playback->split_render_targets[pane],
+                           &playback->renderer_pool,
+                           &render_state);
 
   platform_mutex_lock (&playback->state_mutex);
   if (!playback->stopping && split_screen_is_enabled ())
     {
-      split_screen_compose_pane (playback->display, playback->render_target,
-                                 pane);
+      split_screen_compose_pane (playback->display,
+                                 playback->split_render_targets[pane], pane);
+      has_rendered_pane[pane] = true;
       split_screen_mark_rendered (pane, frame_number, generation);
       playback->frame_ready = true;
       playback->has_frame = true;
@@ -400,12 +698,12 @@ playback_split_render_frame (InspectorPlayback *playback, s32 pane,
 s32
 split_screen_update_playback (InspectorPlayback *playback, f64 *next_frame)
 {
-  FrameQueueFrame frame;
   s64 frame_numbers[2];
   u64 generations[2];
   f64 now, speed;
   bool pending[2], stopping, seek_frame_ready, playing, has_pending;
-  s32 pane, result, older_pane, future_pane;
+  s32 pane, result;
+  bool decode_requested;
 
   for (;;)
     {
@@ -461,65 +759,80 @@ split_screen_update_playback (InspectorPlayback *playback, f64 *next_frame)
       platform_mutex_unlock (&playback->state_mutex);
 
       if (seek_frame_ready)
-        {
-          if (frame_queue_take (&playback->decoded_frames, &frame))
-            frame_queue_release (&playback->decoded_frames, frame);
-          else if (frame_queue_result (&playback->decoded_frames) < 0)
-            return -1;
+        continue;
 
-          continue;
-        }
-
-      older_pane = -1;
-      future_pane = -1;
+      decode_requested = false;
       for (pane = 0; pane < 2; ++pane)
         {
           if (!pending[pane])
+            continue;
+
+          if (pane == 1 && decode_requested
+              && frame_numbers[0] == frame_numbers[1])
             continue;
 
           result = playback_split_render_frame (
               playback, pane, frame_numbers[pane], generations[pane]);
           if (result == SPLIT_RENDER_CANCELLED)
             return 0;
-          if (result < 0)
-            older_pane = pane;
-          else if (result > 0)
-            future_pane = pane;
+          if (result != 0)
+            {
+              result = split_screen_request_decode (
+                  playback, pane, frame_numbers[pane], generations[pane]);
+              if (result < 0)
+                return result;
+              decode_requested = true;
+            }
         }
 
-      if (older_pane >= 0)
+      if (decode_requested)
         {
-          playback_request_split_seek (playback, frame_numbers[older_pane]);
+          platform_mutex_lock (&playback->state_mutex);
+          for (;;)
+            {
+              bool wait_for_decoder = false;
+
+              if (playback->stopping || !split_screen_is_enabled ())
+                break;
+
+              for (pane = 0; pane < SPLIT_SCREEN_PANE_COUNT; ++pane)
+                {
+                  if (!split_screen_get_pending_frame (
+                          pane, &frame_numbers[pane], &generations[pane]))
+                    continue;
+
+                  if (playback->split_decoders[pane].result < 0)
+                    {
+                      result = playback->split_decoders[pane].result;
+                      platform_mutex_unlock (&playback->state_mutex);
+
+                      return result;
+                    }
+                  if (playback->split_decoders[pane].result == 1)
+                    {
+                      split_screen_cancel_future_frame (
+                          pane, frame_numbers[pane]);
+                      if (playing)
+                        timeline_pause ();
+                      continue;
+                    }
+
+                  wait_for_decoder
+                      = wait_for_decoder
+                        || playback->split_decoders[pane].request_pending
+                        || playback->split_decoders[pane].busy;
+                }
+
+              if (!wait_for_decoder)
+                break;
+
+              platform_condition_wait (&playback->state_changed,
+                                       &playback->state_mutex);
+            }
+
+          platform_mutex_unlock (&playback->state_mutex);
 
           return 1;
-        }
-
-      if (future_pane >= 0)
-        {
-          if (frame_queue_take (&playback->decoded_frames, &frame))
-            {
-              frame_queue_release (&playback->decoded_frames, frame);
-
-              return 1;
-            }
-
-          result = frame_queue_result (&playback->decoded_frames);
-          if (result == 1)
-            {
-              platform_mutex_lock (&playback->state_mutex);
-
-              split_screen_cancel_future_frame (future_pane,
-                                                frame_numbers[future_pane]);
-              if (playing)
-                timeline_pause ();
-              platform_condition_broadcast (&playback->state_changed);
-
-              platform_mutex_unlock (&playback->state_mutex);
-
-              return 1;
-            }
-          if (result < 0)
-            return -1;
         }
 
       return 1;

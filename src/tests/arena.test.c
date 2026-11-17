@@ -19,11 +19,11 @@ arena_test_alignment_and_capacity (void)
   assert_not_null (aligned);
   assert_true ((u64)(uintptr_t)aligned % 64 == 0);
 
-  u64 remaining = arena.capacity - arena.used;
+  u64 remaining = arena.cap - arena.used;
   void *last = arena_alloc (&arena, remaining, 1);
 
   assert_not_null (last);
-  assert_true (arena.capacity == arena.used);
+  assert_true (arena.cap == arena.used);
 
   arena_release (&arena);
   assert_null (arena.memory);
@@ -51,7 +51,7 @@ arena_test_sequential_allocations (void)
   assert_true ((ubyte *)second >= first + 3);
   assert_true ((ubyte *)third >= (ubyte *)second + sizeof (*second));
   assert_true (arena.used >= 3 + sizeof (*second) + sizeof (*third));
-  assert_true (arena.used < arena.capacity);
+  assert_true (arena.used < arena.cap);
 
   arena_release (&arena);
 
@@ -69,7 +69,7 @@ arena_test_release (void)
   arena_release (&arena);
 
   assert_null (arena.memory);
-  assert_true (arena.capacity == 0);
+  assert_true (arena.cap == 0);
 
   retrieve_results ();
 }

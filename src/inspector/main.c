@@ -126,14 +126,16 @@ video_only:
   s32 video_width = video_plex->codec->width,
       video_height = video_plex->codec->height;
 
-  s32 decoded_frame_cache_capacity = frame_queue_capacity_for_bytes (
-      video_width, video_height, config.frame_cache_bytes);
+  s32 decoded_frame_cache_capacity = MAX (
+      2, frame_queue_capacity_for_bytes (video_width, video_height,
+                                         config.frame_cache_bytes));
 
   u64 renderer_capacity
       = operations_memory_required (video_width, video_height)
         + frame_queue_memory_required (video_width, video_height,
                                        decoded_frame_cache_capacity)
-        + (u64)video_width * video_height * sizeof (u32)
+        + 2 * (u64)video_width * video_height * sizeof (u32)
+        + 2 * (sizeof (VideoPlex) + _Alignof (VideoPlex))
         + renderer_pool_memory_required (renderer_workers);
   arena_init (&renderer_arena, renderer_capacity);
 
@@ -182,6 +184,11 @@ video_only:
   if (inspector_playback_result (&playback) < 0)
     result = EXIT_FAILURE;
 
+  inspector_playback_shutdown (&playback);
+
 end:
+  if (video_plex != NULL)
+    shutdown_video (video_plex);
+
   return result;
 }

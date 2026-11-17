@@ -18,7 +18,7 @@ typedef struct
   s32 capacity, ready_head, ready_count, history_head, history_count,
       history_cursor, history_capacity, future_capacity, w, h, terminal_result;
   u64 generation;
-  bool stopped, producer_finished, producer_wakeup;
+  bool stopped, producer_finished, producer_wakeup, shared_cache_mode;
   PlatformMutex mutex;
   PlatformCondition frame_ready, slot_available;
 } FrameQueue;
@@ -42,6 +42,9 @@ void frame_queue_init (FrameQueue *queue, Arena *arena, s32 w, s32 h,
 void frame_queue_destroy (FrameQueue *queue);
 
 bool frame_queue_acquire_write (FrameQueue *queue, FrameQueueFrame *frame);
+bool frame_queue_acquire_cache_write (FrameQueue *queue,
+                                      FrameQueueFrame *frame);
+void frame_queue_prepare_shared_cache (FrameQueue *queue);
 void frame_queue_copy_motion_vectors (FrameQueue *queue,
                                       FrameQueueFrame *frame,
                                       const AVMotionVector *motion_vectors,

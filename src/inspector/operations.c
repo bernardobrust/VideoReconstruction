@@ -40,6 +40,7 @@ s32 *scale_x_map = NULL;
 RendererPlex *current_renderer = NULL;
 
 bool is_dragging = false, is_panning = false, needs_paused_redraw = true;
+bool split_selection_redraw_pending = false;
 bool show_data_overlay[2] = { true, true };
 AVMotionVector *current_motion_vectors = NULL;
 s32 current_motion_vector_count = 0, current_motion_vector_capacity = 0;
@@ -184,7 +185,6 @@ process_input (PlatformState *p)
   if (input_is_key_just_pressed (M))
     {
       split_screen_toggle_mirror ();
-      needs_paused_redraw = true;
 #ifndef NDEBUG
       printf ("Mirror mode %s\n",
               split_screen_is_mirrored () ? "enabled" : "disabled");
@@ -199,7 +199,6 @@ process_input (PlatformState *p)
       split_screen_adjust_panes ();
       zoom_match_pane (pane, 1 - pane);
       show_data_overlay[1 - pane] = show_data_overlay[pane];
-      needs_paused_redraw = true;
     }
 
   if (input_is_key_just_pressed (F))
@@ -325,6 +324,41 @@ operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
 }
 
 void
+operations_render_frame (const RendererPlex *source,
+                         const AVMotionVector *motion_vectors,
+                         s32 motion_vector_count, RendererPlex *destination,
+                         RendererPool *pool,
+                         const OperationsRenderState *state)
+{
+  RendererPlex overlay_source;
+  u32 *source_buffer;
+
+  assert (source != NULL && destination != NULL && state != NULL
+          && motion_vector_count >= 0
+          && (motion_vectors != NULL || motion_vector_count == 0));
+
+  source_buffer = source->image_buffer;
+  if (state->show_data_overlay)
+    {
+      memcpy (overlay_frame_buffer, source_buffer,
+              (u64)source->w * source->h * sizeof (u32));
+      overlay_source
+          = (RendererPlex){ source->w, source->h, overlay_frame_buffer };
+      renderer_draw_motion_vectors (motion_vectors, motion_vector_count,
+                                    &overlay_source, pool);
+      source_buffer = overlay_frame_buffer;
+    }
+
+  scale_image_region (source_buffer, source->w, source->h, state->zoom_x,
+                      state->zoom_y, state->zoom_w, state->zoom_h,
+                      destination->image_buffer, destination->w,
+                      destination->h, pool);
+  if (state->is_dragging)
+    draw_selection_box (state->drag_start_x, state->drag_start_y,
+                        state->drag_cur_x, state->drag_cur_y, destination);
+}
+
+void
 operations_draw_selection_box (RendererPlex *renderer, s32 pane)
 {
   s32 selected_pane, selected_left, selected_width, target_left, target_width;
@@ -414,6 +448,17 @@ operations_take_paused_redraw_request (void)
 
   requested = needs_paused_redraw || is_dragging;
   needs_paused_redraw = false;
+
+  return requested;
+}
+
+bool
+operations_take_split_selection_redraw_request (void)
+{
+  bool requested;
+
+  requested = split_selection_redraw_pending;
+  split_selection_redraw_pending = false;
 
   return requested;
 }

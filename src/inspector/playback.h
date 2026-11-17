@@ -9,12 +9,26 @@
 
 typedef struct
 {
+  struct InspectorPlayback *playback;
+  VideoPlex *video;
+  PlatformThread thread;
+  s64 next_frame_number, requested_frame_number;
+  u64 requested_generation;
+  s32 pane, result;
+  bool request_pending, busy;
+} SplitDecoder;
+
+typedef struct InspectorPlayback
+{
   // Video source and buffers used for published and in-progress frames
   VideoPlex *video;
   RendererPlex *display;
   RendererPlex *render_target;
+  RendererPlex *split_render_targets[2];
   FrameQueue decoded_frames;
   RendererPool renderer_pool;
+  SplitDecoder split_decoders[2];
+  Arena *arena;
 
   // Worker threads and synchronization shared with the UI thread
   PlatformThread decoder_thread, systems_thread;
@@ -23,10 +37,11 @@ typedef struct
 
   // Playback timing, seek/step requests, and current frame status
   f64 frame_duration_ms;
-  s32 result, frame_step_request;
+  s32 result, frame_step_request, split_decoder_threads;
   s64 seek_frame_request, current_frame_number;
   bool seek_in_progress, seek_frame_ready;
   bool stopping, render_in_progress, has_frame, frame_ready, done;
+  bool split_decoders_initialized, split_decoders_init_attempted;
 } InspectorPlayback;
 
 // state_mutex protects shared playback state and inspector operation globals.

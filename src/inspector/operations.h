@@ -38,11 +38,17 @@ void operations_get_render_state (OperationsRenderState *state, s32 pane);
 // Render a frame using the captured crop and overlay settings
 void operations_apply_zoom (RendererPlex *renderer, RendererPool *pool,
                             const OperationsRenderState *state);
+void operations_render_frame (const RendererPlex *source,
+                              const AVMotionVector *motion_vectors,
+                              s32 motion_vector_count,
+                              RendererPlex *destination, RendererPool *pool,
+                              const OperationsRenderState *state);
 void operations_draw_selection_box (RendererPlex *renderer, s32 pane);
 // Redraw and present the current frame when paused state changes
 void operations_render_paused (PlatformState *platform_state,
                                RendererPlex *renderer);
 bool operations_take_paused_redraw_request (void);
+bool operations_take_split_selection_redraw_request (void);
 
 // Update zoom, overlay, playback, and timeline controls from current input
 void process_input (PlatformState *platform_state);

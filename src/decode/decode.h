@@ -21,10 +21,15 @@ typedef struct
   AVPacket *packet;
   struct SwsContext *sws;
   DynArr *frame_timestamps;
+  PlatformMutex frame_timestamps_mutex;
+  PlatformMutex *timestamp_mutex;
+  bool owns_frame_timestamps;
 } VideoPlex;
 
 VideoPlex *init_video (Arena *arena, byte *video_file, s32 decoder_threads);
 void shutdown_video (VideoPlex *video_plex);
+void video_share_frame_timestamps (VideoPlex *video_plex,
+                                   VideoPlex *timestamp_source);
 
 s32 decode_next_frame (VideoPlex *video_plex, RendererPlex *renderer);
 s32 decode_seek_to_frame (VideoPlex *video_plex, s64 frame_number);

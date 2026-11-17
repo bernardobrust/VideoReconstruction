@@ -6,6 +6,7 @@ The configuration file `inspector.conf` contains user-defined values used to run
 If the file is missing or a setting is omitted, its default is used. Invalid entries are ignored. Boolean values accept `true` or `false`; capacity settings are positive integer megabytes. Settings may use either a space or `:=` between the name and value. `exporter_output_buffer` applies to each parallel output worker.
 
 If `frame_cache_capacity` exceeds currently available RAM, the inspector prints a warning and uses the default cache size.
+The cache keeps at least two decoded frames so split panes can retain different current frames.
 
 The config file is defined as follows:
 ```

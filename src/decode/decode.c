@@ -28,6 +28,10 @@ init_video (Arena *arena, byte *video_file, s32 decoder_threads)
   assert (video_plex != NULL);
 
   memset (video_plex, 0, sizeof (*video_plex));
+  video_plex->video_file = video_file;
+  platform_mutex_init (&video_plex->frame_timestamps_mutex);
+  video_plex->timestamp_mutex = &video_plex->frame_timestamps_mutex;
+  video_plex->owns_frame_timestamps = true;
 
   if (avformat_open_input (&video_plex->fmt, video_file, NULL, NULL) < 0)
     {
@@ -112,6 +116,16 @@ init_video (Arena *arena, byte *video_file, s32 decoder_threads)
   return video_plex;
 
 fail:
+  if (video_plex->sws != NULL)
+    sws_freeContext (video_plex->sws);
+  av_packet_free (&video_plex->packet);
+  av_frame_free (&video_plex->frame);
+  avcodec_free_context (&video_plex->codec);
+  avformat_close_input (&video_plex->fmt);
+  if (video_plex->frame_timestamps != NULL)
+    dyn_arr_free (video_plex->frame_timestamps);
+  platform_mutex_destroy (&video_plex->frame_timestamps_mutex);
+
   return NULL;
 }
 
@@ -127,7 +141,27 @@ shutdown_video (VideoPlex *video_plex)
   av_frame_free (&video_plex->frame);
   avcodec_free_context (&video_plex->codec);
   avformat_close_input (&video_plex->fmt);
+  if (video_plex->owns_frame_timestamps)
+    {
+      dyn_arr_free (video_plex->frame_timestamps);
+      platform_mutex_destroy (&video_plex->frame_timestamps_mutex);
+    }
+}
+
+void
+video_share_frame_timestamps (VideoPlex *video_plex,
+                              VideoPlex *timestamp_source)
+{
+  assert (video_plex != NULL && timestamp_source != NULL
+          && video_plex != timestamp_source
+          && video_plex->owns_frame_timestamps
+          && timestamp_source->timestamp_mutex != NULL);
+
   dyn_arr_free (video_plex->frame_timestamps);
+  platform_mutex_destroy (&video_plex->frame_timestamps_mutex);
+  video_plex->frame_timestamps = timestamp_source->frame_timestamps;
+  video_plex->timestamp_mutex = timestamp_source->timestamp_mutex;
+  video_plex->owns_frame_timestamps = false;
 }
 
 // We may want to factor the scaling out of here
@@ -281,11 +315,13 @@ s64
 video_frame_number_from_timestamp (VideoPlex *video_plex, s64 timestamp)
 {
   s32 low, high, middle;
-  s64 middle_timestamp;
+  s64 middle_timestamp, frame_number;
 
   assert (video_plex != NULL);
   if (timestamp == AV_NOPTS_VALUE)
     return -1;
+
+  platform_mutex_lock (video_plex->timestamp_mutex);
 
   // Decoded presentation timestamps are recorded in frame order. Literaly
   // binary search
@@ -305,9 +341,13 @@ video_frame_number_from_timestamp (VideoPlex *video_plex, s64 timestamp)
 
   if (low == video_plex->frame_timestamps->len
       || *(s64 *)dyn_arr_get (video_plex->frame_timestamps, low) != timestamp)
-    return -1;
+    frame_number = -1;
+  else
+    frame_number = low;
 
-  return low;
+  platform_mutex_unlock (video_plex->timestamp_mutex);
+
+  return frame_number;
 }
 
 void
@@ -316,12 +356,16 @@ video_record_frame_timestamp (VideoPlex *video_plex, s64 frame_number)
   s64 timestamp;
 
   assert (video_plex != NULL && frame_number >= 0 && frame_number <= INT32_MAX
-          && frame_number <= video_plex->frame_timestamps->len);
+          && video_plex->timestamp_mutex != NULL);
 
   timestamp = video_plex->frame->best_effort_timestamp;
+  platform_mutex_lock (video_plex->timestamp_mutex);
+  assert (frame_number <= video_plex->frame_timestamps->len);
 
   if (frame_number == video_plex->frame_timestamps->len)
     dyn_arr_push (video_plex->frame_timestamps, &timestamp);
   else
     dyn_arr_set (video_plex->frame_timestamps, (s32)frame_number, &timestamp);
+
+  platform_mutex_unlock (video_plex->timestamp_mutex);
 }

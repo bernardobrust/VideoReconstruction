@@ -89,7 +89,15 @@ draw_selection_box (s32 x1, s32 y1, s32 x2, s32 y2, RendererPlex *renderer)
   s32 min_x = MIN (x1, x2), max_x = MAX (x1, x2);
   s32 min_y = MIN (y1, y2), max_y = MAX (y1, y2);
 
-  draw_rectangle_t (min_x, min_y, max_x, max_y, fill_color, renderer);
+  if (split_screen_is_enabled ())
+    {
+      draw_rectangle_t (min_x, min_y, max_x, min_y, fill_color, renderer);
+      draw_rectangle_t (min_x, max_y, max_x, max_y, fill_color, renderer);
+      draw_rectangle_t (min_x, min_y, min_x, max_y, fill_color, renderer);
+      draw_rectangle_t (max_x, min_y, max_x, max_y, fill_color, renderer);
+    }
+  else
+    draw_rectangle_t (min_x, min_y, max_x, max_y, fill_color, renderer);
 }
 
 local void
@@ -111,6 +119,7 @@ zoom_apply_selection (void)
   ZoomRect cur, next_zoom;
 
   is_dragging = false;
+  split_selection_redraw_pending = false;
   needs_paused_redraw = true;
 
   if (!current_renderer)
@@ -211,6 +220,7 @@ zoom_process_input (void)
       if (is_dragging)
         {
           is_dragging = false;
+          split_selection_redraw_pending = true;
           needs_paused_redraw = true;
         }
       else if (zoom_stack[pane].len > 1)
@@ -234,6 +244,7 @@ zoom_process_input (void)
       if (is_dragging)
         {
           is_dragging = false;
+          split_selection_redraw_pending = true;
           needs_paused_redraw = true;
         }
 
@@ -294,7 +305,7 @@ zoom_process_input (void)
       drag_start_y = my;
       drag_cur_x = mx;
       drag_cur_y = my;
-      needs_paused_redraw = true;
+      split_selection_redraw_pending = true;
     }
 
   // Update the selection rectangle while dragging
@@ -304,7 +315,7 @@ zoom_process_input (void)
         {
           drag_cur_x = mx;
           drag_cur_y = my;
-          needs_paused_redraw = true;
+          split_selection_redraw_pending = true;
         }
     }
 

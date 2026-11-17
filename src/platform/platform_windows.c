@@ -566,6 +566,13 @@ platform_sleep (f64 ms)
 
   if (ms > 2.0)
     Sleep ((DWORD)(ms - 1.0));
+  else if (ms >= 1.0)
+    {
+      // Avoid burning a core while waiting for millisecond-scale delays
+      Sleep ((DWORD)(ms + 0.5));
+
+      return;
+    }
 
   for (;;)
     {
