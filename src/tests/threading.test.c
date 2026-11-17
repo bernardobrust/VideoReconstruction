@@ -352,7 +352,8 @@ frame_queue_test_shared_cache (void)
   FrameQueueFrame frame, found;
   s32 frame_number;
 
-  start_test_suite ("Frame queue: shared out-of-order cache and deduplication");
+  start_test_suite (
+      "Frame queue: shared out-of-order cache and deduplication");
 
   arena_init (&arena, 64 * 1024);
   frame_queue_init (&queue, &arena, 1, 1, 4);

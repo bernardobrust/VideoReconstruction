@@ -128,8 +128,7 @@ decoder_thread (void *arg)
               if (split_screen_is_enabled ())
                 {
                   frame_queue_release (&playback->decoded_frames, frame);
-                  frame_queue_prepare_shared_cache (
-                      &playback->decoded_frames);
+                  frame_queue_prepare_shared_cache (&playback->decoded_frames);
                   break;
                 }
 
@@ -552,9 +551,8 @@ inspector_playback_process_input (InspectorPlayback *playback,
       && !playback->split_decoders_init_attempted)
     {
       playback->split_decoders_init_attempted = true;
-      playback->split_decoders_initialized
-          = split_screen_decoders_init (playback, playback->arena,
-                                        playback->split_decoder_threads);
+      playback->split_decoders_initialized = split_screen_decoders_init (
+          playback, playback->arena, playback->split_decoder_threads);
       split_screen_set_decoder_available (
           playback->split_decoders_initialized);
       if (!playback->split_decoders_initialized)

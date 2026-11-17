@@ -275,9 +275,10 @@ frame_queue_prepare_shared_cache (FrameQueue *queue)
   queue->ready_count = 0;
   if (queue->history_cursor >= 0)
     {
-      index = queue->history_indices[(queue->history_head
-                                      + queue->history_cursor)
-                                     % queue->capacity];
+      index
+          = queue
+                ->history_indices[(queue->history_head + queue->history_cursor)
+                                  % queue->capacity];
       queue->history_pinned[index] = false;
     }
   queue->history_cursor = -1;
@@ -454,8 +455,8 @@ frame_queue_publish_history (FrameQueue *queue, FrameQueueFrame frame)
   if (queue->shared_cache_mode)
     for (i = 0; i < queue->ready_count; ++i)
       {
-        index = queue->ready_indices[(queue->ready_head + i)
-                                     % queue->capacity];
+        index
+            = queue->ready_indices[(queue->ready_head + i) % queue->capacity];
         if (queue->frame_numbers[index] == frame.frame_number)
           {
             queue->occupied[frame.index] = false;

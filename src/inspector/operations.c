@@ -163,8 +163,8 @@ process_input (PlatformState *p)
 {
   bool split_input_changed, timeline_changed;
 
-  split_input_changed
-      = split_screen_process_input (current_renderer ? current_renderer->w : 0);
+  split_input_changed = split_screen_process_input (
+      current_renderer ? current_renderer->w : 0);
   timeline_changed = timeline_process_input (!split_screen_is_enabled ());
   if (split_input_changed || timeline_changed)
     needs_paused_redraw = true;
@@ -366,8 +366,9 @@ operations_draw_selection_box (RendererPlex *renderer, s32 pane)
 
   assert (renderer != NULL && pane >= 0 && pane < 2);
 
-  if (!is_dragging || (pane != split_screen_get_selected_pane ()
-                       && !split_screen_is_mirrored ()))
+  if (!is_dragging
+      || (pane != split_screen_get_selected_pane ()
+          && !split_screen_is_mirrored ()))
     return;
 
   x1 = drag_start_x;
@@ -376,8 +377,8 @@ operations_draw_selection_box (RendererPlex *renderer, s32 pane)
   if (pane != selected_pane)
     {
       selected_left = selected_pane == 0 ? 0 : renderer->w / 2;
-      selected_width = selected_pane == 0 ? renderer->w / 2
-                                          : renderer->w - selected_left;
+      selected_width
+          = selected_pane == 0 ? renderer->w / 2 : renderer->w - selected_left;
       target_left = pane == 0 ? 0 : renderer->w / 2;
       target_width = pane == 0 ? renderer->w / 2 : renderer->w - target_left;
       if (selected_width == 0)

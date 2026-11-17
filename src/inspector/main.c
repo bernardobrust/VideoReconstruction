@@ -126,9 +126,9 @@ video_only:
   s32 video_width = video_plex->codec->width,
       video_height = video_plex->codec->height;
 
-  s32 decoded_frame_cache_capacity = MAX (
-      2, frame_queue_capacity_for_bytes (video_width, video_height,
-                                         config.frame_cache_bytes));
+  s32 decoded_frame_cache_capacity
+      = MAX (2, frame_queue_capacity_for_bytes (video_width, video_height,
+                                                config.frame_cache_bytes));
 
   u64 renderer_capacity
       = operations_memory_required (video_width, video_height)

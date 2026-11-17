@@ -33,8 +33,7 @@ split_screen_request_pane (s32 pane)
 }
 
 local bool
-split_decoder_cancelled (InspectorPlayback *playback, s32 pane,
-                         u64 generation)
+split_decoder_cancelled (InspectorPlayback *playback, s32 pane, u64 generation)
 {
   bool cancelled;
 
@@ -106,8 +105,7 @@ split_decoder_worker (void *arg)
 
           while (result == 0)
             {
-              if (split_decoder_cancelled (playback, pane,
-                                           generation))
+              if (split_decoder_cancelled (playback, pane, generation))
                 {
                   result = 2;
                   break;
@@ -128,8 +126,7 @@ split_decoder_worker (void *arg)
                       break;
                     }
                   decoded_frame = decoder->next_frame_number;
-                  video_record_frame_timestamp (decoder->video,
-                                                decoded_frame);
+                  video_record_frame_timestamp (decoder->video, decoded_frame);
                 }
               decoder->next_frame_number = decoded_frame + 1;
 
@@ -140,12 +137,10 @@ split_decoder_worker (void *arg)
                       frame_queue_set_frame_number (&playback->decoded_frames,
                                                     &frame, decoded_frame);
                       side_data = av_frame_get_side_data (
-                          decoder->video->frame,
-                          AV_FRAME_DATA_MOTION_VECTORS);
-                      motion_vectors
-                          = side_data != NULL
-                                ? (AVMotionVector *)side_data->data
-                                : NULL;
+                          decoder->video->frame, AV_FRAME_DATA_MOTION_VECTORS);
+                      motion_vectors = side_data != NULL
+                                           ? (AVMotionVector *)side_data->data
+                                           : NULL;
                       motion_vector_count
                           = side_data != NULL
                                 ? side_data->size / sizeof (*motion_vectors)
@@ -188,9 +183,8 @@ split_screen_decoders_init (InspectorPlayback *playback, Arena *arena,
   threads_per_decoder = MAX (1, decoder_threads / 2);
   for (pane = 0; pane < SPLIT_SCREEN_PANE_COUNT; ++pane)
     {
-      playback->split_decoders[pane].video
-          = init_video (arena, playback->video->video_file,
-                        threads_per_decoder);
+      playback->split_decoders[pane].video = init_video (
+          arena, playback->video->video_file, threads_per_decoder);
       if (playback->split_decoders[pane].video == NULL)
         {
           while (--pane >= 0)
@@ -300,7 +294,8 @@ split_screen_adjust_panes (void)
 bool
 split_screen_process_input (s32 display_width)
 {
-  bool one_pressed, two_pressed, left_pressed, right_pressed, selection_changed;
+  bool one_pressed, two_pressed, left_pressed, right_pressed,
+      selection_changed;
   s32 direction, mouse_x, clicked_pane;
 
   one_pressed = input_is_key_just_pressed (ONE);
@@ -320,8 +315,7 @@ split_screen_process_input (s32 display_width)
       selected_pane = 1;
     }
 
-  if (display_width > 0
-      && input_was_mouse_button_just_pressed (MOUSE_LEFT))
+  if (display_width > 0 && input_was_mouse_button_just_pressed (MOUSE_LEFT))
     {
       input_get_mouse_pos (&mouse_x, NULL);
       clicked_pane = mouse_x < display_width / 2 ? 0 : 1;
@@ -521,22 +515,19 @@ split_screen_draw_pane_border (RendererPlex *display, s32 pane)
     return;
 
   border_width = MIN (3, MIN (pane_w, display->h));
-  border_color
-      = pane == selected_pane || split_screen_is_mirrored ()
-            ? rgba (255, 220, 0, 255)
-            : rgba (80, 80, 80, 255);
+  border_color = pane == selected_pane || split_screen_is_mirrored ()
+                     ? rgba (255, 220, 0, 255)
+                     : rgba (80, 80, 80, 255);
   if (border_width > 0)
     {
       draw_rectangle (first_x, 0, first_x + pane_w - 1, border_width - 1,
                       border_color, display);
-      draw_rectangle (first_x, display->h - border_width,
-                      first_x + pane_w - 1, display->h - 1, border_color,
-                      display);
-      draw_rectangle (first_x, 0, first_x + border_width - 1,
+      draw_rectangle (first_x, display->h - border_width, first_x + pane_w - 1,
                       display->h - 1, border_color, display);
-      draw_rectangle (first_x + pane_w - border_width, 0,
-                      first_x + pane_w - 1, display->h - 1, border_color,
-                      display);
+      draw_rectangle (first_x, 0, first_x + border_width - 1, display->h - 1,
+                      border_color, display);
+      draw_rectangle (first_x + pane_w - border_width, 0, first_x + pane_w - 1,
+                      display->h - 1, border_color, display);
     }
 }
 
@@ -669,8 +660,7 @@ playback_split_render_frame (InspectorPlayback *playback, s32 pane,
   operations_render_frame (frame.renderer, frame.motion_vectors,
                            frame.motion_vector_count,
                            playback->split_render_targets[pane],
-                           &playback->renderer_pool,
-                           &render_state);
+                           &playback->renderer_pool, &render_state);
 
   platform_mutex_lock (&playback->state_mutex);
   if (!playback->stopping && split_screen_is_enabled ())
@@ -810,8 +800,8 @@ split_screen_update_playback (InspectorPlayback *playback, f64 *next_frame)
                     }
                   if (playback->split_decoders[pane].result == 1)
                     {
-                      split_screen_cancel_future_frame (
-                          pane, frame_numbers[pane]);
+                      split_screen_cancel_future_frame (pane,
+                                                        frame_numbers[pane]);
                       if (playing)
                         timeline_pause ();
                       continue;

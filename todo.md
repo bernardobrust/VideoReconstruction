@@ -4,6 +4,7 @@
 - We are starting to have lot's of commands, so maybe an UI would start making sense now
 
 ### Per-file basis
+- @IMPROVEMENT : .git : settup a pre-commit hook to format the code
 ...
 
 ## Checklists
