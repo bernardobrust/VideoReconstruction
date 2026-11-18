@@ -240,7 +240,9 @@ renderer_blend_rectangle_init (PINIT_ONCE once, PVOID parameter,
   return TRUE;
 }
 #else
-local pthread_once_t renderer_backend_once = PTHREAD_ONCE_INIT;
+
+// Inline does not work with GCC here
+static pthread_once_t renderer_backend_once = PTHREAD_ONCE_INIT;
 
 local void
 renderer_blend_rectangle_init (void)
