@@ -1,0 +1,21 @@
+#!/bin/sh
+
+set -e
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root/src"
+
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+        cmd.exe /c format.bat
+        ;;
+    *)
+        ./format.sh
+        ;;
+esac
+
+cd "$repo_root"
+
+# Include formatter changes for source files already present in the index.
+git diff --cached --name-only -z --diff-filter=ACMR -- '*.c' '*.h' |
+    xargs -0 -r git add --

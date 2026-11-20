@@ -53,6 +53,14 @@ List of tests (to be expanded):
 - renderer: color, rasterization, geometry, and transparency tests
 - threading: platform independent multithreading and frame/render pooling tests
 
+### Hooks
+#### Formatting hook
+To enable the formatting hook for this clone, run:
+```sh
+git config core.hooksPath .githooks
+```
+On GNU + Linux, also make the hook executable with `chmod +x .githooks/pre-commit`. The hook runs the adequate formatting script before the commit, then stages formatter changes to already-staged C and header files
+
 # Structure
 This includes the following directories:
 1. `decode`, the AV1 decoding pipeline
@@ -65,7 +73,7 @@ This includes the following directories:
 8. `math`, the mathematical functions and objects used in the code
 1. `platform`, with the platform layers for GNU + Linux (X11 and Wayland) and Windows
 3. `renderer`, the source code for the software renderer
-7. `test_files`, files used to test the correctness of the programs. For now this is empty as I didn't write any tests that directly require video data, but I recommend checking the sources for where to get some testing data.
+7. `test_files`, files used to test the correctness of the programs. For now this is empty as I didn't write any tests that directly require video data, but I recommend checking the sources for where to get some testing data
 8. `tests`, unit tests
 
 The following are present in `lib/` (the `.h` files are in there):
