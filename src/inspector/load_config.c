@@ -247,8 +247,8 @@ inspector_config_validate (InspectorConfig *config)
     {
       fprintf (
           stderr,
-          "Frame cache setting (%llu MB) exceeds available RAM (%llu MB); "
-          "using the default (%llu MB)\n",
+          "Frame cache setting (%lu MB) exceeds available RAM (%lu MB); "
+          "using the default (%lu MB)\n",
           (u64)(config->frame_cache_bytes / CONFIG_MEGABYTE),
           (u64)(available_memory / CONFIG_MEGABYTE),
           (u64)(DEFAULT_FRAME_CACHE_BYTES / CONFIG_MEGABYTE));
