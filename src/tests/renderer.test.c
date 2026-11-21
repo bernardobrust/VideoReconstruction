@@ -146,7 +146,6 @@ renderer_test_lines_and_rectangles (void)
   assert_equal (0xFF445566, pixels[1]);
   assert_equal (0xFF445566, pixels[TEST_W]);
   assert_equal (0, pixels[2 * TEST_W]);
-  assert_equal (0, pixels[2 * TEST_W]);
 
   memset (pixels, 0, sizeof pixels);
   draw_rectangle (3, 1, 3, 5, 0xFFFFFFFF, &renderer);

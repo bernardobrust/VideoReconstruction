@@ -396,6 +396,37 @@ frame_queue_test_shared_cache (void)
   retrieve_results ();
 }
 
+local void
+frame_queue_test_shared_cache_transition (void)
+{
+  start_test_suite (
+      "Frame queue: normal consumer release during cache switch");
+
+  Arena arena = { 0 };
+  FrameQueue queue;
+  FrameQueueFrame frame;
+  arena_init (&arena, 64 * 1024);
+  frame_queue_init (&queue, &arena, 1, 1, 4);
+
+  assert_true (frame_queue_acquire_write (&queue, &frame));
+  frame_queue_set_frame_number (&queue, &frame, 7);
+  frame_queue_publish (&queue, frame);
+  assert_true (frame_queue_take (&queue, &frame));
+
+  frame_queue_prepare_shared_cache (&queue);
+  frame_queue_release (&queue, frame);
+
+  assert_equal (0, queue.history_count);
+  assert_false (queue.occupied[frame.index]);
+  assert_false (queue.history_pinned[frame.index]);
+
+  frame_queue_stop (&queue);
+  frame_queue_destroy (&queue);
+  arena_release (&arena);
+
+  retrieve_results ();
+}
+
 void
 threading_all_tests (void)
 {
@@ -409,6 +440,7 @@ threading_all_tests (void)
   frame_queue_test_clear_with_live_frames ();
   frame_queue_test_seeded_history ();
   frame_queue_test_shared_cache ();
+  frame_queue_test_shared_cache_transition ();
   renderer_pool_test ();
 
   end_group ();

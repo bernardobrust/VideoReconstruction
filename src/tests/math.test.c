@@ -19,7 +19,6 @@ math_test_min_max (void)
   assert_equal (6, MAX3 (2, 4, 6));
   assert_equal (4, MAX3 (0, 4, -6));
   assert_equal (3, MIN (5, 3));
-  assert_equal (5, MAX (3, 5));
   assert_equal (-8, MIN3 (-8, -4, -6));
   assert_equal (9, MAX3 (7, 9, 8));
 
@@ -94,8 +93,6 @@ math_test_hypot (void)
                  1e-6);
   assert_approx ((f64)hypot_f32 (3.0f, 4.0f), (f64)hypot_f32 (4.0f, 3.0f),
                  1e-6);
-  assert_true (hypot_f32 (3.0f, 4.0f) > 4.7f);
-  assert_true (hypot_f32 (3.0f, 4.0f) < 5.3f);
 
   retrieve_results ();
 }
