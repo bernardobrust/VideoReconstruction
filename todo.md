@@ -120,5 +120,4 @@ Should we test the rendering primitives?
 - [ ] Export and inspect at the same time
 
 ### Extra
-- [ ] Parallelized build (?)
 - [ ] Data analysis

@@ -352,7 +352,8 @@ main (s32 argc, byte **argv)
   // Compiler options
   if (is_windows_platform (*platform))
     {
-      nob_cmd_append (&compile_cmd, "/nologo", "/std:c11", "/Fo:" BUILD_DIR);
+      nob_cmd_append (&compile_cmd, "/nologo", "/std:c11", "/MP",
+                      "/Fo:" BUILD_DIR);
 
       if (str_eq (*mode, "debug"))
         nob_cmd_append (&compile_cmd, "/W4", "/external:W0",
