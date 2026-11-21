@@ -318,6 +318,9 @@ systems_thread (void *arg)
           if (stepping)
             continue;
 
+          if (split_screen_is_enabled ())
+            continue;
+
           if (frame_queue_result (&playback->decoded_frames) == 1)
             {
               platform_mutex_lock (&playback->state_mutex);

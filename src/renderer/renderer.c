@@ -257,7 +257,8 @@ local void
 draw_triangle_colored (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3,
                        u32 color, bool transparent, RendererPlex *renderer)
 {
-  draw_triangle_internal (x1, y1, x2, y2, x3, y3, color, transparent, renderer);
+  draw_triangle_internal (x1, y1, x2, y2, x3, y3, color, transparent,
+                          renderer);
 }
 
 local void
@@ -302,7 +303,8 @@ void
 draw_rotated_rectangle (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
                         RendererPlex *renderer)
 {
-  draw_rotated_rectangle_internal (cx, cy, w, h, theta, color, false, renderer);
+  draw_rotated_rectangle_internal (cx, cy, w, h, theta, color, false,
+                                   renderer);
 }
 
 local void
@@ -348,9 +350,8 @@ draw_rotated_oriented_rectangle (s32 dx1, s32 dy1, s32 dx2, s32 dy2, s32 width,
 }
 
 local void
-draw_arrow_internal (s32 startx, s32 starty, s32 endx, s32 endy,
-                     s32 thickness, u32 color, bool transparent,
-                     RendererPlex *renderer)
+draw_arrow_internal (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
+                     u32 color, bool transparent, RendererPlex *renderer)
 {
   // Same geometry from draw_rotated_oriented_rectangle
   s32 dx = endx - startx, dy = endy - starty;

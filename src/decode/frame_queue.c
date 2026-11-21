@@ -509,7 +509,7 @@ frame_queue_take (FrameQueue *queue, FrameQueueFrame *frame)
   platform_mutex_lock (&queue->mutex);
 
   while (queue->ready_count == 0 && !queue->producer_finished
-         && !queue->stopped)
+         && !queue->stopped && !queue->shared_cache_mode)
     platform_condition_wait (&queue->frame_ready, &queue->mutex);
 
   if (queue->ready_count == 0)
@@ -552,6 +552,18 @@ frame_queue_release (FrameQueue *queue, FrameQueueFrame frame)
   if (frame.was_taken)
     {
       if (frame.generation != queue->generation)
+        {
+          queue->occupied[frame.index] = false;
+
+          platform_condition_signal (&queue->slot_available);
+          platform_mutex_unlock (&queue->mutex);
+          return;
+        }
+
+      // A normal consumer may finish a frame after split-screen switches the
+      // queue to shared-cache mode. Do not pin that transitional frame: split
+      // decoders can populate it again if either pane needs it
+      if (queue->shared_cache_mode)
         {
           queue->occupied[frame.index] = false;
 

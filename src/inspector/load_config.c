@@ -251,14 +251,13 @@ inspector_config_validate (InspectorConfig *config)
   available_memory = platform_get_available_memory ();
   if (available_memory > 0 && config->frame_cache_bytes > available_memory)
     {
-      fprintf (
-          stderr,
-          "Frame cache setting (" U64_FORMAT
-          " MB) exceeds available RAM (" U64_FORMAT
-          " MB); using the default (" U64_FORMAT " MB)\n",
-          (u64)(config->frame_cache_bytes / CONFIG_MEGABYTE),
-          (u64)(available_memory / CONFIG_MEGABYTE),
-          (u64)(DEFAULT_FRAME_CACHE_BYTES / CONFIG_MEGABYTE));
+      fprintf (stderr,
+               "Frame cache setting (" U64_FORMAT
+               " MB) exceeds available RAM (" U64_FORMAT
+               " MB); using the default (" U64_FORMAT " MB)\n",
+               (u64)(config->frame_cache_bytes / CONFIG_MEGABYTE),
+               (u64)(available_memory / CONFIG_MEGABYTE),
+               (u64)(DEFAULT_FRAME_CACHE_BYTES / CONFIG_MEGABYTE));
       config->frame_cache_bytes = DEFAULT_FRAME_CACHE_BYTES;
     }
 }
