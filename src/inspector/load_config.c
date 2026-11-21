@@ -11,6 +11,12 @@ enum
   CONFIG_MEGABYTE = MEGABYTE (1)
 };
 
+#ifdef _MSC_VER
+#define U64_FORMAT "%llu"
+#else
+#define U64_FORMAT "%lu"
+#endif
+
 const bool DEFAULT_FULLSCREEN = true;
 const u64 DEFAULT_FRAME_CACHE_BYTES = 256ULL * CONFIG_MEGABYTE;
 const u64 DEFAULT_EXPORTER_OUTPUT_BUFFER_BYTES = 8ULL * CONFIG_MEGABYTE;
@@ -247,8 +253,9 @@ inspector_config_validate (InspectorConfig *config)
     {
       fprintf (
           stderr,
-          "Frame cache setting (%lu MB) exceeds available RAM (%lu MB); "
-          "using the default (%lu MB)\n",
+          "Frame cache setting (" U64_FORMAT
+          " MB) exceeds available RAM (" U64_FORMAT
+          " MB); using the default (" U64_FORMAT " MB)\n",
           (u64)(config->frame_cache_bytes / CONFIG_MEGABYTE),
           (u64)(available_memory / CONFIG_MEGABYTE),
           (u64)(DEFAULT_FRAME_CACHE_BYTES / CONFIG_MEGABYTE));

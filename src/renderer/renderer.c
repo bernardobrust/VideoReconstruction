@@ -253,10 +253,17 @@ draw_circle (s32 cx, s32 cy, s32 r, u32 color, RendererPlex *renderer)
     }
 }
 
-// Build rotated rectangle corners from its center, dimensions, and angle
-void
-draw_rotated_rectangle (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
-                        RendererPlex *renderer)
+local void
+draw_triangle_colored (s32 x1, s32 y1, s32 x2, s32 y2, s32 x3, s32 y3,
+                       u32 color, bool transparent, RendererPlex *renderer)
+{
+  draw_triangle_internal (x1, y1, x2, y2, x3, y3, color, transparent, renderer);
+}
+
+local void
+draw_rotated_rectangle_internal (s32 cx, s32 cy, s32 w, s32 h, f32 theta,
+                                 u32 color, bool transparent,
+                                 RendererPlex *renderer)
 {
   f32 c = cosf (theta), s = sinf (theta);
 
@@ -285,16 +292,23 @@ draw_rotated_rectangle (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
   f32 y3 = cy - hw * uy + hh * vy;
 
   // Split the rectangle into two triangles along one diagonal
-  draw_triangle ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
-                 renderer);
-  draw_triangle ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
-                 renderer);
+  draw_triangle_colored ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2,
+                         color, transparent, renderer);
+  draw_triangle_colored ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3,
+                         color, transparent, renderer);
 }
 
-// Build a rectangle around the line segment between the two endpoints
 void
-draw_rotated_oriented_rectangle (s32 dx1, s32 dy1, s32 dx2, s32 dy2, s32 width,
-                                 u32 color, RendererPlex *renderer)
+draw_rotated_rectangle (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
+                        RendererPlex *renderer)
+{
+  draw_rotated_rectangle_internal (cx, cy, w, h, theta, color, false, renderer);
+}
+
+local void
+draw_oriented_rectangle_internal (s32 dx1, s32 dy1, s32 dx2, s32 dy2,
+                                  s32 width, u32 color, bool transparent,
+                                  RendererPlex *renderer)
 {
   s32 dx = dx2 - dx1, dy = dy2 - dy1;
   f32 length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
@@ -319,16 +333,24 @@ draw_rotated_oriented_rectangle (s32 dx1, s32 dy1, s32 dx2, s32 dy2, s32 width,
   f32 x3 = dx1 - ox, y3 = dy1 - oy;
 
   // Split the rectangle into two triangles along one diagonal
-  draw_triangle ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
-                 renderer);
-  draw_triangle ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
-                 renderer);
+  draw_triangle_colored ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2,
+                         color, transparent, renderer);
+  draw_triangle_colored ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3,
+                         color, transparent, renderer);
 }
 
-// Draw an arrow from a rectangular shaft and a triangular head
 void
-draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
-            u32 color, RendererPlex *renderer)
+draw_rotated_oriented_rectangle (s32 dx1, s32 dy1, s32 dx2, s32 dy2, s32 width,
+                                 u32 color, RendererPlex *renderer)
+{
+  draw_oriented_rectangle_internal (dx1, dy1, dx2, dy2, width, color, false,
+                                    renderer);
+}
+
+local void
+draw_arrow_internal (s32 startx, s32 starty, s32 endx, s32 endy,
+                     s32 thickness, u32 color, bool transparent,
+                     RendererPlex *renderer)
 {
   // Same geometry from draw_rotated_oriented_rectangle
   s32 dx = endx - startx, dy = endy - starty;
@@ -351,11 +373,21 @@ draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
   f32 shaft_end_x = endx - ux * head_thickness,
       shaft_end_y = endy - uy * head_thickness;
 
-  draw_rotated_oriented_rectangle ((int)startx, (int)starty, (int)shaft_end_x,
-                                   (int)shaft_end_y, thickness, color,
-                                   renderer);
-  draw_triangle ((int)endx, (int)endy, (int)leftx, (int)lefty, (int)rightx,
-                 (int)righty, color, renderer);
+  draw_oriented_rectangle_internal ((int)startx, (int)starty, (int)shaft_end_x,
+                                    (int)shaft_end_y, thickness, color,
+                                    transparent, renderer);
+  draw_triangle_colored ((int)endx, (int)endy, (int)leftx, (int)lefty,
+                         (int)rightx, (int)righty, color, transparent,
+                         renderer);
+}
+
+// Draw an arrow from a rectangular shaft and a triangular head
+void
+draw_arrow (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
+            u32 color, RendererPlex *renderer)
+{
+  draw_arrow_internal (startx, starty, endx, endy, thickness, color, false,
+                       renderer);
 }
 
 // Transparent shapes blend source color with existing pixels using source
@@ -455,42 +487,7 @@ void
 draw_rotated_rectangle_t (s32 cx, s32 cy, s32 w, s32 h, f32 theta, u32 color,
                           RendererPlex *renderer)
 {
-  f32 c = cosf (theta);
-  f32 s = sinf (theta);
-
-  // Width direction
-  f32 ux = c, uy = s;
-
-  // Height direction
-  f32 vx = -s, vy = c;
-
-  f32 hw = w / 2.0f;
-  f32 hh = h / 2.0f;
-
-  // Top-left
-  f32 x0 = cx - hw * ux - hh * vx;
-  f32 y0 = cy - hw * uy - hh * vy;
-
-  // Top-right
-  f32 x1 = cx + hw * ux - hh * vx;
-  f32 y1 = cy + hw * uy - hh * vy;
-
-  // Bottom-right
-  f32 x2 = cx + hw * ux + hh * vx;
-  f32 y2 = cy + hw * uy + hh * vy;
-
-  // Bottom-left
-  f32 x3 = cx - hw * ux + hh * vx;
-  f32 y3 = cy - hw * uy + hh * vy;
-
-  // Triangle 1 points:
-  // (x0, y0), (x1, y1), (x2, y2)
-  // Triangle 2 points:
-  // (x0, y0), (x2, y2), (x3, y3)
-  draw_triangle_t ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
-                   renderer);
-  draw_triangle_t ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
-                   renderer);
+  draw_rotated_rectangle_internal (cx, cy, w, h, theta, color, true, renderer);
 }
 
 void
@@ -498,68 +495,16 @@ draw_rotated_oriented_rectangle_t (s32 dx1, s32 dy1, s32 dx2, s32 dy2,
                                    s32 width, u32 color,
                                    RendererPlex *renderer)
 {
-  s32 dx = dx2 - dx1, dy = dy2 - dy1;
-  f32 length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
-
-  if (length == 0.0f)
-    return;
-
-  // Unit vector along the center line
-  f32 ux = dx / length, uy = dy / length;
-
-  // Unit vector perpendicular to the center line
-  f32 nx = -uy, ny = ux;
-
-  // Offset from center line to either edge
-  f32 hw = width / 2.0f;
-  f32 ox = nx * hw, oy = ny * hw;
-
-  // Four corners
-  f32 x0 = dx1 + ox, y0 = dy1 + oy;
-  f32 x1 = dx2 + ox, y1 = dy2 + oy;
-  f32 x2 = dx2 - ox, y2 = dy2 - oy;
-  f32 x3 = dx1 - ox, y3 = dy1 - oy;
-
-  // Triangle 1 points:
-  // (x0, y0), (x1, y1), (x2, y2)
-  // Triangle 2 points:
-  // (x0, y0), (x2, y2), (x3, y3)
-  draw_triangle_t ((int)x0, (int)y0, (int)x1, (int)y1, (int)x2, (int)y2, color,
-                   renderer);
-  draw_triangle_t ((int)x0, (int)y0, (int)x2, (int)y2, (int)x3, (int)y3, color,
-                   renderer);
+  draw_oriented_rectangle_internal (dx1, dy1, dx2, dy2, width, color, true,
+                                    renderer);
 }
 
 void
 draw_arrow_t (s32 startx, s32 starty, s32 endx, s32 endy, s32 thickness,
               u32 color, RendererPlex *renderer)
 {
-  // Same geometry from draw_rotated_oriented_rectangle
-  s32 dx = endx - startx, dy = endy - starty;
-  f32 length = sqrtf ((float)dx * (float)dx + (float)dy * (float)dy);
-
-  if (length == 0.0f)
-    return;
-
-  f32 ux = dx / length, uy = dy / length;
-  f32 nx = -uy, ny = ux;
-
-  // Arbitrary scale, it should keep proportions to the shaft
-  f32 head_thickness = thickness * 1.4f;
-
-  f32 basex = endx - ux * head_thickness, basey = endy - uy * head_thickness;
-  f32 leftx = basex + nx * head_thickness, lefty = basey + ny * head_thickness;
-  f32 rightx = basex - nx * head_thickness,
-      righty = basey - ny * head_thickness;
-
-  f32 shaft_end_x = endx - ux * head_thickness,
-      shaft_end_y = endy - uy * head_thickness;
-
-  draw_rotated_oriented_rectangle_t ((int)startx, (int)starty,
-                                     (int)shaft_end_x, (int)shaft_end_y,
-                                     thickness, color, renderer);
-  draw_triangle_t ((int)endx, (int)endy, (int)leftx, (int)lefty, (int)rightx,
-                   (int)righty, color, renderer);
+  draw_arrow_internal (startx, starty, endx, endy, thickness, color, true,
+                       renderer);
 }
 
 // Present the current image and keep it available until a newer frame replaces
